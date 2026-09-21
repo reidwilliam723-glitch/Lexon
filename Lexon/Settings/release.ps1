@@ -40,12 +40,41 @@ function Get-LexonVersion {
     return ([string]$version).Trim()
 }
 
+function Get-AutoChangelog {
+    param([string]$Version)
+
+    $previousTag = git tag --list "v*" --sort=-v:refname | Select-Object -First 1
+
+    if ($previousTag) {
+        $range = "$previousTag..HEAD"
+        Write-Host "Generating changelog from $range"
+    }
+    else {
+        $range = "HEAD"
+        Write-Host "No previous tag found; changelog will cover the full history."
+    }
+
+    # --no-merges keeps this to the actual commits, not merge-commit noise.
+    # %s is the subject line only — full messages would be too noisy for a
+    # release body, and multi-line commit bodies don't reformat cleanly
+    # into a flat bullet list anyway.
+    $subjects = git log $range --no-merges --pretty=format:"%s"
+
+    if (-not $subjects) {
+        return "Lexon $Version.`n`nNo changes recorded since the previous release."
+    }
+
+    $bullets = ($subjects -split "`n" | Where-Object { $_ } | ForEach-Object { "- $_" }) -join "`n"
+    return "## Lexon $Version`n`n$bullets"
+}
+
 if (-not (Get-Command vpk -ErrorAction SilentlyContinue)) {
     throw "The 'vpk' CLI was not found. Install it with: dotnet tool install -g vpk"
 }
 
 $version = Get-LexonVersion -ProjectPath $project
 Write-Host "Lexon release version $version (from Lexon.Settings.csproj)"
+$notesFile = Join-Path $releaseDir "release-notes.md"
 
 & (Join-Path $PSScriptRoot "publish.ps1") -Configuration $Configuration -Runtime $Runtime -OutputDir $publishDir | Out-Null
 
@@ -118,6 +147,9 @@ else {
     Write-Host "GitHub has no previous release to diff against. Packing a full release only."
 }
 
+(Get-AutoChangelog -Version $version) | Set-Content -Path $notesFile -Encoding utf8
+Write-Host "Wrote changelog to $notesFile"
+
 Write-Host "Packing with vpk"
 $packArgs = @(
     "pack",
@@ -169,6 +201,27 @@ if ($Prerelease) {
 vpk @uploadArgs
 if ($LASTEXITCODE -ne 0) {
     throw "vpk upload failed with exit code $LASTEXITCODE."
+}
+
+if (Get-Command gh -ErrorAction SilentlyContinue) {
+    # gh has its own auth; reuse the token already required above rather
+    # than making the caller set up a second credential.
+    if (-not $env:GH_TOKEN -and $env:GITHUB_TOKEN) {
+        $env:GH_TOKEN = $env:GITHUB_TOKEN
+    }
+
+    $repoSlug = ($RepoUrl -replace '^https://github.com/', '')
+    gh release edit "v$version" --repo $repoSlug --title "Lexon $version" --notes-file $notesFile
+
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "gh release edit failed (exit $LASTEXITCODE). The release was still published by vpk; set its notes manually from $notesFile."
+    }
+    else {
+        Write-Host "Set release notes from $notesFile"
+    }
+}
+else {
+    Write-Host "GitHub CLI ('gh') not found, so release notes were not set automatically. Install it from https://cli.github.com, or edit the release manually using the text in $notesFile."
 }
 
 Write-Host "Released Lexon $version. Testers install from Setup.exe on the release page."
