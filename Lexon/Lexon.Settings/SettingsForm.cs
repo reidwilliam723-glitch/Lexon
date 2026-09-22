@@ -13,6 +13,7 @@ using Lexon.Core.Models;
 using Lexon.Overlay.Interfaces;
 using Lexon.Ui;
 using System.Diagnostics;
+using System.Drawing.Drawing2D;
 using System.Runtime.InteropServices;
 
 namespace Lexon.Settings;
@@ -35,7 +36,7 @@ public partial class SettingsForm : Form
     private CheckBox _chkMinimizeToTray = null!;
     private CheckBox _chkEnableSounds = null!;
     private CheckBox _chkCheckUpdates = null!;
-    private Label _lblQuickToggle = null!;
+    private CheckBox _chkOpenFullScreen = null!;
     private ComboBox _cmbAIProvider = null!;
     private TextBox _txtAPIKey = null!;
     private Label _lblAiRecommended = null!;
@@ -71,17 +72,16 @@ public partial class SettingsForm : Form
     private Button _btnExportLearning = null!;
     private Button _btnImportLearning = null!;
     private Button _btnAiLog = null!;
-    private FlowLayoutPanel _compactHost = null!;
-    private TableLayoutPanel _wideHost = null!;
-    private FlowLayoutPanel _colLeft = null!;
-    private FlowLayoutPanel _colMiddle = null!;
-    private FlowLayoutPanel _colRight = null!;
+    private TableLayoutPanel _layoutHost = null!;
     private FlowLayoutPanel _sectionGeneral = null!;
     private FlowLayoutPanel _sectionAi = null!;
     private FlowLayoutPanel _sectionPrivacy = null!;
     private FlowLayoutPanel _sectionAppearance = null!;
     private FlowLayoutPanel _sectionAppTone = null!;
     private FlowLayoutPanel _sectionWriting = null!;
+    private FlowLayoutPanel _columnLeft = null!;
+    private FlowLayoutPanel _columnMiddle = null!;
+    private FlowLayoutPanel _columnRight = null!;
     private FlowLayoutPanel _blockedRow = null!;
     private FlowLayoutPanel _toneRow = null!;
     private bool _wideLayoutActive;
@@ -98,6 +98,15 @@ public partial class SettingsForm : Form
     private string _activeProvider = "None";
     private string _activeApiKey = string.Empty;
     private bool _aiValidated;
+    private bool _settingsRevealed;
+    private int _paintFreeze;
+    private ToolTip? _infoTip;
+    private int _fieldLeft;
+    private int _fieldMiddle;
+    private int _fieldRight;
+    private int _fieldListHeight;
+
+    internal bool LayoutIsWide => _wideLayoutActive;
 
     public SettingsForm()
         : this(null, null, null)
@@ -132,15 +141,29 @@ public partial class SettingsForm : Form
 
         if (_ownsProfile)
         {
+            SettingsPaintProbe.Log("ctor LoadAsync start");
             _profile.LoadAsync().GetAwaiter().GetResult();
+            SettingsPaintProbe.Log("ctor LoadAsync done");
         }
 
+        SettingsPaintProbe.Log("ctor InitializeComponent start");
         InitializeComponent();
+        SettingsPaintProbe.Log("ctor InitializeComponent done");
         LoadSettings();
+        SettingsPaintProbe.Log("ctor LoadSettings done");
         HookAutoApply();
         SetupMinimizeToTrayBehavior();
         Shown += OnSettingsShown;
-        Resize += (_, _) => UpdateLayoutMode();
+        Resize += (_, _) =>
+        {
+            if (SettingsPaintProbe.Enabled)
+            {
+                SettingsPaintProbe.Resize++;
+                SettingsPaintProbe.Log($"Resize state={WindowState} size={Size} wide={_wideLayoutActive}");
+            }
+
+            UpdateLayoutMode();
+        };
         FormClosing += (_, _) =>
         {
             StopClipboardWatch();
@@ -156,6 +179,7 @@ public partial class SettingsForm : Form
             StopClipboardWatch();
             _persistTimer.Stop();
             _persistTimer.Dispose();
+            _infoTip?.Dispose();
             _aiProbeTimer.Stop();
             _aiProbeTimer.Dispose();
             _clipboardWatchTimeout.Stop();
@@ -170,8 +194,20 @@ public partial class SettingsForm : Form
                 StopClipboardWatch();
             }
         };
+        if (!IsHandleCreated)
+        {
+            // Forces this form's handle - and every child control's handle - to
+            // exist now, off-screen, so ApplyTheme() below takes the flicker-safe
+            // ApplyToTreeWithoutFlicker path instead of silently falling back to
+            // the unprotected one just because nothing has been shown yet.
+            SettingsPaintProbe.Log("ctor CreateControl start");
+            CreateControl();
+            SettingsPaintProbe.Log("ctor CreateControl done");
+        }
+
         ApplyTheme();
         ComboWheel.GuardTree(this);
+        UpdateLayoutMode();
         if (_themeManager != null)
         {
             _themeManager.ThemeChanged += OnExternalThemeChanged;
@@ -180,6 +216,8 @@ public partial class SettingsForm : Form
 
     private void InitializeComponent()
     {
+        SuspendLayout();
+
         AutoScaleMode = AutoScaleMode.Dpi;
         Text = "Lexon Settings";
         ClientSize = new Size(700, 800);
@@ -210,45 +248,44 @@ public partial class SettingsForm : Form
         footer.Controls.Add(btnAbout);
         Controls.Add(footer);
 
-        _compactHost = new FlowLayoutPanel
-        {
-            Dock = DockStyle.Fill,
-            FlowDirection = FlowDirection.TopDown,
-            WrapContents = false,
-            AutoScroll = true,
-            Padding = new Padding(8)
-        };
-        ThemeUi.EnableBufferedPaint(_compactHost);
-
-        _colLeft = ColumnHost();
-        _colMiddle = ColumnHost();
-        _colRight = ColumnHost();
-        _wideHost = new TableLayoutPanel
+        _layoutHost = new CompositedTableLayoutPanel
         {
             Dock = DockStyle.Fill,
             ColumnCount = 3,
-            RowCount = 1,
-            Visible = false,
+            RowCount = 6,
+            AutoScroll = true,
             Padding = new Padding(8),
             GrowStyle = TableLayoutPanelGrowStyle.FixedSize
         };
-        _wideHost.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33.3f));
-        _wideHost.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33.3f));
-        _wideHost.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33.4f));
-        _wideHost.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-        _wideHost.Controls.Add(_colLeft, 0, 0);
-        _wideHost.Controls.Add(_colMiddle, 1, 0);
-        _wideHost.Controls.Add(_colRight, 2, 0);
-        ThemeUi.EnableBufferedPaint(_wideHost);
+        _layoutHost.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));
+        _layoutHost.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 0));
+        _layoutHost.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 0));
+        for (var i = 0; i < 6; i++)
+        {
+            _layoutHost.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        }
+
+        ThemeUi.EnableBufferedPaint(_layoutHost);
+
+        _columnLeft = ColumnHost();
+        _columnMiddle = ColumnHost();
+        _columnRight = ColumnHost();
 
         _chkAutoStart = Check("Start with Windows");
         _chkMinimizeToTray = Check("Minimize to system tray");
         _chkEnableSounds = Check("Enable sound feedback");
-        _chkCheckUpdates = Check("Check for updates on startup (asks before installing)");
-        _lblQuickToggle = Caption("Pause everything: double-press Ctrl. Same as Enable/Disable on the tray icon.");
-        _sectionGeneral = Section("General", _chkAutoStart, _chkMinimizeToTray, _chkEnableSounds, _chkCheckUpdates, _lblQuickToggle);
+        _chkCheckUpdates = Check("Check for updates on startup");
+        _chkOpenFullScreen = Check("Open Settings full screen");
+        _sectionGeneral = Section(
+            "General",
+            Hint(_chkAutoStart, "Launch Lexon when you sign in to Windows."),
+            Hint(_chkMinimizeToTray, "Close hides Settings. Lexon stays in the tray."),
+            Hint(_chkEnableSounds, "Play a short sound when an action completes."),
+            Hint(_chkCheckUpdates, "Asks before installing anything."),
+            Hint(_chkOpenFullScreen, "Opens maximized so the three-column layout is used."),
+            Hint(Caption("Pause shortcut"), "Pause everything: double-press Ctrl. Same as Enable/Disable on the tray icon."));
 
-        _lblAiRecommended = Caption("OpenAI (recommended) — paste an API key to connect.");
+        _lblAiRecommended = Caption("OpenAI (recommended)");
         _lnkMoreProviders = new LinkLabel
         {
             Text = "More providers",
@@ -260,7 +297,7 @@ public partial class SettingsForm : Form
         _cmbAIProvider.Items.AddRange(AiProviderCatalog.AllProviders.Cast<object>().ToArray());
         _cmbAIProvider.SelectedIndex = 0;
         _cmbAIProvider.Visible = false;
-        _txtAPIKey = Field(360, "Paste API key", isPassword: true);
+        _txtAPIKey = Field(360, isPassword: true);
         _btnGetApiKey = new Button
         {
             Text = "Get your API key",
@@ -286,19 +323,30 @@ public partial class SettingsForm : Form
             ForeColor = Color.FromArgb(90, 90, 90),
             Text = "Paste a key to connect. Lexon will check it automatically."
         };
-        _lblAiModel = Caption("Model (set automatically; change only if you want a different one)");
+        _lblAiModel = Caption("Model");
         _cmbAiModel = Combo(360);
-        _sectionAi = Section("AI", _lblAiRecommended, _lnkMoreProviders, _cmbAIProvider, _btnGetApiKey, _txtAPIKey, _btnCancelWait, _lblAiStatus, _lblAiModel, _cmbAiModel);
+        _sectionAi = Section(
+            "AI",
+            Hint(_lblAiRecommended, "Paste an API key to connect. OpenAI is recommended."),
+            _lnkMoreProviders,
+            _cmbAIProvider,
+            Hint(_btnGetApiKey, "Opens the provider’s key page, then waits for you to copy a key."),
+            Caption("API key"),
+            _txtAPIKey,
+            _btnCancelWait,
+            _lblAiStatus,
+            _lblAiModel,
+            Hint(_cmbAiModel, "Filled automatically. Change only if you want a different model."));
 
         _chkLocalMode = Check("Local-only mode (no cloud)");
         _blockedRow = new FlowLayoutPanel
         {
             FlowDirection = FlowDirection.LeftToRight,
-            WrapContents = false,
+            WrapContents = true,
             AutoSize = true,
             Margin = new Padding(0, 4, 0, 8)
         };
-        _txtBlockedApps = Field(240, "Blocked apps (comma-separated)");
+        _txtBlockedApps = Field(240);
         _txtBlockedApps.Margin = new Padding(0, 4, 8, 0);
         _btnAddBlockedApp = new Button
         {
@@ -320,10 +368,10 @@ public partial class SettingsForm : Form
         _btnAiLog.Click += OnAiLogClicked;
         _sectionPrivacy = Section(
             "Privacy",
-            _chkLocalMode,
-            Caption("Blocked apps and password fields are skipped for suggestions, rewrite, and grammar."),
-            _blockedRow,
-            _btnAiLog);
+            Hint(_chkLocalMode, "No cloud AI. Dictionary suggestions still work."),
+            Caption("Blocked apps"),
+            Hint(_blockedRow, "Password fields are always skipped. Add comma-separated process names, for example outlook.exe, or pick a running app."),
+            Hint(_btnAiLog, "Shows recent cloud AI requests from this PC."));
 
         _cmbTheme = Combo(360);
         _cmbTheme.Items.AddRange(new[] { "Light", "Dark", "High Contrast" });
@@ -338,12 +386,12 @@ public partial class SettingsForm : Form
         _sectionAppearance = Section(
             "Appearance",
             Caption("Theme"),
-            _cmbTheme,
+            Hint(_cmbTheme, "Colours for Settings and the overlay."),
             Caption("Suggestion order"),
-            _cmbSuggestionSort,
+            Hint(_cmbSuggestionSort, "How chips are sorted when several matches appear."),
             Caption("Suggestion position"),
-            _cmbSuggestionPlacement,
-            _chkRequireConfirmation);
+            Hint(_cmbSuggestionPlacement, "Where the overlay sits relative to the current word."),
+            Hint(_chkRequireConfirmation, "Show a preview before an AI rewrite is applied."));
 
         _lstAppTone = new ListBox { Width = 360, Height = 110, Margin = new Padding(0, 0, 0, 8) };
         _toneRow = new FlowLayoutPanel
@@ -353,7 +401,7 @@ public partial class SettingsForm : Form
             AutoSize = true,
             Margin = new Padding(0, 0, 0, 8)
         };
-        _txtAppTone = Field(140, "Name or name.exe");
+        _txtAppTone = Field(140);
         _txtAppTone.Margin = new Padding(0, 0, 8, 0);
         _cmbAppToneCategory = Combo(120);
         _cmbAppToneCategory.Items.AddRange(new object[] { "Casual", "Formal", "Code", "Neutral" });
@@ -368,9 +416,9 @@ public partial class SettingsForm : Form
         _toneRow.Controls.Add(btnRemoveTone);
         _sectionAppTone = Section(
             "App tone",
-            Caption("Built-in defaults cover Slack, Teams, Outlook, Word, and editors. Add a row only to override an app."),
-            _lstAppTone,
-            _toneRow);
+            Hint(_lstAppTone, "Defaults cover Slack, Teams, Outlook, Word, and editors. Add a row only to override."),
+            Caption("App name"),
+            Hint(_toneRow, "Use name or name.exe. Pick Casual, Formal, Code, or Neutral."));
 
         _btnWritingStats = new Button
         {
@@ -416,49 +464,75 @@ public partial class SettingsForm : Form
         _lstAdaptations = new ListBox { Width = 360, Height = 72, Margin = new Padding(0, 0, 0, 8) };
         _btnUndoAdaptation = new Button { Text = "Undo selected adjustment", AutoSize = true, Margin = new Padding(0, 0, 0, 8) };
         _btnUndoAdaptation.Click += OnUndoAdaptationClicked;
-        _chkEnableRewriteHotkey = Check("Optional shortcut: Ctrl+Alt+R for rewrite (also: select text, then click Aa)");
-        _chkGrammarChecking = Check("Automatically suggest grammar fixes (Tab to accept — no shortcut needed)");
+        _chkEnableRewriteHotkey = Check("Rewrite shortcut (Ctrl+Alt+R)");
+        _chkGrammarChecking = Check("Suggest grammar fixes automatically");
         _chkAutoCorrectTypos = Check("Auto-correct known typos");
-        _chkEnableGrammarHotkey = Check("Optional shortcut: Ctrl+Alt+G to check now");
+        _chkEnableGrammarHotkey = Check("Grammar shortcut (Ctrl+Alt+G)");
         _cmbGrammarSensitivity = Combo(360);
         _cmbGrammarSensitivity.Items.AddRange(new[] { "Low", "Medium", "High" });
         _cmbGrammarSensitivity.SelectedIndex = 1;
         _chkMuteCasualGrammar = Check("Mute grammar checks in casual apps");
-        _txtGrammarMutedApps = Field(360, "Muted grammar apps (comma-separated)");
+        _txtGrammarMutedApps = Field(360);
         _sectionWriting = Section(
             "Writing",
-            _btnWritingStats,
-            _btnLearnedWords,
-            _btnExportLearning,
-            _btnImportLearning,
+            Hint(_btnWritingStats, "Words, pace, and style collected while you type."),
+            Hint(_btnLearnedWords, "Vocabulary Lexon learned from you."),
+            Hint(_btnExportLearning, "Save learned vocabulary and style as a JSON file."),
+            Hint(_btnImportLearning, "Restore learned vocabulary and style from a JSON file."),
             Caption("Detected writing style"),
             _lblStyleSummary,
-            _btnResetStyle,
-            Caption("Style adjustments (from repeated rejections)"),
-            _lstAdaptations,
+            Hint(_btnResetStyle, "Clears the detected style for this profile."),
+            Caption("Style adjustments"),
+            Hint(_lstAdaptations, "From repeated rejections of a suggestion."),
             _btnUndoAdaptation,
-            Caption("Grammar (local rules: agreement, typos, punctuation)"),
-            _chkGrammarChecking,
-            _chkAutoCorrectTypos,
-            _cmbGrammarSensitivity,
-            _chkMuteCasualGrammar,
-            _txtGrammarMutedApps,
-            _chkEnableRewriteHotkey,
-            _chkEnableGrammarHotkey);
+            Caption("Grammar"),
+            Hint(_chkGrammarChecking, "Local rules: agreement, typos, punctuation. Tab accepts a fix. No shortcut required."),
+            Hint(_chkAutoCorrectTypos, "Only the built-in misspelling list. Learned words are left alone."),
+            Caption("Grammar sensitivity"),
+            Hint(_cmbGrammarSensitivity, "Higher flags more issues."),
+            Hint(_chkMuteCasualGrammar, "Skip grammar in chat and other casual apps."),
+            Caption("Muted grammar apps"),
+            Hint(_txtGrammarMutedApps, "Comma-separated process names."),
+            Hint(_chkEnableRewriteHotkey, "You can also select text and click Aa."),
+            Hint(_chkEnableGrammarHotkey, "Run a grammar check immediately."));
 
-        Controls.Add(_wideHost);
-        Controls.Add(_compactHost);
+        Controls.Add(_layoutHost);
+        _layoutHost.Controls.Add(_sectionGeneral, 0, 0);
+        _layoutHost.Controls.Add(_sectionAi, 0, 1);
+        _layoutHost.Controls.Add(_sectionPrivacy, 0, 2);
+        _layoutHost.Controls.Add(_sectionAppearance, 0, 3);
+        _layoutHost.Controls.Add(_sectionAppTone, 0, 4);
+        _layoutHost.Controls.Add(_sectionWriting, 0, 5);
         ApplyCompactLayout();
+
+        ResumeLayout(false);
     }
 
     private static FlowLayoutPanel ColumnHost() => new()
     {
-        Dock = DockStyle.Fill,
         FlowDirection = FlowDirection.TopDown,
         WrapContents = false,
-        AutoScroll = true,
-        Padding = new Padding(12, 8, 12, 8)
+        AutoSize = true,
+        Margin = Padding.Empty,
+        Padding = Padding.Empty
     };
+
+    private static void FillColumn(FlowLayoutPanel column, params Control[] children)
+    {
+        column.SuspendLayout();
+        try
+        {
+            column.Controls.Clear();
+            foreach (var child in children)
+            {
+                column.Controls.Add(child);
+            }
+        }
+        finally
+        {
+            column.ResumeLayout(false);
+        }
+    }
 
     private static FlowLayoutPanel Section(string title, params Control[] children)
     {
@@ -508,7 +582,7 @@ public partial class SettingsForm : Form
 
     private static ComboBox Combo(int width)
     {
-        var combo = new ComboBox
+        var combo = new ThemedComboBox
         {
             Width = width,
             DropDownStyle = ComboBoxStyle.DropDownList,
@@ -523,30 +597,201 @@ public partial class SettingsForm : Form
         return combo;
     }
 
-    private static TextBox Field(int width, string placeholder, bool isPassword = false) => new()
+    private static TextBox Field(int width, bool isPassword = false) => new()
     {
         Width = width,
-        PlaceholderText = placeholder,
         UseSystemPasswordChar = isPassword,
         Margin = new Padding(0, 0, 0, 8)
     };
 
+    private const string InfoBadgeTag = "settings-info-badge";
+
+    private Control Hint(Control control, string text)
+    {
+        var badge = Info(text);
+        var row = new TableLayoutPanel
+        {
+            ColumnCount = 2,
+            RowCount = 1,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            GrowStyle = TableLayoutPanelGrowStyle.FixedSize,
+            Margin = control.Margin,
+            Padding = Padding.Empty
+        };
+        row.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        row.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 16));
+        row.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        control.Margin = new Padding(0, 0, 6, 0);
+        control.Anchor = AnchorStyles.Left;
+        badge.Anchor = AnchorStyles.None;
+        row.Controls.Add(control, 0, 0);
+        row.Controls.Add(badge, 1, 0);
+        return row;
+    }
+
+    private Label Info(string text)
+    {
+        _infoTip ??= new ToolTip
+        {
+            ShowAlways = true,
+            AutoPopDelay = 20000,
+            InitialDelay = 300,
+            ReshowDelay = 100,
+            UseAnimation = false,
+            UseFading = false
+        };
+
+        var badge = new Label
+        {
+            Text = string.Empty,
+            AutoSize = false,
+            Size = new Size(14, 16),
+            ForeColor = Color.FromArgb(130, 130, 138),
+            Cursor = Cursors.Help,
+            Margin = Padding.Empty,
+            Tag = InfoBadgeTag
+        };
+        badge.Paint += DrawInfoMark;
+        _infoTip.SetToolTip(badge, text);
+        return badge;
+    }
+
+    private static void DrawInfoMark(object? sender, PaintEventArgs e)
+    {
+        if (sender is not Label badge)
+        {
+            return;
+        }
+
+        e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+        using var brush = new SolidBrush(badge.ForeColor);
+        var x = badge.ClientSize.Width / 2f;
+        const float dot = 3.2f;
+        e.Graphics.FillEllipse(brush, x - (dot / 2f), 0.6f, dot, dot);
+        const float stemWidth = 1.8f;
+        const float stemTop = 6.4f;
+        var stemHeight = Math.Max(7f, badge.ClientSize.Height - stemTop - 1.2f);
+        e.Graphics.FillRectangle(brush, x - (stemWidth / 2f), stemTop, stemWidth, stemHeight);
+    }
+
     private void OnSettingsShown(object? sender, EventArgs e)
     {
-        UpdateLayoutMode();
         Activate();
         BringToFront();
     }
 
+    protected override CreateParams CreateParams
+    {
+        get
+        {
+            var cp = base.CreateParams;
+            cp.Style |= 0x02000000; // WS_CLIPCHILDREN
+            return cp;
+        }
+    }
+
+    protected override void SetVisibleCore(bool value)
+    {
+        if (value && !_settingsRevealed)
+        {
+            if (!IsHandleCreated)
+            {
+                CreateHandle();
+            }
+
+            BeginPaintFreeze();
+            try
+            {
+                SettingsPaintProbe.Log($"SetVisibleCore layout visible={Visible} state={WindowState}");
+                if (_chkOpenFullScreen.Checked)
+                {
+                    PrepareFullScreenLayout();
+                    WindowState = FormWindowState.Maximized;
+                }
+
+                UpdateLayoutMode();
+            }
+            finally
+            {
+                EndPaintFreeze();
+            }
+
+            _settingsRevealed = true;
+        }
+
+        base.SetVisibleCore(value);
+    }
+
+    internal void Present()
+    {
+        ApplyOpenFullScreenPreference();
+        Show();
+        BringToFront();
+        TopMost = true;
+        Activate();
+        TopMost = false;
+    }
+
+    private void ApplyOpenFullScreenPreference()
+    {
+        if (_chkOpenFullScreen.Checked)
+        {
+            OpenFullScreen();
+            return;
+        }
+
+        if (WindowState == FormWindowState.Minimized)
+        {
+            WindowState = FormWindowState.Normal;
+        }
+    }
+
+    private void OpenFullScreen()
+    {
+        if (WindowState == FormWindowState.Maximized && _wideLayoutActive)
+        {
+            return;
+        }
+
+        BeginPaintFreeze();
+        try
+        {
+            PrepareFullScreenLayout();
+            WindowState = FormWindowState.Maximized;
+        }
+        finally
+        {
+            EndPaintFreeze();
+        }
+    }
+
+    private void PrepareFullScreenLayout()
+    {
+        if (_wideLayoutActive)
+        {
+            return;
+        }
+
+        ApplyWideLayout();
+        ApplyPredictedMaximizedFieldSizes();
+    }
+
     private void UpdateLayoutMode()
     {
-        if (_compactHost == null || _sectionGeneral == null)
+        if (_layoutHost == null || _sectionGeneral == null)
         {
             return;
         }
 
         var wide = WindowState == FormWindowState.Maximized;
-        if (wide == _wideLayoutActive && IsHandleCreated)
+        if (SettingsPaintProbe.Enabled)
+        {
+            SettingsPaintProbe.LayoutMode++;
+            SettingsPaintProbe.Log($"UpdateLayoutMode wideWanted={wide} wideActive={_wideLayoutActive} handle={IsHandleCreated} visible={Visible} state={WindowState} size={Size}");
+        }
+
+        if (wide == _wideLayoutActive)
         {
             ApplyFieldSizes();
             return;
@@ -564,82 +809,325 @@ public partial class SettingsForm : Form
 
     private void ApplyCompactLayout()
     {
+        SettingsPaintProbe.Compact++;
+        SettingsPaintProbe.Log("ApplyCompactLayout");
+        BeginPaintFreeze();
         SuspendLayout();
-        _wideHost.Visible = false;
-        _compactHost.Visible = true;
-        PlaceSections(_compactHost, _sectionGeneral, _sectionAi, _sectionPrivacy, _sectionAppearance, _sectionAppTone, _sectionWriting);
-        _wideLayoutActive = false;
-        Padding = new Padding(24, 20, 24, 16);
-        ResumeLayout(true);
-        ApplyFieldSizes();
+        _layoutHost.SuspendLayout();
+        try
+        {
+            ConfigureGrid(100f, 0f, 0f, fillRows: false);
+            RemoveColumnsFromHost();
+            Place(_sectionGeneral, 0, 0);
+            Place(_sectionAi, 0, 1);
+            Place(_sectionPrivacy, 0, 2);
+            Place(_sectionAppearance, 0, 3);
+            Place(_sectionAppTone, 0, 4);
+            Place(_sectionWriting, 0, 5);
+            _wideLayoutActive = false;
+            Padding = new Padding(24, 20, 24, 16);
+        }
+        finally
+        {
+            _layoutHost.ResumeLayout(false);
+            ResumeLayout(false);
+            PerformLayout();
+            ApplyFieldSizes();
+            EndPaintFreeze();
+        }
     }
 
     private void ApplyWideLayout()
     {
+        SettingsPaintProbe.Wide++;
+        SettingsPaintProbe.Log("ApplyWideLayout");
+        BeginPaintFreeze();
         SuspendLayout();
-        _compactHost.Visible = false;
-        _wideHost.Visible = true;
-        PlaceSections(_colLeft, _sectionGeneral, _sectionAi, _sectionPrivacy);
-        PlaceSections(_colMiddle, _sectionAppearance, _sectionWriting);
-        PlaceSections(_colRight, _sectionAppTone);
-        _wideLayoutActive = true;
-        Padding = new Padding(28, 24, 28, 20);
-        ResumeLayout(true);
-        ApplyFieldSizes();
+        _layoutHost.SuspendLayout();
+        try
+        {
+            ConfigureGrid(33.3f, 33.3f, 33.4f, fillRows: false);
+            FillColumn(_columnLeft, _sectionGeneral, _sectionAi, _sectionPrivacy);
+            FillColumn(_columnMiddle, _sectionAppearance, _sectionWriting);
+            FillColumn(_columnRight, _sectionAppTone);
+            Place(_columnLeft, 0, 0);
+            Place(_columnMiddle, 1, 0);
+            Place(_columnRight, 2, 0);
+            _wideLayoutActive = true;
+            Padding = new Padding(28, 24, 28, 20);
+        }
+        finally
+        {
+            _layoutHost.ResumeLayout(false);
+            ResumeLayout(false);
+            PerformLayout();
+            ApplyFieldSizes();
+            EndPaintFreeze();
+        }
     }
 
-    private static void PlaceSections(Control parent, params Control[] sections)
+    private void ConfigureGrid(float col0, float col1, float col2, bool fillRows)
     {
-        parent.SuspendLayout();
-        foreach (var section in sections)
+        SetColumnStyle(0, col0);
+        SetColumnStyle(1, col1);
+        SetColumnStyle(2, col2);
+        for (var i = 0; i < 6; i++)
         {
-            section.Parent = null;
+            if (fillRows && i < 3)
+            {
+                _layoutHost.RowStyles[i] = new RowStyle(SizeType.Percent, i < 2 ? 33.3f : 33.4f);
+            }
+            else
+            {
+                _layoutHost.RowStyles[i] = new RowStyle(SizeType.AutoSize);
+            }
+        }
+    }
+
+    private void SetColumnStyle(int index, float percent)
+    {
+        _layoutHost.ColumnStyles[index] = percent <= 0
+            ? new ColumnStyle(SizeType.Absolute, 0)
+            : new ColumnStyle(SizeType.Percent, percent);
+    }
+
+    private void RemoveColumnsFromHost()
+    {
+        foreach (var column in new[] { _columnLeft, _columnMiddle, _columnRight })
+        {
+            if (column != null && _layoutHost.Controls.Contains(column))
+            {
+                _layoutHost.Controls.Remove(column);
+            }
+        }
+    }
+
+    private void Place(Control control, int column, int row, int rowSpan = 1)
+    {
+        if (!_layoutHost.Controls.Contains(control))
+        {
+            _layoutHost.Controls.Add(control);
         }
 
-        parent.Controls.Clear();
-        foreach (var section in sections)
+        _layoutHost.SetColumnSpan(control, 1);
+        _layoutHost.SetRowSpan(control, 1);
+        _layoutHost.SetCellPosition(control, new TableLayoutPanelCellPosition(column, row));
+        if (rowSpan > 1)
         {
-            parent.Controls.Add(section);
+            _layoutHost.SetRowSpan(control, rowSpan);
+        }
+    }
+
+    private void BeginPaintFreeze()
+    {
+        if (!IsHandleCreated || IsDisposed)
+        {
+            return;
         }
 
-        parent.ResumeLayout(true);
+        if (_paintFreeze++ != 0)
+        {
+            SettingsPaintProbe.Log($"BeginPaintFreeze nested count={_paintFreeze}");
+            return;
+        }
+
+        SettingsPaintProbe.FreezeBegin++;
+        SettingsPaintProbe.Log("WM_SETREDRAW freeze");
+        SendMessage(Handle, WmSetRedraw, IntPtr.Zero, IntPtr.Zero);
+    }
+
+    private void EndPaintFreeze()
+    {
+        if (_paintFreeze == 0)
+        {
+            return;
+        }
+
+        if (--_paintFreeze > 0 || !IsHandleCreated || IsDisposed)
+        {
+            SettingsPaintProbe.Log($"EndPaintFreeze nested/skip count={_paintFreeze}");
+            return;
+        }
+
+        SettingsPaintProbe.FreezeEnd++;
+        SettingsPaintProbe.Log("WM_SETREDRAW thaw");
+        SendMessage(Handle, WmSetRedraw, (IntPtr)1, IntPtr.Zero);
+        if (Visible)
+        {
+            Invalidate(true);
+            Update();
+        }
     }
 
     private void ApplyFieldSizes()
     {
-        var host = _wideLayoutActive ? _colRight : _compactHost;
-        var width = Math.Max(280, host.ClientSize.Width - 36);
-        if (_wideLayoutActive)
+        SettingsPaintProbe.FieldSizes++;
+        if (SettingsPaintProbe.Enabled && (SettingsPaintProbe.FieldSizes <= 25 || SettingsPaintProbe.FieldSizes % 10 == 0))
         {
-            var colWidth = Math.Max(280, _colLeft.ClientSize.Width - 36);
-            _cmbAIProvider.Width = colWidth;
-            _txtAPIKey.Width = colWidth;
-            _cmbAiModel.Width = colWidth;
-            _lblAiRecommended.MaximumSize = new Size(colWidth, 0);
-            _lblAiStatus.MaximumSize = new Size(colWidth, 0);
-            _txtBlockedApps.Width = Math.Max(160, colWidth - 160);
-            _cmbTheme.Width = Math.Max(280, _colMiddle.ClientSize.Width - 36);
-            _cmbSuggestionSort.Width = _cmbTheme.Width;
-            _cmbSuggestionPlacement.Width = _cmbTheme.Width;
-            _lstAppTone.Width = width;
-            _lstAppTone.Height = Math.Max(220, ClientSize.Height - 360);
-            _lstAdaptations.Width = Math.Max(280, _colMiddle.ClientSize.Width - 36);
-            _cmbGrammarSensitivity.Width = _lstAdaptations.Width;
-            _txtGrammarMutedApps.Width = _lstAdaptations.Width;
+            SettingsPaintProbe.Log($"ApplyFieldSizes n={SettingsPaintProbe.FieldSizes} wide={_wideLayoutActive} size={Size}");
+        }
+
+        if (_layoutHost == null)
+        {
             return;
         }
 
-        _cmbAIProvider.Width = 360;
-        _txtAPIKey.Width = 360;
-        _cmbAiModel.Width = 360;
-        _lblAiRecommended.MaximumSize = new Size(360, 0);
-        _lblAiStatus.MaximumSize = new Size(360, 0);
-        _txtBlockedApps.Width = 240;
-        _cmbTheme.Width = 360;
-        _cmbSuggestionSort.Width = 360;
-        _cmbSuggestionPlacement.Width = 360;
-        _lstAppTone.Width = 360;
-        _lstAppTone.Height = 110;
+        if (_wideLayoutActive)
+        {
+            var cols = _layoutHost.GetColumnWidths();
+            var left = cols.Length > 0 ? Math.Max(280, cols[0] - 36) : 280;
+            var middle = cols.Length > 1 ? Math.Max(280, cols[1] - 36) : 280;
+            var right = cols.Length > 2 ? Math.Max(280, cols[2] - 36) : 280;
+            ApplyWideFieldSizes(left, middle, right, WideListHeight());
+            return;
+        }
+
+        ApplyCompactFieldSizes();
+    }
+
+    private void ApplyPredictedMaximizedFieldSizes()
+    {
+        var field = PredictedMaximizedColumnFieldWidth();
+        ApplyWideFieldSizes(field, field, field, WideListHeight());
+    }
+
+    private int WideListHeight()
+    {
+        var height = ClientSize.Height > 0 ? ClientSize.Height : Screen.FromControl(this).WorkingArea.Height;
+        return Math.Clamp((int)(height * 0.18), 160, 260);
+    }
+
+    private int PredictedMaximizedColumnFieldWidth()
+    {
+        var area = Screen.FromControl(this).WorkingArea;
+        var frame = Width - ClientSize.Width;
+        var inner = area.Width - frame - Padding.Horizontal - _layoutHost.Padding.Horizontal - 24;
+        return Math.Max(280, inner / 3 - 36);
+    }
+
+    private void ApplyWideFieldSizes(int left, int middle, int right, int listHeight)
+    {
+        if (FieldsAlreadySized(left, middle, right, listHeight))
+        {
+            FitBlockedAppsRow(left);
+            return;
+        }
+
+        var freeze = Visible && IsHandleCreated && _paintFreeze == 0;
+        if (freeze)
+        {
+            BeginPaintFreeze();
+        }
+
+        try
+        {
+            SetWidth(_cmbAIProvider, left);
+            SetWidth(_txtAPIKey, left);
+            SetWidth(_cmbAiModel, left);
+            _lblAiRecommended.MaximumSize = new Size(left, 0);
+            _lblAiStatus.MaximumSize = new Size(left, 0);
+            FitBlockedAppsRow(left);
+            SetWidth(_cmbTheme, middle);
+            SetWidth(_cmbSuggestionSort, middle);
+            SetWidth(_cmbSuggestionPlacement, middle);
+            SetWidth(_lstAdaptations, middle);
+            SetWidth(_cmbGrammarSensitivity, middle);
+            SetWidth(_txtGrammarMutedApps, middle);
+            SetWidth(_lstAppTone, right);
+            if (Math.Abs(_lstAppTone.Height - listHeight) >= 2)
+            {
+                _lstAppTone.Height = listHeight;
+            }
+        }
+        finally
+        {
+            if (freeze)
+            {
+                EndPaintFreeze();
+            }
+        }
+    }
+
+    private void ApplyCompactFieldSizes()
+    {
+        if (FieldsAlreadySized(360, 360, 360, 110))
+        {
+            FitBlockedAppsRow(360);
+            return;
+        }
+
+        var freeze = Visible && IsHandleCreated && _paintFreeze == 0;
+        if (freeze)
+        {
+            BeginPaintFreeze();
+        }
+
+        try
+        {
+            SetWidth(_cmbAIProvider, 360);
+            SetWidth(_txtAPIKey, 360);
+            SetWidth(_cmbAiModel, 360);
+            _lblAiRecommended.MaximumSize = new Size(360, 0);
+            _lblAiStatus.MaximumSize = new Size(360, 0);
+            FitBlockedAppsRow(360);
+            SetWidth(_cmbTheme, 360);
+            SetWidth(_cmbSuggestionSort, 360);
+            SetWidth(_cmbSuggestionPlacement, 360);
+            SetWidth(_lstAdaptations, 360);
+            SetWidth(_cmbGrammarSensitivity, 360);
+            SetWidth(_txtGrammarMutedApps, 360);
+            SetWidth(_lstAppTone, 360);
+            if (_lstAppTone.Height != 110)
+            {
+                _lstAppTone.Height = 110;
+            }
+        }
+        finally
+        {
+            if (freeze)
+            {
+                EndPaintFreeze();
+            }
+        }
+    }
+
+    private bool FieldsAlreadySized(int left, int middle, int right, int listHeight)
+    {
+        if (Math.Abs(left - _fieldLeft) < 8
+            && Math.Abs(middle - _fieldMiddle) < 8
+            && Math.Abs(right - _fieldRight) < 8
+            && Math.Abs(listHeight - _fieldListHeight) < 8)
+        {
+            return true;
+        }
+
+        _fieldLeft = left;
+        _fieldMiddle = middle;
+        _fieldRight = right;
+        _fieldListHeight = listHeight;
+        return false;
+    }
+
+    private static void SetWidth(Control control, int width)
+    {
+        if (Math.Abs(control.Width - width) < 2)
+        {
+            return;
+        }
+
+        control.Width = width;
+    }
+
+    private void FitBlockedAppsRow(int columnWidth)
+    {
+        var buttonWidth = Math.Max(_btnAddBlockedApp.Width, _btnAddBlockedApp.GetPreferredSize(Size.Empty).Width);
+        const int badge = 16;
+        const int gaps = 16;
+        SetWidth(_txtBlockedApps, Math.Max(120, columnWidth - buttonWidth - badge - gaps));
+        if (_blockedRow.Parent is Control hint)
+        {
+            hint.MaximumSize = new Size(columnWidth, 0);
+        }
     }
 
     private void OnWritingStatsClicked(object? sender, EventArgs e)
@@ -783,6 +1271,23 @@ public partial class SettingsForm : Form
         _chkMinimizeToTray.CheckedChanged += (_, _) => ApplyNow();
         _chkEnableSounds.CheckedChanged += (_, _) => ApplyNow();
         _chkCheckUpdates.CheckedChanged += (_, _) => ApplyNow();
+        _chkOpenFullScreen.CheckedChanged += (_, _) =>
+        {
+            ApplyNow();
+            if (_loading)
+            {
+                return;
+            }
+
+            if (_chkOpenFullScreen.Checked)
+            {
+                OpenFullScreen();
+            }
+            else if (WindowState == FormWindowState.Maximized)
+            {
+                WindowState = FormWindowState.Normal;
+            }
+        };
         _chkLocalMode.CheckedChanged += (_, _) =>
         {
             ApplyNow();
@@ -832,6 +1337,7 @@ public partial class SettingsForm : Form
         _chkMinimizeToTray.Checked = _profile.GetSetting("MinimizeToTray", true);
         _chkEnableSounds.Checked = _profile.GetSetting("EnableSounds", true);
         _chkCheckUpdates.Checked = _profile.GetSetting("EnableAutoUpdates", true);
+        _chkOpenFullScreen.Checked = _profile.GetSetting("OpenSettingsFullScreen", false);
 
         var provider = _profile.GetSetting("AIProvider", "None");
         _activeProvider = string.IsNullOrWhiteSpace(provider) ? "None" : provider;
@@ -942,6 +1448,7 @@ public partial class SettingsForm : Form
         _profile.SetSetting("MinimizeToTray", _chkMinimizeToTray.Checked);
         _profile.SetSetting("EnableSounds", _chkEnableSounds.Checked);
         _profile.SetSetting("EnableAutoUpdates", _chkCheckUpdates.Checked);
+        _profile.SetSetting("OpenSettingsFullScreen", _chkOpenFullScreen.Checked);
         _profile.SetSetting("AIProvider", _activeProvider);
         _profile.SetSetting("APIKey", _activeApiKey);
         _profile.SetSetting("AIKeyValidated", _aiValidated);
@@ -1013,19 +1520,19 @@ public partial class SettingsForm : Form
         _lblAiRecommended.Visible = true;
         if (!_aiAdvancedVisible)
         {
-            _lblAiRecommended.Text = "OpenAI (recommended) — paste an API key to connect.";
+            _lblAiRecommended.Text = "OpenAI (recommended)";
         }
         else if (provider.Equals("Ollama", StringComparison.OrdinalIgnoreCase))
         {
-            _lblAiRecommended.Text = "Ollama runs locally. No API key is required.";
+            _lblAiRecommended.Text = "Ollama (local)";
         }
         else if (provider.Equals("None", StringComparison.OrdinalIgnoreCase))
         {
-            _lblAiRecommended.Text = "No AI provider. Dictionary suggestions still work.";
+            _lblAiRecommended.Text = "No AI provider";
         }
         else
         {
-            _lblAiRecommended.Text = $"{provider} — paste an API key to connect.";
+            _lblAiRecommended.Text = provider;
         }
     }
 
@@ -1131,6 +1638,10 @@ public partial class SettingsForm : Form
     }
 
     private const int WmClipboardUpdate = 0x031D;
+    private const int WmSetRedraw = 0x000B;
+    private const int WmSysCommand = 0x0112;
+    private const int ScMaximize = 0xF030;
+    private const int ScRestore = 0xF120;
 
     [DllImport("user32.dll")]
     private static extern bool AddClipboardFormatListener(IntPtr hwnd);
@@ -1138,11 +1649,59 @@ public partial class SettingsForm : Form
     [DllImport("user32.dll")]
     private static extern bool RemoveClipboardFormatListener(IntPtr hwnd);
 
+    [DllImport("user32.dll")]
+    private static extern IntPtr SendMessage(IntPtr hWnd, int msg, IntPtr wParam, IntPtr lParam);
+
     protected override void WndProc(ref Message m)
     {
+        if (SettingsPaintProbe.Enabled)
+        {
+            SettingsPaintProbe.OnWndProc(m.Msg);
+        }
+
         if (m.Msg == WmClipboardUpdate && _watchingClipboard)
         {
             TryFillKeyFromClipboard();
+        }
+
+        if (m.Msg == WmSysCommand)
+        {
+            var command = (int)m.WParam & 0xFFF0;
+            if (command == ScMaximize)
+            {
+                if (!_wideLayoutActive)
+                {
+                    BeginPaintFreeze();
+                    try
+                    {
+                        ApplyWideLayout();
+                        ApplyPredictedMaximizedFieldSizes();
+                    }
+                    finally
+                    {
+                        EndPaintFreeze();
+                    }
+                }
+
+                base.WndProc(ref m);
+                return;
+            }
+
+            if (command == ScRestore)
+            {
+                base.WndProc(ref m);
+                BeginPaintFreeze();
+                try
+                {
+                    UpdateLayoutMode();
+                }
+                finally
+                {
+                    EndPaintFreeze();
+                }
+
+                return;
+            }
         }
 
         base.WndProc(ref m);
@@ -1342,6 +1901,33 @@ public partial class SettingsForm : Form
         }
 
         ThemeUi.ApplyToTreeWithoutFlicker(this, _themeManager.CurrentTheme);
+        RecolorInfoTags();
+    }
+
+    private void RecolorInfoTags()
+    {
+        var badge = Color.FromArgb(130, 130, 138);
+        if (_themeManager != null)
+        {
+            var fg = ThemeUi.Foreground(_themeManager.CurrentTheme);
+            var bg = ThemeUi.Background(_themeManager.CurrentTheme);
+            badge = Color.FromArgb((fg.R + bg.R) / 2, (fg.G + bg.G) / 2, (fg.B + bg.B) / 2);
+        }
+
+        RecolorInfoTags(this, badge);
+    }
+
+    private static void RecolorInfoTags(Control root, Color badge)
+    {
+        if (root is Label label && Equals(label.Tag, InfoBadgeTag))
+        {
+            label.ForeColor = badge;
+        }
+
+        foreach (Control child in root.Controls)
+        {
+            RecolorInfoTags(child, badge);
+        }
     }
 
     private void AddAppToneOverride()

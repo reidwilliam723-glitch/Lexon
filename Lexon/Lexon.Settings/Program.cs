@@ -29,11 +29,17 @@ static class Program
     ///  The main entry point for the application.
     /// </summary>
     [STAThread]
-    static void Main()
+    static void Main(string[] args)
     {
         // Must be the first thing that runs: Velopack intercepts the install,
         // update, and uninstall hook arguments here and exits on its own.
         VelopackApp.Build().Run();
+
+        if (args.Any(argument => argument.Equals("--paint-probe", StringComparison.OrdinalIgnoreCase)))
+        {
+            SettingsPaintProbe.Run();
+            return;
+        }
 
         if (!TryBecomeSingleInstance())
         {
@@ -343,17 +349,7 @@ static class Program
         try
         {
             EnsureSettingsForm();
-
-            if (_settingsForm!.WindowState == FormWindowState.Minimized)
-            {
-                _settingsForm.WindowState = FormWindowState.Normal;
-            }
-
-            _settingsForm.Show();
-            _settingsForm.BringToFront();
-            _settingsForm.TopMost = true;
-            _settingsForm.Activate();
-            _settingsForm.TopMost = false;
+            _settingsForm!.Present();
         }
         catch (Exception ex)
         {

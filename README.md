@@ -1,4 +1,5 @@
-Lexon (tester build) lives in the **Lexon** folder.
+## Get Lexon
 
-Open that folder, then read README.md and INSTALL.md.
-Start the app from Lexon\Run\Lexon.exe — you do not need Visual Studio or .NET.
+Download the latest installer from the [Releases page](https://github.com/reidwilliam723-glitch/Lexon/releases/latest) — grab `LexonSetup.exe` and run it. You do not need Visual Studio or .NET installed.
+
+For source, build instructions, and architecture notes, see the [Lexon](Lexon/) folder.

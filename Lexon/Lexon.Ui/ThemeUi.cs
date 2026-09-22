@@ -139,20 +139,30 @@ public static class ThemeUi
         var back = selected ? SystemColors.Highlight : combo.BackColor;
         var fore = selected ? SystemColors.HighlightText : combo.ForeColor;
 
-        using var fill = new SolidBrush(back);
-        e.Graphics.FillRectangle(fill, e.Bounds);
-
-        if (index < 0)
+        var size = e.Bounds.Size;
+        if (size.Width <= 0 || size.Height <= 0)
         {
             return;
         }
 
-        TextRenderer.DrawText(
-            e.Graphics,
-            combo.GetItemText(combo.Items[index]),
-            combo.Font,
-            e.Bounds,
-            fore,
-            TextFormatFlags.Left | TextFormatFlags.VerticalCenter);
+        using var buffer = new Bitmap(size.Width, size.Height);
+        using (var graphics = Graphics.FromImage(buffer))
+        {
+            using var fill = new SolidBrush(back);
+            graphics.FillRectangle(fill, new Rectangle(Point.Empty, size));
+
+            if (index >= 0)
+            {
+                TextRenderer.DrawText(
+                    graphics,
+                    combo.GetItemText(combo.Items[index]),
+                    combo.Font,
+                    new Rectangle(Point.Empty, size),
+                    fore,
+                    TextFormatFlags.Left | TextFormatFlags.VerticalCenter);
+            }
+        }
+
+        e.Graphics.DrawImageUnscaled(buffer, e.Bounds.Location);
     }
 }
