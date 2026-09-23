@@ -2001,12 +2001,6 @@ public partial class SettingsForm : Form
         }
     }
 
-    private void OnAboutClicked(object? sender, EventArgs e)
-    {
-        using var about = new AboutForm();
-        about.ShowDialog(this);
-    }
-
     public void ReloadBlockedApplications()
     {
         if (IsDisposed || _txtBlockedApps == null)

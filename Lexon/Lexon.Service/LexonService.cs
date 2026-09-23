@@ -1037,17 +1037,6 @@ public class LexonService
     private bool IsShowingPinnedSuggestion()
         => _grammarOverlay is { IsVisible: true };
 
-    private void OnGrammarSuggestionsOffered(IReadOnlyList<Suggestion> suggestions)
-    {
-        if (_suppressSuggestionOverlay)
-        {
-            return;
-        }
-
-        PresentOverlay(_grammarOverlay, suggestions.ToList(), freezeWhileTyping: false, offsetX: 12);
-        _isOverlayVisible = AnySuggestionOverlayVisible();
-    }
-
     private bool HasInProgressWord()
     {
         var buffer = _focusTracker.GetTypedBufferText() ?? string.Empty;
