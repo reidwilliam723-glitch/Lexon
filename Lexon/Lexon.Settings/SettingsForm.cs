@@ -36,6 +36,8 @@ public partial class SettingsForm : Form
     private CheckBox _chkMinimizeToTray = null!;
     private CheckBox _chkCheckUpdates = null!;
     private CheckBox _chkOpenFullScreen = null!;
+    private ComboBox _cmbQuickPause = null!;
+    private static readonly int[] QuickPauseChoices = [0, 1, 5, 15, 30, 60];
     private ComboBox _cmbAIProvider = null!;
     private TextBox _txtAPIKey = null!;
     private Label _lblAiRecommended = null!;
@@ -227,6 +229,7 @@ public partial class SettingsForm : Form
         WindowState = FormWindowState.Normal;
         ShowInTaskbar = true;
         Font = new Font("Segoe UI", 9);
+        Icon = Lexon.Ui.LexonIconFactory.CreateApplicationIcon();
         Padding = new Padding(24, 20, 24, 16);
         ThemeUi.EnableBufferedPaint(this);
 
@@ -273,13 +276,25 @@ public partial class SettingsForm : Form
         _chkMinimizeToTray = Check("Minimize to system tray");
         _chkCheckUpdates = Check("Check for updates on startup");
         _chkOpenFullScreen = Check("Open Settings full screen");
+        _cmbQuickPause = Combo(360);
+        _cmbQuickPause.Items.AddRange(new object[]
+        {
+            "Until I turn it back on",
+            "1 minute",
+            "5 minutes",
+            "15 minutes",
+            "30 minutes",
+            "1 hour"
+        });
+        _cmbQuickPause.SelectedIndex = 3;
         _sectionGeneral = Section(
             "General",
             Hint(_chkAutoStart, "Launch Lexon when you sign in to Windows."),
             Hint(_chkMinimizeToTray, "Close hides Settings. Lexon stays in the tray."),
             Hint(_chkCheckUpdates, "Asks before installing anything."),
             Hint(_chkOpenFullScreen, "Opens maximized so the three-column layout is used."),
-            Hint(Caption("Pause shortcut"), "Pause everything: double-press Ctrl. Same as Enable/Disable on the tray icon."));
+            Caption("Double-press Ctrl pauses for"),
+            Hint(_cmbQuickPause, "How long Lexon stays off after you double-press Ctrl. It turns itself back on when the time is up, or sooner if you double-press Ctrl again."));
 
         _lblAiRecommended = Caption("OpenAI (recommended)");
         _lnkMoreProviders = new LinkLabel
@@ -1026,6 +1041,7 @@ public partial class SettingsForm : Form
             _lblAiRecommended.MaximumSize = new Size(left, 0);
             _lblAiStatus.MaximumSize = new Size(left, 0);
             FitBlockedAppsRow(left);
+            SetWidth(_cmbQuickPause, left);
             SetWidth(_cmbTheme, middle);
             SetWidth(_cmbSuggestionSort, middle);
             SetWidth(_cmbSuggestionPlacement, middle);
@@ -1069,6 +1085,7 @@ public partial class SettingsForm : Form
             _lblAiRecommended.MaximumSize = new Size(360, 0);
             _lblAiStatus.MaximumSize = new Size(360, 0);
             FitBlockedAppsRow(360);
+            SetWidth(_cmbQuickPause, 360);
             SetWidth(_cmbTheme, 360);
             SetWidth(_cmbSuggestionSort, 360);
             SetWidth(_cmbSuggestionPlacement, 360);
@@ -1286,6 +1303,7 @@ public partial class SettingsForm : Form
                 WindowState = FormWindowState.Normal;
             }
         };
+        _cmbQuickPause.SelectedIndexChanged += (_, _) => ApplyNow();
         _chkLocalMode.CheckedChanged += (_, _) =>
         {
             ApplyNow();
@@ -1335,6 +1353,7 @@ public partial class SettingsForm : Form
         _chkMinimizeToTray.Checked = _profile.GetSetting("MinimizeToTray", true);
         _chkCheckUpdates.Checked = _profile.GetSetting("EnableAutoUpdates", true);
         _chkOpenFullScreen.Checked = _profile.GetSetting("OpenSettingsFullScreen", false);
+        _cmbQuickPause.SelectedIndex = PauseIndexFromMinutes(_profile.GetSetting("QuickPauseMinutes", 15));
 
         var provider = _profile.GetSetting("AIProvider", "None");
         _activeProvider = string.IsNullOrWhiteSpace(provider) ? "None" : provider;
@@ -1445,6 +1464,7 @@ public partial class SettingsForm : Form
         _profile.SetSetting("MinimizeToTray", _chkMinimizeToTray.Checked);
         _profile.SetSetting("EnableAutoUpdates", _chkCheckUpdates.Checked);
         _profile.SetSetting("OpenSettingsFullScreen", _chkOpenFullScreen.Checked);
+        _profile.SetSetting("QuickPauseMinutes", MinutesFromPauseIndex(_cmbQuickPause.SelectedIndex));
         _profile.SetSetting("AIProvider", _activeProvider);
         _profile.SetSetting("APIKey", _activeApiKey);
         _profile.SetSetting("AIKeyValidated", _aiValidated);
@@ -1476,6 +1496,15 @@ public partial class SettingsForm : Form
         _suggestionPipeline?.SetSortMode(selectedSortMode);
         _suggestionOverlay?.SetPlacement(selectedPlacement);
         SetupMinimizeToTrayBehavior();
+    }
+
+    private static int MinutesFromPauseIndex(int index) =>
+        index >= 0 && index < QuickPauseChoices.Length ? QuickPauseChoices[index] : 15;
+
+    private static int PauseIndexFromMinutes(int minutes)
+    {
+        var index = Array.IndexOf(QuickPauseChoices, minutes);
+        return index >= 0 ? index : 3;
     }
 
     private void ShowAdvancedProviders()
@@ -1969,6 +1998,30 @@ public partial class SettingsForm : Form
         {
             _lstAppTone.Items.RemoveAt(_lstAppTone.SelectedIndex);
             ApplyNow();
+        }
+    }
+
+    private void OnAboutClicked(object? sender, EventArgs e)
+    {
+        using var about = new AboutForm();
+        about.ShowDialog(this);
+    }
+
+    public void ReloadBlockedApplications()
+    {
+        if (IsDisposed || _txtBlockedApps == null)
+        {
+            return;
+        }
+
+        var blocked = _profile.GetSetting<List<string>>("BlockedApplications", []) ?? [];
+        var next = string.Join(", ", blocked);
+        if (_txtBlockedApps.Text != next)
+        {
+            var loading = _loading;
+            _loading = true;
+            _txtBlockedApps.Text = next;
+            _loading = loading;
         }
     }
 

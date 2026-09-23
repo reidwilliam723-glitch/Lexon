@@ -266,9 +266,15 @@ public partial class OnboardingWizard : Form
             {
                 "Automatic grammar" => "GrammarChecking",
                 "Local Mode Only" => "LocalMode",
+                "First-run coach" => "ShowCoach",
                 _ => toggle.Key
             };
             _profile.SetSetting(key, toggle.Value);
+        }
+
+        if (_state.FeatureToggles.TryGetValue("First-run coach", out var showCoach) && !showCoach)
+        {
+            _profile.SetSetting("CoachCompleted", true);
         }
         
         await _profile.SaveAsync();
@@ -499,7 +505,8 @@ public class FeatureToggleStep : WizardStep
             ("Clipboard History", "Remember your clipboard contents", true),
             ("Automatic grammar", "Check spelling and grammar after you pause typing — no shortcut required", true),
             ("Text Improvement", "Optional cloud rewrite of selected text (requires an API key)", false),
-            ("Local Mode Only", "Disable all cloud features for maximum privacy", false)
+            ("Local Mode Only", "Disable all cloud features for maximum privacy", false),
+            ("First-run coach", "After setup, show a short card: open Notepad, type a word, then press 1, 2, or 3 to accept a suggestion. Skip this if you already know how Lexon works.", true)
         };
 
         foreach (var (name, description, defaultValue) in features)
@@ -623,8 +630,11 @@ public class CompletionStep : WizardStep
             bottomMargin: 30));
         stack.Controls.Add(WizardLayout.Body(
             $"Lexon has been configured with the {state.SelectedProfile} profile.\n\nYou can always adjust these settings later by right-clicking the Lexon icon in your system tray and selecting Settings."));
+        var coachOn = !state.FeatureToggles.TryGetValue("First-run coach", out var showCoach) || showCoach;
         stack.Controls.Add(WizardLayout.Body(
-            "Quick Tips:\n• Press Tab to accept a suggestion\n• Press Esc to dismiss suggestions\n• Double-press Ctrl to quickly disable/enable Lexon\n• Right-click the system tray icon for quick access to settings",
+            coachOn
+                ? "When you finish, a short try-out card will appear. Open Notepad, type a word, and press 1, 2, or 3 if Lexon suggests something.\n\nQuick Tips:\n• Press Tab to accept a suggestion\n• Press Esc to dismiss suggestions\n• Double-press Ctrl to pause Lexon — it turns itself back on after the time you set in Settings\n• Right-click the system tray icon for pause, undo, and settings"
+                : "You skipped the first-run coach. You can still try Lexon the same way: open Notepad, type a word, and press 1, 2, or 3 if a suggestion appears.\n\nQuick Tips:\n• Press Tab to accept a suggestion\n• Press Esc to dismiss suggestions\n• Double-press Ctrl to pause Lexon — it turns itself back on after the time you set in Settings\n• Right-click the system tray icon for pause, undo, and settings",
             foreColor: Color.FromArgb(80, 80, 80),
             bottomMargin: 0));
         panel.Controls.Add(stack);

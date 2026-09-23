@@ -107,7 +107,7 @@ public class CrashReporter
         report.AppendLine($"Timestamp: {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss} UTC");
         report.AppendLine($"Context: {context}");
         report.AppendLine($"Is Terminating: {isTerminating}");
-        report.AppendLine($"Version: {Assembly.GetExecutingAssembly().GetName().Version}");
+        report.AppendLine($"Version: {AppVersion.Current}");
         report.AppendLine($"OS: {Environment.OSVersion}");
         report.AppendLine($"Machine Name: {Environment.MachineName}");
         report.AppendLine($"User Name: {Environment.UserName}");

@@ -28,6 +28,7 @@ public class AboutForm : Form
         StartPosition = FormStartPosition.CenterParent;
         MaximizeBox = false;
         MinimizeBox = false;
+        Icon = Lexon.Ui.LexonIconFactory.CreateApplicationIcon();
 
         InitializeComponents();
         LoadAssemblyInfo();

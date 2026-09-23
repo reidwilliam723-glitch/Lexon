@@ -5,10 +5,8 @@
     <LangVersion>latest</LangVersion>
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
 
-    <!-- Version Information -->
-    <Version>2.0.0</Version>
-    <AssemblyVersion>2.0.0.0</AssemblyVersion>
-    <FileVersion>2.0.0.0</FileVersion>
+    <!-- Product metadata only. The shipped version lives in
+         Lexon.Settings.csproj so crash reports and About stay in sync. -->
     <Product>Lexon</Product>
     <Company>Lexon</Company>
     <Copyright>Copyright © 2026 Lexon. All rights reserved.</Copyright>

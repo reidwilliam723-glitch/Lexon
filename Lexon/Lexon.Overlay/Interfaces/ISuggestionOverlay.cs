@@ -20,6 +20,7 @@ public interface ISuggestionOverlay : IDisposable
     void ShowPredictions(PredictedFollowers predictions, int x, int y, int lineHeight = 20);
     void ConfirmPrediction(int index);
     void FlashCorrection(string text, int x, int y, int lineHeight = 20);
+    void ShowStatus(string message, int x, int y, int lineHeight = 20) { }
     event EventHandler<SuggestionSelectedEventArgs>? SuggestionSelected;
 
     /// <summary>

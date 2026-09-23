@@ -28,6 +28,8 @@ public class SuggestionOverlay : ISuggestionOverlay
     private const int ChipGap = 6;
     private const int ListPadding = 10;
     private const int BannerHeight = 22;
+    private const int FooterHeight = 20;
+    private string? _statusText;
     private readonly OverlayThemePalette _palette;
     private readonly OverlayChrome _chrome;
     private Dictionary<string, Color> _sourceColors = new();
@@ -286,13 +288,14 @@ public class SuggestionOverlay : ISuggestionOverlay
         int suggestionCount;
         int predictionCount;
         bool flashing;
+        bool hasStatus;
         lock (_suggestionsLock)
         {
             suggestionCount = _currentSuggestions.Count;
             predictionCount = _predictions.Count;
             flashing = _flashText != null;
+            hasStatus = !string.IsNullOrEmpty(_statusText);
         }
-
         var rows = Math.Clamp(suggestionCount, 0, VisibleRowCount);
         var chips = predictionCount > 0 || flashing;
         var height = BannerOffset + ListPadding * 2;
@@ -300,7 +303,7 @@ public class SuggestionOverlay : ISuggestionOverlay
         {
             height += rows * ItemHeight;
         }
-        else if (!chips)
+        else if (hasStatus)
         {
             height += ItemHeight;
         }
@@ -308,6 +311,11 @@ public class SuggestionOverlay : ISuggestionOverlay
         if (chips)
         {
             height += ChipHeight + 4;
+        }
+
+        if (rows > 0 || chips || hasStatus)
+        {
+            height += FooterHeight;
         }
 
         return height;
@@ -678,6 +686,7 @@ public class SuggestionOverlay : ISuggestionOverlay
             int scrollOffsetCopy;
             List<string> predictionsCopy;
             string? flashCopy;
+            string? statusCopy;
             lock (_suggestionsLock)
             {
                 suggestionsCopy = new List<Suggestion>(_currentSuggestions);
@@ -685,6 +694,7 @@ public class SuggestionOverlay : ISuggestionOverlay
                 scrollOffsetCopy = _scrollOffset;
                 predictionsCopy = new List<string>(_predictions);
                 flashCopy = _flashText;
+                statusCopy = _statusText;
             }
 
             using var bitmap = new Bitmap(width, height);
@@ -693,11 +703,28 @@ public class SuggestionOverlay : ISuggestionOverlay
                 graphics.TextRenderingHint = TextRenderingHint.ClearTypeGridFit;
                 graphics.SmoothingMode = SmoothingMode.AntiAlias;
                 graphics.Clear(_chrome.Background);
+                using (var card = OverlayChrome.Rounded(new Rectangle(0, 0, width - 1, height - 1), OverlayChrome.CornerRadius))
+                using (var fill = new SolidBrush(_chrome.Background))
+                {
+                    graphics.FillPath(fill, card);
+                }
 
-                using var font = new Font("Segoe UI", 10f, FontStyle.Regular, GraphicsUnit.Point);
+                using var font = new Font(OverlayChrome.FontName, 10f, FontStyle.Regular, GraphicsUnit.Point);
                 var showScroll = suggestionsCopy.Count > VisibleRowCount;
                 var textWidth = Math.Max(1, width - ListPadding * 2 - (showScroll ? 12 : 0));
                 var visible = suggestionsCopy.Skip(scrollOffsetCopy).Take(VisibleRowCount).ToList();
+                if (!string.IsNullOrEmpty(statusCopy) && visible.Count == 0 && predictionsCopy.Count == 0 && flashCopy == null)
+                {
+                    using var statusBrush = new SolidBrush(_chrome.Muted);
+                    using var statusFont = new Font(OverlayChrome.FontName, 9f, FontStyle.Regular, GraphicsUnit.Point);
+                    graphics.DrawString(statusCopy, statusFont, statusBrush, new RectangleF(ListPadding, ListPadding, textWidth, ItemHeight), new StringFormat
+                    {
+                        Alignment = StringAlignment.Near,
+                        LineAlignment = StringAlignment.Center,
+                        Trimming = StringTrimming.EllipsisCharacter
+                    });
+                }
+
                 if (!string.IsNullOrEmpty(_banner))
                 {
                     using var bannerFont = new Font("Segoe UI", 8.5f, FontStyle.Bold, GraphicsUnit.Point);
@@ -737,11 +764,16 @@ public class SuggestionOverlay : ISuggestionOverlay
                 }
 
                 DrawPredictionChips(graphics, width, height, suggestionsCopy.Count, predictionsCopy, flashCopy, _chrome);
+                DrawOriginFooter(graphics, width, height, suggestionsCopy, predictionsCopy, statusCopy, _chrome);
 
                 if (showScroll)
                 {
                     DrawScrollIndicator(graphics, width, height, suggestionsCopy.Count, scrollOffsetCopy, _chrome);
                 }
+
+                using var borderPen = new Pen(_chrome.Border);
+                using var borderPath = OverlayChrome.Rounded(new Rectangle(0, 0, width - 1, height - 1), OverlayChrome.CornerRadius);
+                graphics.DrawPath(borderPen, borderPath);
             }
 
             using var screen = Graphics.FromHdc(hdc);
@@ -752,6 +784,40 @@ public class SuggestionOverlay : ISuggestionOverlay
             EndPaint(hWnd, ref ps);
         }
     }
+
+    private static void DrawOriginFooter(
+        Graphics graphics,
+        int width,
+        int height,
+        List<Suggestion> suggestions,
+        List<string> predictions,
+        string? status,
+        OverlayChrome chrome)
+    {
+        var hasContent = suggestions.Count > 0 || predictions.Count > 0 || !string.IsNullOrEmpty(status);
+        if (!hasContent)
+        {
+            return;
+        }
+
+        var origin = suggestions.Any(suggestion => IsCloudSource(suggestion.Source))
+            ? "Cloud"
+            : "Local";
+        using var font = new Font(OverlayChrome.FontName, 7.5f, FontStyle.Regular, GraphicsUnit.Point);
+        using var brush = new SolidBrush(chrome.Muted);
+        var label = status != null && suggestions.Count == 0 && predictions.Count == 0
+            ? status
+            : origin;
+        graphics.DrawString(label, font, brush, new RectangleF(ListPadding, height - FooterHeight - 2, width - ListPadding * 2, FooterHeight), new StringFormat
+        {
+            Alignment = StringAlignment.Far,
+            LineAlignment = StringAlignment.Center,
+            Trimming = StringTrimming.EllipsisCharacter
+        });
+    }
+
+    private static bool IsCloudSource(string? source)
+        => source is "AI" or "OpenAI" or "Gemini" or "DeepSeek";
 
     private void DrawPredictionChips(
         Graphics graphics,
@@ -854,6 +920,7 @@ public class SuggestionOverlay : ISuggestionOverlay
             _currentSuggestions = suggestions.ToList();
             _predictions = new List<string>();
             _flashText = null;
+            _statusText = null;
             _selectedIndex = 0;
             _scrollOffset = 0;
             _isShowing = _currentSuggestions.Count > 0;
@@ -929,6 +996,26 @@ public class SuggestionOverlay : ISuggestionOverlay
         {
             OnSuggestionSelected(new Suggestion { Text = word, Source = "Prediction", Score = 1 });
         }
+    }
+
+    public void ShowStatus(string message, int x, int y, int lineHeight = 20)
+    {
+        lock (_suggestionsLock)
+        {
+            _statusText = message;
+            _currentSuggestions = new List<Suggestion>();
+            _predictions = new List<string>();
+            _flashText = null;
+            _isShowing = !string.IsNullOrWhiteSpace(message);
+        }
+
+        if (!IsVisible)
+        {
+            ForceHideWindow();
+            return;
+        }
+
+        PresentAt(x, y, lineHeight);
     }
 
     public void FlashCorrection(string text, int x, int y, int lineHeight = 20)
@@ -1197,6 +1284,7 @@ public class SuggestionOverlay : ISuggestionOverlay
             _isShowing = false;
             _currentSuggestions = new List<Suggestion>();
             _predictions = new List<string>();
+            _statusText = null;
             _flashText = null;
             _lockedBelow = null;
         }

@@ -26,6 +26,7 @@ public partial class KeyboardShortcutsForm : Form
         this.MaximizeBox = false;
         this.MinimizeBox = false;
         this.BackColor = Color.White;
+        this.Icon = Lexon.Ui.LexonIconFactory.CreateApplicationIcon();
 
         var titleLabel = new Label
         {
@@ -69,9 +70,9 @@ public partial class KeyboardShortcutsForm : Form
             { "DismissSuggestion", "Dismiss the suggestion popup" },
             { "NavigateUp", "Navigate up in the suggestion list" },
             { "NavigateDown", "Navigate down in the suggestion list" },
-            { "QuickToggle", "Double-press Ctrl to enable/disable Lexon" },
+            { "QuickToggle", "Double-press Ctrl to pause Lexon for the duration set in Settings" },
             { "OpenSettings", "Open Settings (Ctrl+Shift+S)" },
-            { "UndoLexon", "Undo last Lexon operation" }
+            { "UndoLexon", "Undo last Lexon change (also on the tray menu)" }
         };
 
         int y = 10;

@@ -75,6 +75,109 @@ function Publish-InstallerAsLexonExe {
     Write-Host "Published installer as Lexon.exe"
 }
 
+function Publish-FeedToPreviousRelease {
+    param(
+        [string]$ReleaseDir,
+        [string]$RepoUrl,
+        [string]$Version,
+        [string]$Token
+    )
+
+    # GithubSource on already-shipped builds reads GET /releases and uses the
+    # first tag that still lists a releases.win.json. GitHub often leaves the
+    # newest tag's assets array empty on that list, so older installs never
+    # see the new feed unless the previous tag also carries it (and the nupkgs).
+    $slug = $RepoUrl -replace '^https://github.com/', ''
+    $headers = @{
+        Authorization = "Bearer $Token"
+        Accept = "application/vnd.github+json"
+        "X-GitHub-Api-Version" = "2022-11-28"
+        "User-Agent" = "Lexon-release"
+    }
+
+    $releases = @(Invoke-RestMethod -Headers $headers -Uri "https://api.github.com/repos/$slug/releases?per_page=10")
+    $previous = $releases | Where-Object { $_.tag_name -ne "v$Version" -and -not $_.prerelease -and -not $_.draft } | Select-Object -First 1
+    if (-not $previous) {
+        Write-Host "No previous GitHub release to backfill with the $Version feed."
+        return
+    }
+
+    $files = @(
+        (Join-Path $ReleaseDir "releases.win.json"),
+        (Join-Path $ReleaseDir "Lexon-$Version-full.nupkg"),
+        (Join-Path $ReleaseDir "Lexon-$Version-delta.nupkg")
+    ) | Where-Object { Test-Path $_ }
+
+    if ($files.Count -eq 0) {
+        Write-Host "No feed or packages in $ReleaseDir to copy onto $($previous.tag_name)."
+        return
+    }
+
+    foreach ($path in $files) {
+        $name = [IO.Path]::GetFileName($path)
+        foreach ($asset in @($previous.assets | Where-Object { $_.name -eq $name })) {
+            Invoke-RestMethod -Method Delete -Headers $headers -Uri $asset.url | Out-Null
+        }
+    }
+
+    $uploadHeaders = @{
+        Authorization = "Bearer $Token"
+        Accept = "application/vnd.github+json"
+        "X-GitHub-Api-Version" = "2022-11-28"
+        "User-Agent" = "Lexon-release"
+        "Content-Type" = "application/octet-stream"
+    }
+
+    foreach ($path in $files) {
+        $name = [IO.Path]::GetFileName($path)
+        $uploadUrl = "https://uploads.github.com/repos/$slug/releases/$($previous.id)/assets?name=$name"
+        Write-Host "Copying $name onto $($previous.tag_name) so older installs can see $Version"
+        Invoke-RestMethod -Method Post -Headers $uploadHeaders -Uri $uploadUrl -InFile $path -TimeoutSec 600 | Out-Null
+    }
+}
+
+function Protect-LexonBinaries {
+    param([string]$TargetDir)
+
+    # Optional Authenticode signing. A real cert cannot be created here; set
+    # LEXON_CERT_THUMBPRINT (and have signtool on PATH) when you have one.
+    $thumbprint = $env:LEXON_CERT_THUMBPRINT
+    if (-not $thumbprint) {
+        Write-Host "Skipping Authenticode signing. Set LEXON_CERT_THUMBPRINT when you have a code-signing certificate."
+        return
+    }
+
+    $signtool = Get-Command signtool -ErrorAction SilentlyContinue
+    if (-not $signtool) {
+        $guess = @(
+            "${env:ProgramFiles(x86)}\Windows Kits\10\bin\x64\signtool.exe",
+            "${env:ProgramFiles(x86)}\Windows Kits\10\App Certification Kit\signtool.exe"
+        ) | Where-Object { Test-Path $_ } | Select-Object -First 1
+        if (-not $guess) {
+            Write-Host "signtool.exe was not found. Install the Windows SDK to sign builds."
+            return
+        }
+
+        $signtoolPath = $guess
+    }
+    else {
+        $signtoolPath = $signtool.Source
+    }
+
+    $files = @(Get-ChildItem -Path $TargetDir -Include *.exe, *.dll -File -ErrorAction SilentlyContinue)
+    if ($files.Count -eq 0) {
+        return
+    }
+
+    Write-Host "Signing $($files.Count) file(s) in $TargetDir"
+    foreach ($file in $files) {
+        & $signtoolPath sign /sha1 $thumbprint /fd SHA256 /tr "http://timestamp.digicert.com" /td SHA256 $file.FullName
+        if ($LASTEXITCODE -ne 0) {
+            throw "signtool failed on $($file.Name) with exit $LASTEXITCODE."
+        }
+    }
+}
+
 function Get-LexonVersion {
     param([string]$ProjectPath)
 
@@ -198,6 +301,8 @@ else {
 (Get-AutoChangelog -Version $version) | Set-Content -Path $notesFile -Encoding utf8
 Write-Host "Wrote changelog to $notesFile"
 
+Protect-LexonBinaries -TargetDir $publishDir
+
 Write-Host "Packing with vpk"
 $packArgs = @(
     "pack",
@@ -215,6 +320,11 @@ $packArgs = @(
     # step below, where auto-confirming could overwrite a published release.
     "--yes"
 )
+
+$iconPath = Join-Path $root "Lexon.ico"
+if ((Test-Path $iconPath) -and (Get-Item $iconPath).Length -gt 1000) {
+    $packArgs += @("--icon", $iconPath)
+}
 
 vpk @packArgs
 if ($LASTEXITCODE -ne 0) {
@@ -258,6 +368,8 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 Publish-InstallerAsLexonExe -ReleaseDir $releaseDir -RepoUrl $RepoUrl -Version $version -Token $env:GITHUB_TOKEN
+Protect-LexonBinaries -TargetDir $releaseDir
+Publish-FeedToPreviousRelease -ReleaseDir $releaseDir -RepoUrl $RepoUrl -Version $version -Token $env:GITHUB_TOKEN
 
 if (Get-Command gh -ErrorAction SilentlyContinue) {
     # gh has its own auth; reuse the token already required above rather

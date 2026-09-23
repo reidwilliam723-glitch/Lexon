@@ -20,6 +20,28 @@ public class UndoManager
         _redoStack = new Stack<TextOperation>(MaxStackSize);
     }
 
+    public event EventHandler? Changed;
+
+    public string? LastUndoLabel
+    {
+        get
+        {
+            var operation = PeekUndo();
+            if (operation == null)
+            {
+                return null;
+            }
+
+            var inserted = operation.InsertedText.Trim();
+            if (inserted.Length > 24)
+            {
+                inserted = inserted[..23] + "…";
+            }
+
+            return string.IsNullOrEmpty(inserted) ? "Undo last change" : $"Undo “{inserted}”";
+        }
+    }
+
     public void RecordOperation(string deletedText, string insertedText)
     {
         if (string.IsNullOrEmpty(deletedText) && string.IsNullOrEmpty(insertedText))
@@ -47,6 +69,8 @@ public class UndoManager
                 _undoStack.Push(recentOperations[i]);
             }
         }
+
+        Changed?.Invoke(this, EventArgs.Empty);
     }
 
     public void Undo()
@@ -67,6 +91,7 @@ public class UndoManager
         }
 
         _redoStack.Push(operation);
+        Changed?.Invoke(this, EventArgs.Empty);
     }
 
     public void Redo()
@@ -87,6 +112,7 @@ public class UndoManager
         }
 
         _undoStack.Push(operation);
+        Changed?.Invoke(this, EventArgs.Empty);
     }
 
     public bool CanUndo => _undoStack.Count > 0;
@@ -98,6 +124,7 @@ public class UndoManager
     {
         _undoStack.Clear();
         _redoStack.Clear();
+        Changed?.Invoke(this, EventArgs.Empty);
     }
 
     public TextOperation? PeekUndo()

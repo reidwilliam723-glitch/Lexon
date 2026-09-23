@@ -17,6 +17,7 @@
     <ProjectReference Include="..\Lexon.Storage\Lexon.Storage.csproj" />
     <ProjectReference Include="..\Lexon.Profiles\Lexon.Profiles.csproj" />
     <ProjectReference Include="..\Lexon.AI\Lexon.AI.csproj" />
+    <ProjectReference Include="..\Lexon.Ui\Lexon.Ui.csproj" />
   </ItemGroup>
 
 </Project>

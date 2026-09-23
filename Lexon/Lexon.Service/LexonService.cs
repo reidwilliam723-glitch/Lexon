@@ -110,6 +110,16 @@ public class LexonService
         _textExpansionManager.ExpansionTriggered += OnExpansionTriggered;
     }
 
+    private void OnGrammarSuggestionsOffered(IReadOnlyList<Suggestion> suggestions)
+    {
+        if (suggestions == null || suggestions.Count == 0)
+        {
+            return;
+        }
+
+        DisplaySuggestions(suggestions.ToList());
+    }
+
     public void AttachWritingEnhancement(SelectionRewriteService rewrite, GrammarCheckService grammar, MouseListener mouseListener)
     {
         _rewrite = rewrite;

@@ -41,10 +41,10 @@ internal static class UpdateChecker
 
         try
         {
-            var manager = new UpdateManager(new GithubSource(
-                repoUrl: RepositoryUrl,
-                accessToken: null,
-                prerelease: false));
+            // GithubSource uses the releases list API, which currently returns
+            // no assets for the newest Lexon tag. latest/download has the files.
+            var manager = new UpdateManager(new SimpleWebSource(
+                $"{RepositoryUrl}/releases/latest/download"));
 
             if (!manager.IsInstalled)
             {

@@ -57,6 +57,9 @@ public class PrivacyGuard : IPrivacyGuard
     public const string GrammarBlockedMessage =
         "Grammar check isn't available here — this app or field is excluded for privacy.";
 
+    public IReadOnlyCollection<string> GetBlockedApplications()
+        => _blockedApplications.ToArray();
+
     public void AddBlockedApplication(string applicationName)
     {
         _blockedApplications.Add(applicationName);

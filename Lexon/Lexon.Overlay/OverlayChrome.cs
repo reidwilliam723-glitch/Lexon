@@ -9,7 +9,7 @@ namespace Lexon.Overlay;
 public sealed class OverlayChrome
 {
     public const string FontName = "Segoe UI";
-    public const int CornerRadius = 6;
+    public const int CornerRadius = 10;
 
     private readonly OverlayThemePalette _palette;
 

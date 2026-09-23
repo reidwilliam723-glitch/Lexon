@@ -324,7 +324,6 @@ public sealed class GrammarCheckService
             }
 
             SuggestionsOffered?.Invoke(suggestions);
-            _suggestions?.ShowSuggestions(suggestions, caretX, caretY);
             return Task.CompletedTask;
         }
 
