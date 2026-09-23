@@ -14,16 +14,17 @@ internal sealed class CoachForm : Form
         MinimizeBox = false;
         ShowInTaskbar = false;
         TopMost = true;
-        ClientSize = new Size(440, 248);
-        Font = new Font("Segoe UI", 9);
+        AutoScaleMode = AutoScaleMode.Dpi;
+        ClientSize = new Size(560, 340);
+        Font = new Font("Segoe UI", 10);
         BackColor = Color.White;
         Icon = Lexon.Ui.LexonIconFactory.CreateApplicationIcon();
 
         var title = new Label
         {
             Text = "A 10-second try-out",
-            Font = new Font("Segoe UI", 14, FontStyle.Bold),
-            Location = new Point(24, 20),
+            Font = new Font("Segoe UI", 16, FontStyle.Bold),
+            Location = new Point(32, 28),
             AutoSize = true
         };
 
@@ -34,15 +35,15 @@ internal sealed class CoachForm : Form
                 "2. Type a word — suggestions appear above or below the caret.\n" +
                 "3. Press 1, 2, or 3 to accept a prediction.\n\n" +
                 "Ctrl+Shift+Z undoes the last Lexon change. Right-click the tray icon to pause.",
-            Location = new Point(24, 58),
-            Size = new Size(392, 130)
+            Location = new Point(32, 78),
+            Size = new Size(496, 180)
         };
 
         var gotIt = new Button
         {
             Text = "Got it",
-            Size = new Size(100, 32),
-            Location = new Point(316, 198),
+            Size = new Size(108, 36),
+            Location = new Point(420, 278),
             DialogResult = DialogResult.OK
         };
         AcceptButton = gotIt;

@@ -21,6 +21,7 @@ public class SystemTrayManager : IDisposable
     private ToolStripMenuItem _resumeItem = null!;
     private ToolStripMenuItem _pauseAppItem = null!;
     private ToolStripMenuItem _undoItem = null!;
+    private ToolStripMenuItem _updatesItem = null!;
     private ServiceStatus _currentStatus = ServiceStatus.Inactive;
     private string _lastTooltip = string.Empty;
     private bool _paused;
@@ -79,8 +80,8 @@ public class SystemTrayManager : IDisposable
         shortcutsMenuItem.Click += (_, _) => KeyboardShortcutsRequested?.Invoke(this, EventArgs.Empty);
         var aboutMenuItem = new ToolStripMenuItem("About Lexon");
         aboutMenuItem.Click += (_, _) => AboutRequested?.Invoke(this, EventArgs.Empty);
-        var updatesMenuItem = new ToolStripMenuItem("Check for updates…");
-        updatesMenuItem.Click += (_, _) => UpdatesRequested?.Invoke(this, EventArgs.Empty);
+        _updatesItem = new ToolStripMenuItem("Check for updates…");
+        _updatesItem.Click += (_, _) => UpdatesRequested?.Invoke(this, EventArgs.Empty);
         var exitMenuItem = new ToolStripMenuItem("Exit");
         exitMenuItem.Click += (_, _) => ExitRequested?.Invoke(this, EventArgs.Empty);
 
@@ -95,7 +96,7 @@ public class SystemTrayManager : IDisposable
         _contextMenu.Items.Add(settingsMenuItem);
         _contextMenu.Items.Add(shortcutsMenuItem);
         _contextMenu.Items.Add(aboutMenuItem);
-        _contextMenu.Items.Add(updatesMenuItem);
+        _contextMenu.Items.Add(_updatesItem);
         _contextMenu.Items.Add(new ToolStripSeparator());
         _contextMenu.Items.Add(exitMenuItem);
 
@@ -126,6 +127,15 @@ public class SystemTrayManager : IDisposable
             }
 
             bool statusIsInactive() => _currentStatus == ServiceStatus.Inactive && !paused;
+        });
+    }
+
+    public void SetUpdatesBusy(bool busy)
+    {
+        InvokeOnUiThread(() =>
+        {
+            _updatesItem.Enabled = !busy;
+            _updatesItem.Text = busy ? "Checking for updates…" : "Check for updates…";
         });
     }
 

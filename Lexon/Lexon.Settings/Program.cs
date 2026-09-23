@@ -137,6 +137,7 @@ static class Program
             _trayManager.PauseFifteenRequested += OnPauseFifteenRequested;
             _trayManager.PauseThisAppRequested += OnPauseThisAppRequested;
             _trayManager.ResumeRequested += OnResumeRequested;
+            UpdateChecker.BusyChanged += busy => _trayManager?.SetUpdatesBusy(busy);
             _composition.KeyboardShortcutManager.ShortcutTriggered += OnShortcutTriggered;
             _composition.UndoManager.Changed += (_, _) =>
                 _trayManager.SetUndoAvailability(_composition.UndoManager.CanUndo, _composition.UndoManager.LastUndoLabel);

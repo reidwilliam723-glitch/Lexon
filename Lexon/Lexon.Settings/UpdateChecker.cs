@@ -16,6 +16,13 @@ internal static class UpdateChecker
     private const string RepositoryUrl = "https://github.com/reidwilliam723-glitch/Lexon";
 
     private static readonly SemaphoreSlim CheckGate = new(1, 1);
+    private static DateTime _lastAttemptUtc = DateTime.MinValue;
+
+    /// <summary>
+    /// Raised when a check starts or finishes so the tray can disable
+    /// "Check for updates…" while one is already running.
+    /// </summary>
+    public static event Action<bool>? BusyChanged;
 
     /// <summary>
     /// Fire-and-forget check used at startup. Stays silent unless an update was
@@ -33,14 +40,28 @@ internal static class UpdateChecker
 
     private static async Task RunAsync(Action<Action> invokeOnUi, Action requestShutdown, bool interactive)
     {
-        // A startup check and a tray click can overlap; let the first one finish.
-        if (!await CheckGate.WaitAsync(interactive ? TimeSpan.FromSeconds(30) : TimeSpan.Zero))
+        // Never queue a second check. Extra tray clicks used to wait and then
+        // hit GitHub again; now they get a short message or stay silent.
+        if (!await CheckGate.WaitAsync(TimeSpan.Zero))
         {
+            if (interactive)
+            {
+                Report(invokeOnUi, "Lexon is already checking for updates.");
+            }
+
+            return;
+        }
+
+        if (interactive && DateTime.UtcNow - _lastAttemptUtc < TimeSpan.FromSeconds(30))
+        {
+            CheckGate.Release();
+            Report(invokeOnUi, "Already checked a moment ago. Try again shortly.");
             return;
         }
 
         try
         {
+            BusyChanged?.Invoke(true);
             // GithubSource uses the releases list API, which currently returns
             // no assets for the newest Lexon tag. latest/download has the files.
             var manager = new UpdateManager(new SimpleWebSource(
@@ -105,7 +126,15 @@ internal static class UpdateChecker
         }
         finally
         {
-            CheckGate.Release();
+            _lastAttemptUtc = DateTime.UtcNow;
+            try
+            {
+                BusyChanged?.Invoke(false);
+            }
+            finally
+            {
+                CheckGate.Release();
+            }
         }
     }
 
