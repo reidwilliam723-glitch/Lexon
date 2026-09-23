@@ -1,4 +1,4 @@
-﻿using Lexon.Onboarding.Models;
+using Lexon.Onboarding.Models;
 using Lexon.Storage;
 using Lexon.Profiles;
 using Lexon.Core.Interfaces;
