@@ -14,10 +14,15 @@ public partial class ProcessPickerForm : Form
     private Button _cancelButton = null!;
     private string? _selectedProcessName;
 
+    private readonly string _prompt;
+
     public string? SelectedProcessName => _selectedProcessName;
 
-    public ProcessPickerForm()
+    public ProcessPickerForm(string? prompt = null)
     {
+        _prompt = string.IsNullOrWhiteSpace(prompt)
+            ? "Select a running application:"
+            : prompt;
         InitializeComponent();
         LoadProcesses();
     }
@@ -34,7 +39,7 @@ public partial class ProcessPickerForm : Form
 
         var titleLabel = new Label
         {
-            Text = "Select a running application to block:",
+            Text = _prompt,
             Font = new Font("Segoe UI", 10, FontStyle.Bold),
             Location = new Point(20, 20),
             AutoSize = true

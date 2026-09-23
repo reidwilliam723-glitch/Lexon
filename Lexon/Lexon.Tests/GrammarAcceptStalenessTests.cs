@@ -95,8 +95,7 @@ public class GrammarAcceptStalenessTests
                 Injector.Object,
                 new TextExpansionManager(new Mock<IStorage>().Object),
                 new KeyboardShortcutManager(),
-                new UndoManager(Injector.Object),
-                new SoundFeedbackManager());
+                new UndoManager(Injector.Object));
         }
 
         public void Accept(Suggestion suggestion)

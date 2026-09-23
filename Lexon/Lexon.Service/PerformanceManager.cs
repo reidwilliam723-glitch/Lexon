@@ -93,7 +93,6 @@ public class PerformanceProfile
     public bool BackgroundProcessing { get; set; } = true;
     public int MemoryLimitMB { get; set; } = 100;
     public bool EnableAnimations { get; set; } = true;
-    public bool EnableSoundFeedback { get; set; } = true;
 }
 
 public static class PerformanceProfiles
@@ -110,8 +109,7 @@ public static class PerformanceProfiles
         AIRequestTimeout = 0,
         BackgroundProcessing = false,
         MemoryLimitMB = 50,
-        EnableAnimations = false,
-        EnableSoundFeedback = false
+        EnableAnimations = false
     };
 
     public static PerformanceProfile Balanced => new()
@@ -126,8 +124,7 @@ public static class PerformanceProfiles
         AIRequestTimeout = 3000,
         BackgroundProcessing = true,
         MemoryLimitMB = 100,
-        EnableAnimations = true,
-        EnableSoundFeedback = true
+        EnableAnimations = true
     };
 
     public static PerformanceProfile MaximumQuality => new()
@@ -142,8 +139,7 @@ public static class PerformanceProfiles
         AIRequestTimeout = 5000,
         BackgroundProcessing = true,
         MemoryLimitMB = 200,
-        EnableAnimations = true,
-        EnableSoundFeedback = true
+        EnableAnimations = true
     };
 }
 

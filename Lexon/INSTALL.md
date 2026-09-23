@@ -4,7 +4,7 @@ Friends: you only need Windows. **Do not install Visual Studio or .NET.**
 
 ## 1. Install
 
-1. Download **`Lexon-win-Setup.exe`** from the link you were sent.
+1. Download **`Lexon.exe`** from the link you were sent.
 2. Double-click it. There are no options to pick — it installs and starts Lexon for you.
 3. If **Windows protected your PC** (SmartScreen) appears:
    - Click **More info**

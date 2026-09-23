@@ -34,7 +34,6 @@ public partial class SettingsForm : Form
 
     private CheckBox _chkAutoStart = null!;
     private CheckBox _chkMinimizeToTray = null!;
-    private CheckBox _chkEnableSounds = null!;
     private CheckBox _chkCheckUpdates = null!;
     private CheckBox _chkOpenFullScreen = null!;
     private ComboBox _cmbAIProvider = null!;
@@ -57,7 +56,6 @@ public partial class SettingsForm : Form
     private ComboBox _cmbSuggestionSort = null!;
     private ComboBox _cmbSuggestionPlacement = null!;
     private CheckBox _chkRequireConfirmation = null!;
-    private TextBox _txtAppTone = null!;
     private ComboBox _cmbAppToneCategory = null!;
     private ListBox _lstAppTone = null!;
     private Button _btnWritingStats = null!;
@@ -273,14 +271,12 @@ public partial class SettingsForm : Form
 
         _chkAutoStart = Check("Start with Windows");
         _chkMinimizeToTray = Check("Minimize to system tray");
-        _chkEnableSounds = Check("Enable sound feedback");
         _chkCheckUpdates = Check("Check for updates on startup");
         _chkOpenFullScreen = Check("Open Settings full screen");
         _sectionGeneral = Section(
             "General",
             Hint(_chkAutoStart, "Launch Lexon when you sign in to Windows."),
             Hint(_chkMinimizeToTray, "Close hides Settings. Lexon stays in the tray."),
-            Hint(_chkEnableSounds, "Play a short sound when an action completes."),
             Hint(_chkCheckUpdates, "Asks before installing anything."),
             Hint(_chkOpenFullScreen, "Opens maximized so the three-column layout is used."),
             Hint(Caption("Pause shortcut"), "Pause everything: double-press Ctrl. Same as Enable/Disable on the tray icon."));
@@ -401,24 +397,27 @@ public partial class SettingsForm : Form
             AutoSize = true,
             Margin = new Padding(0, 0, 0, 8)
         };
-        _txtAppTone = Field(140);
-        _txtAppTone.Margin = new Padding(0, 0, 8, 0);
         _cmbAppToneCategory = Combo(120);
         _cmbAppToneCategory.Items.AddRange(new object[] { "Casual", "Formal", "Code", "Neutral" });
         _cmbAppToneCategory.SelectedIndex = 0;
-        var btnAddTone = new Button { Text = "Add", AutoSize = true, Margin = new Padding(8, 0, 8, 0) };
-        btnAddTone.Click += (_, _) => AddAppToneOverride();
+        var btnAddTone = new Button
+        {
+            Text = "Add running app…",
+            AutoSize = true,
+            Padding = new Padding(10, 4, 10, 4),
+            Margin = new Padding(8, 0, 8, 0)
+        };
+        btnAddTone.Click += (_, _) => OnAddAppToneClicked();
         var btnRemoveTone = new Button { Text = "Remove", AutoSize = true };
         btnRemoveTone.Click += (_, _) => RemoveAppToneOverride();
-        _toneRow.Controls.Add(_txtAppTone);
         _toneRow.Controls.Add(_cmbAppToneCategory);
         _toneRow.Controls.Add(btnAddTone);
         _toneRow.Controls.Add(btnRemoveTone);
         _sectionAppTone = Section(
             "App tone",
             Hint(_lstAppTone, "Defaults cover Slack, Teams, Outlook, Word, and editors. Add a row only to override."),
-            Caption("App name"),
-            Hint(_toneRow, "Use name or name.exe. Pick Casual, Formal, Code, or Neutral."));
+            Caption("Tone"),
+            Hint(_toneRow, "Pick a tone, then choose a running app. Remove uses the selected row."));
 
         _btnWritingStats = new Button
         {
@@ -1269,7 +1268,6 @@ public partial class SettingsForm : Form
     {
         _chkAutoStart.CheckedChanged += (_, _) => ApplyNow();
         _chkMinimizeToTray.CheckedChanged += (_, _) => ApplyNow();
-        _chkEnableSounds.CheckedChanged += (_, _) => ApplyNow();
         _chkCheckUpdates.CheckedChanged += (_, _) => ApplyNow();
         _chkOpenFullScreen.CheckedChanged += (_, _) =>
         {
@@ -1335,7 +1333,6 @@ public partial class SettingsForm : Form
         _loading = true;
         _chkAutoStart.Checked = WindowsStartup.IsEnabled();
         _chkMinimizeToTray.Checked = _profile.GetSetting("MinimizeToTray", true);
-        _chkEnableSounds.Checked = _profile.GetSetting("EnableSounds", true);
         _chkCheckUpdates.Checked = _profile.GetSetting("EnableAutoUpdates", true);
         _chkOpenFullScreen.Checked = _profile.GetSetting("OpenSettingsFullScreen", false);
 
@@ -1446,7 +1443,6 @@ public partial class SettingsForm : Form
         var selectedPlacement = _cmbSuggestionPlacement.SelectedIndex == 1 ? "Above" : "Below";
 
         _profile.SetSetting("MinimizeToTray", _chkMinimizeToTray.Checked);
-        _profile.SetSetting("EnableSounds", _chkEnableSounds.Checked);
         _profile.SetSetting("EnableAutoUpdates", _chkCheckUpdates.Checked);
         _profile.SetSetting("OpenSettingsFullScreen", _chkOpenFullScreen.Checked);
         _profile.SetSetting("AIProvider", _activeProvider);
@@ -1842,7 +1838,7 @@ public partial class SettingsForm : Form
 
     private void OnAddBlockedAppClicked(object? sender, EventArgs e)
     {
-        using var picker = new ProcessPickerForm();
+        using var picker = new ProcessPickerForm("Select a running application to block:");
         if (picker.ShowDialog() == DialogResult.OK && !string.IsNullOrEmpty(picker.SelectedProcessName))
         {
             var currentApps = _txtBlockedApps.Text
@@ -1930,23 +1926,27 @@ public partial class SettingsForm : Form
         }
     }
 
-    private void AddAppToneOverride()
+    private void OnAddAppToneClicked()
     {
-        var app = AppCategoryMapper.EnsureExeExtension(_txtAppTone.Text);
-        if (string.IsNullOrEmpty(app) || !Enum.TryParse<AppWritingCategory>(_cmbAppToneCategory.SelectedItem?.ToString(), true, out var category))
+        if (!Enum.TryParse<AppWritingCategory>(_cmbAppToneCategory.SelectedItem?.ToString(), true, out var category))
         {
             return;
         }
 
-        _txtAppTone.Text = app;
-        if (!TryLocateApp(app, out var location))
+        using var picker = new ProcessPickerForm("Select a running application for this tone:");
+        if (picker.ShowDialog(this) != DialogResult.OK || string.IsNullOrEmpty(picker.SelectedProcessName))
         {
-            MessageBox.Show(
-                this,
-                $"No application named {app} was found.\n\nIt is not running, and it was not found on the PATH or in Windows App Paths.\n\nThe tone override was not saved. Start the app and try again, or check the name.",
-                "App tone",
-                MessageBoxButtons.OK,
-                MessageBoxIcon.Warning);
+            return;
+        }
+
+        AddAppToneOverride(picker.SelectedProcessName, category);
+    }
+
+    private void AddAppToneOverride(string processName, AppWritingCategory category)
+    {
+        var app = AppCategoryMapper.EnsureExeExtension(processName);
+        if (string.IsNullOrEmpty(app))
+        {
             return;
         }
 
@@ -1961,103 +1961,6 @@ public partial class SettingsForm : Form
 
         _lstAppTone.Items.Add(row);
         ApplyNow();
-        MessageBox.Show(
-            this,
-            $"{app} {location}.\n\n{category} tone has been saved for this app.",
-            "App tone",
-            MessageBoxButtons.OK,
-            MessageBoxIcon.Information);
-    }
-
-    private static bool TryLocateApp(string exeName, out string location)
-    {
-        location = string.Empty;
-        var stem = Path.GetFileNameWithoutExtension(exeName);
-        try
-        {
-            var running = Process.GetProcessesByName(stem);
-            var isRunning = running.Length > 0;
-            foreach (var process in running)
-            {
-                process.Dispose();
-            }
-
-            if (isRunning)
-            {
-                location = "is running";
-                return true;
-            }
-        }
-        catch
-        {
-            // Lookup must not throw.
-        }
-
-        if (IsOnPath(exeName) || IsRegisteredAppPath(exeName))
-        {
-            location = "was found on this PC";
-            return true;
-        }
-
-        return false;
-    }
-
-    private static bool IsOnPath(string exeName)
-    {
-        try
-        {
-            if (File.Exists(Path.Combine(Environment.SystemDirectory, exeName)))
-            {
-                return true;
-            }
-
-            var path = Environment.GetEnvironmentVariable("PATH");
-            if (string.IsNullOrEmpty(path))
-            {
-                return false;
-            }
-
-            foreach (var directory in path.Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries))
-            {
-                var trimmed = directory.Trim('"');
-                if (File.Exists(Path.Combine(trimmed, exeName)))
-                {
-                    return true;
-                }
-            }
-        }
-        catch
-        {
-            return false;
-        }
-
-        return false;
-    }
-
-    private static bool IsRegisteredAppPath(string exeName)
-    {
-        var relative = @"SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\" + exeName;
-        try
-        {
-            using var hkcu = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(relative);
-            if (hkcu != null)
-            {
-                return true;
-            }
-
-            using var hklm = Microsoft.Win32.Registry.LocalMachine.OpenSubKey(relative);
-            if (hklm != null)
-            {
-                return true;
-            }
-
-            using var wow = Microsoft.Win32.Registry.LocalMachine.OpenSubKey(@"SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\App Paths\" + exeName);
-            return wow != null;
-        }
-        catch
-        {
-            return false;
-        }
     }
 
     private void RemoveAppToneOverride()

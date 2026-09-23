@@ -46,7 +46,6 @@ public static class LexonServiceComposer
         public KeyboardShortcutManager KeyboardShortcutManager { get; set; } = null!;
         public UndoManager UndoManager { get; set; } = null!;
         public QuickToggleManager QuickToggleManager { get; set; } = null!;
-        public SoundFeedbackManager SoundFeedbackManager { get; set; } = null!;
         public PersonalizationManager PersonalizationManager { get; set; } = null!;
         public PluginManager PluginManager { get; set; } = null!;
         public ThemeManager ThemeManager { get; set; } = null!;
@@ -203,10 +202,6 @@ public static class LexonServiceComposer
         keyboardListener.KeyPressed += (_, args) => quickToggleManager.HandleKeyPress(args);
         keyboardListener.KeyReleased += (_, args) => quickToggleManager.HandleKeyRelease(args);
 
-        // Initialize sound feedback manager
-        var enableSounds = profile.GetSetting("EnableSounds", true);
-        var soundFeedbackManager = new SoundFeedbackManager { Enabled = enableSounds };
-
         // Initialize writing assistance
         var mouseListener = new MouseListener();
         var selectionRewrite = new SelectionRewriteService(
@@ -246,7 +241,6 @@ public static class LexonServiceComposer
             textExpansionManager,
             keyboardShortcutManager,
             undoManager,
-            soundFeedbackManager,
             grammarOverlay,
             () => profile.GetSetting("AutoCorrectTypos", true),
             personalizationManager
@@ -266,8 +260,6 @@ public static class LexonServiceComposer
                 suggestionOverlay.Hide();
                 grammarOverlay.Hide();
             }
-
-            soundFeedbackManager.PlaySound(isEnabled ? "suggestion_accept" : "suggestion_dismiss");
         };
 
         return new CompositionResult
@@ -287,7 +279,6 @@ public static class LexonServiceComposer
             KeyboardShortcutManager = keyboardShortcutManager,
             UndoManager = undoManager,
             QuickToggleManager = quickToggleManager,
-            SoundFeedbackManager = soundFeedbackManager,
             PersonalizationManager = personalizationManager,
             PluginManager = pluginManager,
             ThemeManager = themeManager,
@@ -370,10 +361,6 @@ public static class LexonServiceComposer
             if (!profile.HasSetting("MinimizeToTray"))
             {
                 profile.SetSetting("MinimizeToTray", generalSettings.MinimizeToTray);
-            }
-            if (!profile.HasSetting("EnableSounds"))
-            {
-                profile.SetSetting("EnableSounds", generalSettings.EnableSounds);
             }
             if (!profile.HasSetting("LocalMode"))
             {

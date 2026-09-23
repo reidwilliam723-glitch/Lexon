@@ -24,7 +24,6 @@ public class LexonService
     private readonly Core.Expansion.TextExpansionManager _textExpansionManager;
     private readonly KeyboardShortcutManager _keyboardShortcutManager;
     private readonly UndoManager _undoManager;
-    private readonly SoundFeedbackManager _soundFeedbackManager;
     private readonly Func<bool> _autoCorrectEnabled;
     private readonly PersonalizationManager? _personalization;
     private SelectionRewriteService? _rewrite;
@@ -81,7 +80,6 @@ public class LexonService
         Core.Expansion.TextExpansionManager textExpansionManager,
         KeyboardShortcutManager keyboardShortcutManager,
         UndoManager undoManager,
-        SoundFeedbackManager soundFeedbackManager,
         ISuggestionOverlay? grammarOverlay = null,
         Func<bool>? autoCorrectEnabled = null,
         PersonalizationManager? personalization = null)
@@ -96,7 +94,6 @@ public class LexonService
         _textExpansionManager = textExpansionManager ?? throw new ArgumentNullException(nameof(textExpansionManager));
         _keyboardShortcutManager = keyboardShortcutManager ?? throw new ArgumentNullException(nameof(keyboardShortcutManager));
         _undoManager = undoManager ?? throw new ArgumentNullException(nameof(undoManager));
-        _soundFeedbackManager = soundFeedbackManager ?? throw new ArgumentNullException(nameof(soundFeedbackManager));
         _autoCorrectEnabled = autoCorrectEnabled ?? (() => false);
         _personalization = personalization;
 
@@ -1244,8 +1241,6 @@ public class LexonService
         {
             _suggestionPipeline.RecordInteraction(e.SelectedSuggestion, _currentContext, InteractionType.Accepted);
         }
-
-        _soundFeedbackManager.PlaySound("suggestion_accept");
     }
 
     private static bool TryGrammarReplacement(
@@ -1372,8 +1367,5 @@ public class LexonService
         
         // Inject the expansion
         _textInjector.InjectText(e.Expansion.Expansion);
-        
-        // Play sound for expansion triggered
-        _soundFeedbackManager.PlaySound("suggestion_accept");
     }
 }

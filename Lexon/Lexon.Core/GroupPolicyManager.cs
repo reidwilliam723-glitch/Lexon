@@ -137,7 +137,6 @@ public class GroupPolicyManager
     {
         AutoStart = GetBooleanPolicy("AutoStart", true),
         MinimizeToTray = GetBooleanPolicy("MinimizeToTray", true),
-        EnableSounds = GetBooleanPolicy("EnableSounds", true),
         LocalMode = GetBooleanPolicy("LocalMode", false)
     };
 
@@ -252,7 +251,6 @@ public class GeneralPolicySettings
 {
     public bool AutoStart { get; set; }
     public bool MinimizeToTray { get; set; }
-    public bool EnableSounds { get; set; }
     public bool LocalMode { get; set; }
 }
 

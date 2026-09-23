@@ -198,7 +198,6 @@ public class NextWordAndAutoCorrectTests
                 new TextExpansionManager(storage.Object),
                 new KeyboardShortcutManager(),
                 new UndoManager(Injector.Object),
-                new SoundFeedbackManager(),
                 autoCorrectEnabled: () => autoCorrect,
                 personalization: personalization);
         }

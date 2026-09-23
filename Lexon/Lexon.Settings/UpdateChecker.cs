@@ -53,7 +53,7 @@ internal static class UpdateChecker
                 {
                     Report(invokeOnUi,
                         "This copy of Lexon was not installed with the Lexon installer, so it cannot update itself.\n\n" +
-                        "Install the version from Setup.exe to get automatic updates.");
+                        "Install the version from Lexon.exe to get automatic updates.");
                 }
 
                 return;

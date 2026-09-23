@@ -34,7 +34,7 @@ Typing stays on the PC unless you turn on a cloud AI provider in Settings and us
 
 ## For Liam (releasing to testers)
 
-Testers now install once from **`Lexon-win-Setup.exe`** and the app updates itself after that. To cut a release, bump `<Version>` in `Lexon.Settings\Lexon.Settings.csproj`, then from this folder:
+Testers now install once from **`Lexon.exe`** and the app updates itself after that. To cut a release, bump `<Version>` in `Lexon.Settings\Lexon.Settings.csproj`, then from this folder:
 
 ```bat
 powershell -ExecutionPolicy Bypass -File Settings\release.ps1 -Upload

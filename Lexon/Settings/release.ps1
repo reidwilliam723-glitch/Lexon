@@ -28,6 +28,53 @@ $project = Join-Path $root "Lexon.Settings\Lexon.Settings.csproj"
 $publishDir = Join-Path $root "publish"
 $releaseDir = Join-Path $root "releases"
 
+function Publish-InstallerAsLexonExe {
+    param(
+        [string]$ReleaseDir,
+        [string]$RepoUrl,
+        [string]$Version,
+        [string]$Token
+    )
+
+    $setup = Get-ChildItem -Path $ReleaseDir -Filter "*-Setup.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
+    if (-not $setup) {
+        Write-Host "No *-Setup.exe in $ReleaseDir to publish as Lexon.exe."
+        return
+    }
+
+    $lexonExe = Join-Path $ReleaseDir "Lexon.exe"
+    Copy-Item -Path $setup.FullName -Destination $lexonExe -Force
+
+    $slug = $RepoUrl -replace '^https://github.com/', ''
+    $headers = @{
+        Authorization = "Bearer $Token"
+        Accept = "application/vnd.github+json"
+        "X-GitHub-Api-Version" = "2022-11-28"
+        "User-Agent" = "Lexon-release"
+    }
+    $release = Invoke-RestMethod -Headers $headers -Uri "https://api.github.com/repos/$slug/releases/tags/v$Version"
+
+    foreach ($asset in @($release.assets | Where-Object { $_.name -eq "Lexon.exe" })) {
+        Invoke-RestMethod -Method Delete -Headers $headers -Uri $asset.url | Out-Null
+    }
+
+    $uploadHeaders = @{
+        Authorization = "Bearer $Token"
+        Accept = "application/vnd.github+json"
+        "X-GitHub-Api-Version" = "2022-11-28"
+        "User-Agent" = "Lexon-release"
+        "Content-Type" = "application/octet-stream"
+    }
+    $uploadUrl = "https://uploads.github.com/repos/$slug/releases/$($release.id)/assets?name=Lexon.exe"
+    Invoke-RestMethod -Method Post -Headers $uploadHeaders -Uri $uploadUrl -InFile $lexonExe | Out-Null
+
+    foreach ($asset in @($release.assets | Where-Object { $_.name -like "*-Setup.exe" })) {
+        Invoke-RestMethod -Method Delete -Headers $headers -Uri $asset.url | Out-Null
+    }
+
+    Write-Host "Published installer as Lexon.exe"
+}
+
 function Get-LexonVersion {
     param([string]$ProjectPath)
 
@@ -65,7 +112,8 @@ function Get-AutoChangelog {
     }
 
     $bullets = ($subjects -split "`n" | Where-Object { $_ } | ForEach-Object { "- $_" }) -join "`n"
-    return "## Lexon $Version`n`n$bullets"
+    $download = "https://github.com/reidwilliam723-glitch/Lexon/releases/download/v$Version/Lexon.exe"
+    return "**[Download Lexon.exe]($download)**`n`n## Lexon $Version`n`n$bullets"
 }
 
 if (-not (Get-Command vpk -ErrorAction SilentlyContinue)) {
@@ -91,7 +139,7 @@ if (Test-Path $releaseDir) {
         Remove-Item -Path (Join-Path $releaseDir "*") -Recurse -Force
     }
     catch {
-        throw "Could not clear $releaseDir. Close anything still using files in it, such as a previously built Setup.exe, and run again. $($_.Exception.Message)"
+        throw "Could not clear $releaseDir. Close anything still using files in it, such as a previously built Lexon.exe, and run again. $($_.Exception.Message)"
     }
 }
 
@@ -160,6 +208,7 @@ $packArgs = @(
     "--packDir", $publishDir,
     "--mainExe", "Lexon.Settings.exe",
     "--outputDir", $releaseDir,
+    "--noPortable",
     # Never stop for a keypress. Clearing the output directory above removes the
     # usual cause, but re-packing a version already published to GitHub pulls that
     # version down and would prompt again. Deliberately not passed to the upload
@@ -173,6 +222,11 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 Write-Host "Packed into $releaseDir"
+
+$packedSetup = Get-ChildItem -Path $releaseDir -Filter "*-Setup.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
+if ($packedSetup) {
+    Copy-Item -Path $packedSetup.FullName -Destination (Join-Path $releaseDir "Lexon.exe") -Force
+}
 
 if (-not $Upload) {
     Write-Host "Skipping upload. Re-run with -Upload to publish the GitHub release."
@@ -203,6 +257,8 @@ if ($LASTEXITCODE -ne 0) {
     throw "vpk upload failed with exit code $LASTEXITCODE."
 }
 
+Publish-InstallerAsLexonExe -ReleaseDir $releaseDir -RepoUrl $RepoUrl -Version $version -Token $env:GITHUB_TOKEN
+
 if (Get-Command gh -ErrorAction SilentlyContinue) {
     # gh has its own auth; reuse the token already required above rather
     # than making the caller set up a second credential.
@@ -221,7 +277,18 @@ if (Get-Command gh -ErrorAction SilentlyContinue) {
     }
 }
 else {
-    Write-Host "GitHub CLI ('gh') not found, so release notes were not set automatically. Install it from https://cli.github.com, or edit the release manually using the text in $notesFile."
+    Write-Host "GitHub CLI ('gh') not found; setting release notes through the GitHub API."
+    $notes = [System.IO.File]::ReadAllText($notesFile).Trim()
+    $headers = @{
+        Authorization = "Bearer $env:GITHUB_TOKEN"
+        Accept = "application/vnd.github+json"
+        "X-GitHub-Api-Version" = "2022-11-28"
+        "User-Agent" = "Lexon-release"
+    }
+    $release = Invoke-RestMethod -Headers $headers -Uri "https://api.github.com/repos/reidwilliam723-glitch/Lexon/releases/tags/v$version"
+    $payload = @{ name = "Lexon $version"; body = $notes } | ConvertTo-Json -Compress
+    Invoke-RestMethod -Method Patch -Headers $headers -Uri $release.url -ContentType "application/json; charset=utf-8" -Body ([System.Text.Encoding]::UTF8.GetBytes($payload)) | Out-Null
+    Write-Host "Set release notes from $notesFile"
 }
 
-Write-Host "Released Lexon $version. Testers install from Setup.exe on the release page."
+Write-Host "Released Lexon $version. Testers install from Lexon.exe on the release page."
