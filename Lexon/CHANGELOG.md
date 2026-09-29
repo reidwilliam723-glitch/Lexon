@@ -2,7 +2,7 @@
 
 All notable changes to Lexon will be documented in this file.
 
-## [Unreleased]
+## [1.0.7] - 2026-09-29
 
 ### Privacy and AI control
 - Local-only now removes the AI provider immediately (no restart) and cancels in-flight probes so a late result cannot turn AI back on.
