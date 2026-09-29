@@ -9,6 +9,7 @@ win-x64/
 
 # Publish / packaging output
 publish/
+publish-check/
 releases/
 Run/
 *.zip

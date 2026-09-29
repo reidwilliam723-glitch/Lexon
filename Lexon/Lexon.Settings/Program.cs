@@ -387,7 +387,7 @@ static class Program
             return;
         }
 
-        _settingsForm = new SettingsForm(_composition!.Profile, _composition.PrivacyGuard, _composition.Storage, _composition.ThemeManager, _composition.SuggestionPipeline, _composition.SuggestionOverlay, _composition.PersonalizationManager, _composition.TextExpansionManager, _composition.EditConfirmation, provider => LexonServiceComposer.ApplyAiProvider(_composition, provider), _composition.CloudAiLog);
+        _settingsForm = new SettingsForm(_composition!.Profile, _composition.PrivacyGuard, _composition.Storage, _composition.ThemeManager, _composition.SuggestionPipeline, _composition.SuggestionOverlay, _composition.PersonalizationManager, _composition.TextExpansionManager, _composition.EditConfirmation, provider => LexonServiceComposer.ApplyAiProvider(_composition, provider), _composition.CloudAiLog, _composition.AiAccessPolicy, () => _composition.AIProvider?.Name);
         _settingsForm.FormClosed += (_, _) => _settingsForm = null;
     }
 

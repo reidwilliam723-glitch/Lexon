@@ -9,11 +9,16 @@ namespace Lexon.Core.Pipeline;
 /// </summary>
 public class SuggestionPipeline : ISuggestionPipeline
 {
-    private readonly List<ISuggestionProvider> _providers = new();
+    private volatile ISuggestionProvider[] _providers = [];
+    private readonly object _providersLock = new();
     private readonly IPrivacyGuard _privacyGuard;
     private PersonalizationManager? _personalizationManager;
+    private AiAccessPolicy? _accessPolicy;
+    private CloudAiActivityLog? _aiLog;
     private bool _isEnabled = true;
     private string _sortMode = "Relevant";
+    private int _aiEpoch;
+    private CancellationTokenSource _epochCts = new();
 
     public SuggestionPipeline(IPrivacyGuard privacyGuard)
     {
@@ -42,15 +47,46 @@ public class SuggestionPipeline : ISuggestionPipeline
         _personalizationManager = personalizationManager;
     }
 
+    public int AiEpoch => Volatile.Read(ref _aiEpoch);
+
+    public void SetAccessPolicy(AiAccessPolicy? policy) => _accessPolicy = policy;
+
+    public void SetActivityLog(CloudAiActivityLog? log) => _aiLog = log;
+
+    /// <summary>
+    /// Drops in-flight slow-path AI results and cancels their tokens.
+    /// </summary>
+    public void BumpAiEpoch()
+    {
+        Interlocked.Increment(ref _aiEpoch);
+        var next = new CancellationTokenSource();
+        var previous = Interlocked.Exchange(ref _epochCts, next);
+        try
+        {
+            previous.Cancel();
+        }
+        catch (ObjectDisposedException)
+        {
+        }
+
+        previous.Dispose();
+    }
+
     public void AddProvider(ISuggestionProvider provider)
     {
         if (provider == null) throw new ArgumentNullException(nameof(provider));
-        _providers.Add(provider);
+        lock (_providersLock)
+        {
+            _providers = [.. _providers, provider];
+        }
     }
 
     public void RemoveProvider(string providerName)
     {
-        _providers.RemoveAll(p => p.Name == providerName);
+        lock (_providersLock)
+        {
+            _providers = _providers.Where(p => p.Name != providerName).ToArray();
+        }
     }
 
     public async Task<IEnumerable<Suggestion>> GetSuggestionsAsync(TextContext context, CancellationToken cancellationToken = default)
@@ -75,16 +111,23 @@ public class SuggestionPipeline : ISuggestionPipeline
             return Enumerable.Empty<Suggestion>();
         }
 
-        var fast = _providers.Where(p => p.IsFastPath).ToList();
-        var slow = _providers.Where(p => !p.IsFastPath).ToList();
+        var snapshot = _providers;
+        var fast = snapshot.Where(p => p.IsFastPath).ToList();
+        var slow = snapshot.Where(p => !p.IsFastPath).ToList();
         List<ISuggestionProvider> providers;
         if (fastPathOnly)
         {
-            providers = fast.Count > 0 ? fast : _providers.ToList();
+            providers = fast;
         }
         else
         {
-            providers = slow;
+            if (_privacyGuard.IsApplicationBlocked(context.ApplicationName)
+                || _privacyGuard.ShouldBlockAssistance(context))
+            {
+                return Enumerable.Empty<Suggestion>();
+            }
+
+            providers = slow.Where(p => !ShouldSkipSlowProvider(p)).ToList();
         }
 
         if (providers.Count == 0)
@@ -92,7 +135,31 @@ public class SuggestionPipeline : ISuggestionPipeline
             return Enumerable.Empty<Suggestion>();
         }
 
-        var results = await Task.WhenAll(providers.Select(p => p.GetSuggestionsAsync(context, cancellationToken)));
+        var epoch = AiEpoch;
+        using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _epochCts.Token);
+        if (!fastPathOnly)
+        {
+            foreach (var provider in providers)
+            {
+                _aiLog?.TryRecordSuggest(provider.Name, context.ApplicationName);
+            }
+        }
+
+        IEnumerable<Suggestion>[] results;
+        try
+        {
+            results = await Task.WhenAll(providers.Select(p => p.GetSuggestionsAsync(context, linked.Token)));
+        }
+        catch (OperationCanceledException)
+        {
+            return Enumerable.Empty<Suggestion>();
+        }
+
+        if (AiEpoch != epoch)
+        {
+            return Enumerable.Empty<Suggestion>();
+        }
+
         var allSuggestions = results.SelectMany(s => s).ToList();
 
         if (_personalizationManager != null && _personalizationManager.IsEnabled)
@@ -180,7 +247,8 @@ public class SuggestionPipeline : ISuggestionPipeline
 
         _personalizationManager?.LearnWritingStyle(userText, context);
 
-        foreach (var provider in _providers)
+        var snapshot = _providers;
+        foreach (var provider in snapshot)
         {
             if (provider is ILearnableSuggestionProvider learnableProvider)
             {
@@ -206,6 +274,23 @@ public class SuggestionPipeline : ISuggestionPipeline
 
     public bool UndoLastLearn(TimeSpan? maxAge = null)
         => FirstLearnable()?.UndoLastLearn(maxAge) ?? false;
+
+    private bool ShouldSkipSlowProvider(ISuggestionProvider provider)
+    {
+        var policy = _accessPolicy;
+        if (policy == null)
+        {
+            return false;
+        }
+
+        if (policy.LocalOnly)
+        {
+            return true;
+        }
+
+        return !policy.SuggestionsWhileTyping
+            && CloudAiNames.RequiresTypingConsent(provider.Name, provider.NetworkEndpoint);
+    }
 
     private ILearnableSuggestionProvider? FirstLearnable()
         => _providers.OfType<ILearnableSuggestionProvider>().FirstOrDefault();

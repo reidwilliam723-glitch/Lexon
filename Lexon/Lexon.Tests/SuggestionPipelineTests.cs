@@ -58,6 +58,7 @@ public class SuggestionPipelineTests
         // Arrange
         var mockProvider = new Mock<ISuggestionProvider>();
         mockProvider.Setup(p => p.Name).Returns("TestProvider");
+        mockProvider.Setup(p => p.IsFastPath).Returns(true);
         mockProvider.Setup(p => p.GetSuggestionsAsync(It.IsAny<TextContext>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new[] { new Suggestion { Text = "test", Score = 1.0f } });
         
@@ -80,6 +81,7 @@ public class SuggestionPipelineTests
         // Arrange
         var mockProvider = new Mock<ISuggestionProvider>();
         mockProvider.Setup(p => p.Name).Returns("TestProvider");
+        mockProvider.Setup(p => p.IsFastPath).Returns(true);
         mockProvider.Setup(p => p.GetSuggestionsAsync(It.IsAny<TextContext>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new[] { new Suggestion { Text = "test", Score = 1.0f } });
         
@@ -158,6 +160,7 @@ public class SuggestionPipelineTests
     {
         var mockProvider = new Mock<ISuggestionProvider>();
         mockProvider.Setup(p => p.Name).Returns("TestProvider");
+        mockProvider.Setup(p => p.IsFastPath).Returns(true);
         mockProvider.Setup(p => p.GetSuggestionsAsync(It.IsAny<TextContext>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new[]
             {

@@ -21,6 +21,7 @@ public class OllamaProvider : IAIProvider
 
     public string Name => "Ollama";
     public bool IsFastPath => false;
+    public string? NetworkEndpoint => _baseUrl;
 
     public OllamaProvider(string? baseUrl = null, string? model = null, HttpClient? httpClient = null, AIResponseCache? cache = null)
     {

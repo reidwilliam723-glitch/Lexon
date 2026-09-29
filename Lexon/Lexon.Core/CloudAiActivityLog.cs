@@ -23,6 +23,8 @@ public sealed class CloudAiActivityLog
     private readonly List<CloudAiActivityEntry> _entries = [];
     private readonly object _lock = new();
 
+    private readonly Dictionary<string, DateTime> _lastSuggestUtc = new(StringComparer.OrdinalIgnoreCase);
+
     public CloudAiActivityLog(IStorage? storage = null)
     {
         _storage = storage;
@@ -56,6 +58,33 @@ public sealed class CloudAiActivityLog
         }
 
         _ = PersistAsync();
+    }
+
+    /// <summary>
+    /// Records a typing-suggestion send. Cloud providers only. At most one
+    /// entry per app per minute so the log is not flushed by keystrokes.
+    /// </summary>
+    public bool TryRecordSuggest(string? provider, string? applicationName)
+    {
+        if (!CloudAiNames.IsCloud(provider))
+        {
+            return false;
+        }
+
+        var app = string.IsNullOrWhiteSpace(applicationName) ? "(unknown app)" : applicationName.Trim();
+        lock (_lock)
+        {
+            if (_lastSuggestUtc.TryGetValue(app, out var last)
+                && DateTime.UtcNow - last < TimeSpan.FromMinutes(1))
+            {
+                return false;
+            }
+
+            _lastSuggestUtc[app] = DateTime.UtcNow;
+        }
+
+        Record(provider, app, "suggest");
+        return true;
     }
 
     public async Task LoadAsync()

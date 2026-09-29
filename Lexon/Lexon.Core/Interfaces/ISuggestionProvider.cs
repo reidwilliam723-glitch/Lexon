@@ -13,5 +13,10 @@ public interface ISuggestionProvider
     /// </summary>
     bool IsFastPath => true;
 
+    /// <summary>
+    /// Optional network endpoint. Remote Ollama hosts are treated as a cloud send.
+    /// </summary>
+    string? NetworkEndpoint => null;
+
     Task<IEnumerable<Models.Suggestion>> GetSuggestionsAsync(Models.TextContext context, CancellationToken cancellationToken = default);
 }
