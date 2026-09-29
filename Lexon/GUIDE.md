@@ -54,9 +54,20 @@ In Settings you can add shortcuts, for example `addr` → your address. Type the
 
 ## Privacy while testing
 
-Lexon should **not** suggest in password boxes. It also skips some remote/admin tools.
+Lexon should **not** suggest in password boxes. It also skips apps you add under blocked applications, and some remote/admin tools.
 
-If you use a cloud AI key, only features that call that provider send text off the machine (for example rewrite). Everyday word lists stay local.
+Cloud AI is optional and controlled in Settings:
+
+- **Local-only** — no text is sent to any AI provider, including Ollama. Takes effect immediately. Your saved key is kept.
+- **Send words around the cursor to cloud AI while I type** — **off by default**. If you used cloud completions before this update, they stop until you turn this on. Local Ollama on this PC and plugins are not gated by this switch.
+- **Allow AI rewrites of selected text** — on by default once a provider is connected. Only the selection is sent, and only when you ask.
+- **Prepare a rewrite as soon as I select text** — **off by default**.
+
+Settings → AI also has a short explanation next to these switches. A local activity log (no text stored) records cloud sends, including typing suggestions (at most one per app per minute).
+
+### Clipboard when fetching a key
+
+**Get your API key** opens the provider’s key page, then Lexon watches the clipboard for a few minutes for a key that matches that provider. It only looks for a matching key and does not store or send anything else. Cancel anytime. Clipboard text that is not a key for that provider is ignored and is never logged.
 
 Please **do not** type real passwords, secrets, or private documents into test windows if you have cloud AI turned on.
 
@@ -94,7 +105,7 @@ Google Docs is a web editor, not a normal text box. Word suggestions and Tab-to-
 **Popup appears but Tab does nothing / text looks missing**
 
 - Press Esc, click in the text box, try again.
-- Tell Liam the app you were in (Notepad vs Word vs browser).
+- Note which app you were in (Notepad vs Word vs browser) when you report it.
 
 **Windows SmartScreen**
 

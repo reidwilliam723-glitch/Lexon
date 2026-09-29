@@ -54,6 +54,7 @@ public static class LexonServiceComposer
         public SelectionRewriteService? SelectionRewrite { get; set; }
         public GrammarCheckService? GrammarCheck { get; set; }
         public CloudAiActivityLog CloudAiLog { get; set; } = null!;
+        public AiAccessPolicy AiAccessPolicy { get; set; } = null!;
         public UpdateManager UpdateManager { get; set; } = null!;
     }
 
@@ -81,6 +82,12 @@ public static class LexonServiceComposer
         var suggestionSortMode = profile.GetSetting("SuggestionSortMode", "Relevant");
         var suggestionPlacement = profile.GetSetting("SuggestionPlacement", "Below");
         var requireConfirmation = profile.GetSetting("RequireConfirmationForEdits", true);
+        var accessPolicy = new AiAccessPolicy();
+        accessPolicy.Update(
+            localMode,
+            profile.GetSetting("AiSuggestionsWhileTyping", false),
+            profile.GetSetting("AiRewriteOnRequest", true),
+            profile.GetSetting("AiPrefetchOnSelection", false));
 
         // Initialize privacy guard
         var privacyGuard = new PrivacyGuard();
@@ -130,6 +137,8 @@ public static class LexonServiceComposer
         var suggestionPipeline = new SuggestionPipeline(privacyGuard);
         suggestionPipeline.SetPersonalizationManager(personalizationManager);
         suggestionPipeline.SetSortMode(suggestionSortMode);
+        suggestionPipeline.SetAccessPolicy(accessPolicy);
+        suggestionPipeline.SetActivityLog(cloudAiLog);
         suggestionPipeline.AddProvider(new TypoSuggestionProvider());
         suggestionPipeline.AddProvider(new GrammarSuggestionProvider
         {
@@ -216,7 +225,8 @@ public static class LexonServiceComposer
             privacyGuard,
             cloudAiLog,
             selectionChip,
-            glanceOverlay);
+            glanceOverlay,
+            accessPolicy);
         var grammarCheck = new GrammarCheckService(
             aiProvider,
             focusTracker,
@@ -287,12 +297,24 @@ public static class LexonServiceComposer
             SelectionRewrite = selectionRewrite,
             GrammarCheck = grammarCheck,
             CloudAiLog = cloudAiLog,
+            AiAccessPolicy = accessPolicy,
             UpdateManager = UpdateManager.Instance
         };
     }
 
     public static void ApplyAiProvider(CompositionResult composition, IAIProvider? provider)
     {
+        var localMode = composition.Profile.GetSetting("LocalMode", false);
+        if (!AiProviderGuard.ShouldInstall(localMode, provider != null))
+        {
+            if (provider != null)
+            {
+                DiagnosticLog.Write("ApplyAiProvider ignored because LocalMode is on.");
+            }
+
+            provider = null;
+        }
+
         foreach (var name in new[] { "OpenAI", "Gemini", "DeepSeek", "Ollama", "AI" })
         {
             composition.SuggestionPipeline.RemoveProvider(name);
@@ -303,10 +325,15 @@ public static class LexonServiceComposer
             composition.SuggestionPipeline.AddProvider(provider);
         }
 
+        composition.SuggestionPipeline.BumpAiEpoch();
         composition.AIProvider = provider;
         composition.SelectionRewrite?.SetProvider(provider);
         composition.GrammarCheck?.SetProvider(provider);
-        WarmupProvider(provider);
+
+        if (provider != null)
+        {
+            WarmupProvider(provider);
+        }
     }
 
     private static void WarmupProvider(IAIProvider? provider)

@@ -80,6 +80,7 @@ public class SuggestionPipelineBigramTests
 
         var provider = new Mock<ISuggestionProvider>();
         provider.Setup(p => p.Name).Returns("Test");
+        provider.Setup(p => p.IsFastPath).Returns(true);
         provider.Setup(p => p.GetSuggestionsAsync(It.IsAny<TextContext>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new[]
             {

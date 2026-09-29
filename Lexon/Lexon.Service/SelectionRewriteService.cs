@@ -24,7 +24,7 @@ public sealed class SelectionRewriteService
         "Free instruction…"
     ];
 
-    private IAIProvider? _aiProvider;
+    private volatile IAIProvider? _aiProvider;
     private readonly IFocusTracker _focusTracker;
     private readonly ITextInjector _textInjector;
     private readonly UndoManager _undoManager;
@@ -34,6 +34,7 @@ public sealed class SelectionRewriteService
     private readonly Profile _profile;
     private readonly IPrivacyGuard _privacyGuard;
     private readonly CloudAiActivityLog? _aiLog;
+    private readonly AiAccessPolicy? _accessPolicy;
     private readonly SelectionChipOverlay? _chip;
     private readonly GlanceOverlay? _glance;
     private string _pendingSelection = string.Empty;
@@ -62,7 +63,8 @@ public sealed class SelectionRewriteService
         IPrivacyGuard privacyGuard,
         CloudAiActivityLog? aiLog = null,
         SelectionChipOverlay? chip = null,
-        GlanceOverlay? glance = null)
+        GlanceOverlay? glance = null,
+        AiAccessPolicy? accessPolicy = null)
     {
         _aiProvider = aiProvider;
         _focusTracker = focusTracker;
@@ -74,6 +76,11 @@ public sealed class SelectionRewriteService
         _profile = profile;
         _privacyGuard = privacyGuard;
         _aiLog = aiLog;
+        _accessPolicy = accessPolicy;
+        if (_accessPolicy != null)
+        {
+            _accessPolicy.Changed += OnAccessPolicyChanged;
+        }
         _chip = chip;
         _glance = glance;
         _menu.ItemSelected += (_, args) => _ = OnOptionSelected(args.Text);
@@ -81,6 +88,14 @@ public sealed class SelectionRewriteService
         if (_chip != null)
         {
             _chip.Clicked += (_, _) => ShowRewriteMenu();
+        }
+    }
+
+    private void OnAccessPolicyChanged()
+    {
+        if (_accessPolicy != null && !_accessPolicy.AllowsPrefetch)
+        {
+            CancelPrefetch();
         }
     }
 
@@ -116,7 +131,10 @@ public sealed class SelectionRewriteService
 
         var caret = _focusTracker.GetCaretScreenPosition();
         _chip?.ShowNear(caret.X, caret.Y);
-        PrefetchLastUsed(resolved);
+        if (_accessPolicy == null || _accessPolicy.AllowsPrefetch)
+        {
+            PrefetchLastUsed(resolved);
+        }
     }
 
     public bool TryHandleKey(KeyboardEventArgs e)
@@ -296,7 +314,13 @@ public sealed class SelectionRewriteService
 
     private void PrefetchLastUsed(string selected)
     {
-        if (_aiProvider == null || _menu.IsVisible || _confirmation.IsPreviewVisible)
+        if (_accessPolicy != null && !_accessPolicy.AllowsPrefetch)
+        {
+            return;
+        }
+
+        var provider = _aiProvider;
+        if (provider == null || _menu.IsVisible || _confirmation.IsPreviewVisible)
         {
             return;
         }
@@ -312,7 +336,13 @@ public sealed class SelectionRewriteService
 
     private void StartPrefetch(string selected, IEnumerable<string> items, TextContext context)
     {
-        if (_aiProvider == null || string.IsNullOrEmpty(selected) || _privacyGuard.ShouldBlockAssistance(context))
+        var provider = _aiProvider;
+        if (provider == null || string.IsNullOrEmpty(selected) || _privacyGuard.ShouldBlockAssistance(context))
+        {
+            return;
+        }
+
+        if (_accessPolicy != null && !_accessPolicy.AllowsPrefetch)
         {
             return;
         }
@@ -357,7 +387,7 @@ public sealed class SelectionRewriteService
         {
             _prefetch = new Dictionary<string, Task<string>>(StringComparer.Ordinal)
             {
-                [first] = _aiProvider.RewriteTextAsync(selected, instruction, cts.Token)
+                [first] = provider.RewriteTextAsync(selected, instruction, cts.Token)
             };
         }
     }
@@ -376,7 +406,13 @@ public sealed class SelectionRewriteService
         }
 
         CancelPrefetch();
-        return _aiProvider!.RewriteTextAsync(selected, fullInstruction);
+        var provider = _aiProvider;
+        if (provider == null)
+        {
+            return Task.FromResult(selected);
+        }
+
+        return provider.RewriteTextAsync(selected, fullInstruction);
     }
 
     private async Task<string> AwaitRewrite(Task<string> existing, string selected, string fullInstruction)
@@ -387,11 +423,23 @@ public sealed class SelectionRewriteService
         }
         catch (OperationCanceledException)
         {
-            return await _aiProvider!.RewriteTextAsync(selected, fullInstruction);
+            var provider = _aiProvider;
+            if (provider == null)
+            {
+                return selected;
+            }
+
+            return await provider.RewriteTextAsync(selected, fullInstruction);
         }
         catch
         {
-            return await _aiProvider!.RewriteTextAsync(selected, fullInstruction);
+            var provider = _aiProvider;
+            if (provider == null)
+            {
+                return selected;
+            }
+
+            return await provider.RewriteTextAsync(selected, fullInstruction);
         }
     }
 
@@ -436,8 +484,15 @@ public sealed class SelectionRewriteService
         }
 
         var selected = _pendingSelection;
-        if (string.IsNullOrEmpty(selected) || _aiProvider == null)
+        var provider = _aiProvider;
+        if (string.IsNullOrEmpty(selected) || provider == null)
         {
+            return;
+        }
+
+        if (_accessPolicy != null && !_accessPolicy.AllowsRewrite)
+        {
+            NotifyBlocked("AI rewrites are turned off in Settings.");
             return;
         }
 
@@ -522,7 +577,7 @@ public sealed class SelectionRewriteService
             }
             else
             {
-                rewritten = await _aiProvider.RewriteTextAsync(selected, fullInstruction, ct, progress);
+                rewritten = await provider.RewriteTextAsync(selected, fullInstruction, ct, progress);
             }
 
             if (ct.IsCancellationRequested)
@@ -571,7 +626,31 @@ public sealed class SelectionRewriteService
         _ = _profile.SaveAsync();
     }
 
-    public void SetProvider(IAIProvider? provider) => _aiProvider = provider;
+    public void CancelPending()
+    {
+        CancelPrefetch();
+        try
+        {
+            _rewriteCts?.Cancel();
+        }
+        catch (ObjectDisposedException)
+        {
+        }
+    }
+
+    public void SetProvider(IAIProvider? provider)
+    {
+        var previous = _aiProvider;
+        if (!ReferenceEquals(previous, provider))
+        {
+            CancelPending();
+        }
+
+        _aiProvider = provider;
+    }
+
+    internal Task<string> AwaitRewriteForTests(Task<string> existing, string selected)
+        => AwaitRewrite(existing, selected, "test");
 
     public TextContext Enrich(TextContext context)
     {
@@ -605,6 +684,12 @@ public sealed class SelectionRewriteService
 
     private void NoteCloudSend(TextContext context, string action)
     {
-        _aiLog?.Record(_aiProvider?.Name, context.ApplicationName, action);
+        var provider = _aiProvider;
+        if (!CloudAiNames.IsCloud(provider?.Name))
+        {
+            return;
+        }
+
+        _aiLog?.Record(provider?.Name, context.ApplicationName, action);
     }
 }

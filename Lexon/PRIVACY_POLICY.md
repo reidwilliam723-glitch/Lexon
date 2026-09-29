@@ -1,6 +1,6 @@
 # Lexon Privacy Policy
 
-**Last Updated: August 18, 2026**
+**Last Updated: September 29, 2026**
 
 ## Introduction
 
@@ -20,11 +20,19 @@ Lexon may collect the following types of data to provide its services:
 - **Device Information**: Basic device information for compatibility
 
 ### 2. Cloud AI Service Data
-When you enable AI features, the following data may be sent to third-party AI providers:
+AI features are **opt-in** and controlled in Settings. Existing installs keep your saved provider and key, but **AI-while-typing is off after this update** until you turn it on.
 
-- **Text Context**: The text context for which you're requesting suggestions
-- **API Key**: Your OpenAI API key (stored locally, never sent to our servers)
-- **Request Metadata**: Timestamp, request size, and response information
+When a cloud provider is connected, Lexon may send:
+
+- **Typing context** (previous words, current word, following words) — only if **Send words around the cursor to cloud AI while I type** is on. Off by default.
+- **Selected text for a rewrite** — only if **Allow AI rewrites of selected text** is on (default on) and you ask via the Aa chip or shortcut.
+- **Selected text before you pick a rewrite** — only if **Prepare a rewrite as soon as I select text** is on. Off by default.
+
+Requests go to the provider you chose (OpenAI, Gemini, or DeepSeek), not through Lexon servers. **Local-only mode** stops all AI, including Ollama on this PC, immediately without deleting your key.
+
+Ollama bound to this machine is treated as local. An Ollama host that is not loopback is treated like a cloud send for the typing toggle.
+
+Lexon does not send text from password fields or from apps you have blocked.
 
 ### 3. Analytics and Crash Data
 To improve our services, we may collect:
@@ -102,8 +110,8 @@ You have the following rights regarding your personal information:
 - Clear specific data types (learned patterns, history)
 
 ### 3. Control
-- Enable/disable AI features to control cloud data transmission
-- Configure privacy settings for data collection
+- Enable/disable cloud AI while typing, rewrites, and prefetch independently
+- Enable local-only mode to stop all AI immediately (saved keys are kept)
 - Block specific applications from receiving suggestions
 
 ### 4. Opt-Out

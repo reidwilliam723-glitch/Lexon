@@ -2,6 +2,14 @@
 
 All notable changes to Lexon will be documented in this file.
 
+## [1.0.7] - 2026-09-29
+
+### Privacy and AI control
+- Local-only now removes the AI provider immediately (no restart) and cancels in-flight probes so a late result cannot turn AI back on.
+- New Settings switches: cloud AI while typing (default **off**), rewrites of selected text (default on), prefetch on selection (default **off**). Existing users stop sending typing context on update until they opt in.
+- Status line shows which provider is actually installed, or "AI is off". A failed probe never claims a provider is active unless it still is.
+- Typing-suggestion activity is logged (cloud providers only, coalesced) without storing the text.
+
 ## [2.0.0] - 2026-08-19
 
 ### Major New Features

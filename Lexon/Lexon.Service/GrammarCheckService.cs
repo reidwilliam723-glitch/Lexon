@@ -15,7 +15,7 @@ public sealed class GrammarCheckService
 {
     public const string MuteAppItem = "Mute grammar in this app";
 
-    private IAIProvider? _aiProvider;
+    private volatile IAIProvider? _aiProvider;
     private readonly IFocusTracker _focusTracker;
     private readonly IActionMenuOverlay _menu;
     private readonly SelectionRewriteService _rewrite;

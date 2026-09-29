@@ -10,6 +10,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="Lexon.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\Lexon.Core\Lexon.Core.csproj" />
     <ProjectReference Include="..\Lexon.Input\Lexon.Input.csproj" />
     <ProjectReference Include="..\Lexon.Overlay\Lexon.Overlay.csproj" />

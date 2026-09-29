@@ -52,6 +52,11 @@ public partial class SettingsForm : Form
     private CheckBox _chkGrammarChecking = null!;
     private CheckBox _chkAutoCorrectTypos = null!;
     private CheckBox _chkLocalMode = null!;
+    private CheckBox _chkAiTyping = null!;
+    private CheckBox _chkAiRewrite = null!;
+    private CheckBox _chkAiPrefetch = null!;
+    private Label _lblAiActive = null!;
+    private Label _lblAiExplain = null!;
     private TextBox _txtBlockedApps = null!;
     private Button _btnAddBlockedApp = null!;
     private ComboBox _cmbTheme = null!;
@@ -90,7 +95,10 @@ public partial class SettingsForm : Form
     private readonly System.Windows.Forms.Timer _aiProbeTimer;
     private readonly System.Windows.Forms.Timer _clipboardWatchTimeout;
     private readonly Action<IAIProvider?>? _applyAiProvider;
-    private CancellationTokenSource? _aiProbeCts;
+    private readonly AiAccessPolicy? _accessPolicy;
+    private readonly Func<string?>? _installedProviderName;
+    private readonly AiProbeGate _probeGate = new();
+    private readonly AiConnectionStatus _aiConnection = new();
     private bool _loading;
     private bool _aiAdvancedVisible;
     private bool _watchingClipboard;
@@ -113,7 +121,7 @@ public partial class SettingsForm : Form
     {
     }
 
-    public SettingsForm(Profile? profile, PrivacyGuard? privacyGuard, IStorage? storage, ThemeManager? themeManager = null, SuggestionPipeline? suggestionPipeline = null, ISuggestionOverlay? suggestionOverlay = null, PersonalizationManager? personalization = null, TextExpansionManager? expansions = null, IEditConfirmation? editConfirmation = null, Action<IAIProvider?>? applyAiProvider = null, CloudAiActivityLog? cloudAiLog = null)
+    public SettingsForm(Profile? profile, PrivacyGuard? privacyGuard, IStorage? storage, ThemeManager? themeManager = null, SuggestionPipeline? suggestionPipeline = null, ISuggestionOverlay? suggestionOverlay = null, PersonalizationManager? personalization = null, TextExpansionManager? expansions = null, IEditConfirmation? editConfirmation = null, Action<IAIProvider?>? applyAiProvider = null, CloudAiActivityLog? cloudAiLog = null, AiAccessPolicy? accessPolicy = null, Func<string?>? installedAiProviderName = null)
     {
         _ownsProfile = profile == null;
         var storagePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Lexon");
@@ -128,6 +136,8 @@ public partial class SettingsForm : Form
         _editConfirmation = editConfirmation;
         _applyAiProvider = applyAiProvider;
         _cloudAiLog = cloudAiLog;
+        _accessPolicy = accessPolicy;
+        _installedProviderName = installedAiProviderName;
         _persistTimer = new System.Windows.Forms.Timer { Interval = 400 };
         _persistTimer.Tick += (_, _) => FlushPersist();
         _aiProbeTimer = new System.Windows.Forms.Timer { Interval = 500 };
@@ -184,8 +194,8 @@ public partial class SettingsForm : Form
             _aiProbeTimer.Dispose();
             _clipboardWatchTimeout.Stop();
             _clipboardWatchTimeout.Dispose();
-            _aiProbeCts?.Cancel();
-            _aiProbeCts?.Dispose();
+            _probeGate.Invalidate();
+            _probeGate.Dispose();
         };
         VisibleChanged += (_, _) =>
         {
@@ -336,16 +346,41 @@ public partial class SettingsForm : Form
         };
         _lblAiModel = Caption("Model");
         _cmbAiModel = Combo(360);
+        _lblAiActive = new Label
+        {
+            AutoSize = true,
+            MaximumSize = new Size(360, 0),
+            Margin = new Padding(0, 0, 0, 4),
+            Font = new Font("Segoe UI", 9, FontStyle.Bold),
+            ForeColor = Color.FromArgb(50, 50, 50),
+            Text = "AI is off"
+        };
+        _lblAiExplain = new Label
+        {
+            AutoSize = true,
+            MaximumSize = new Size(360, 0),
+            Margin = new Padding(0, 0, 0, 8),
+            ForeColor = Color.FromArgb(90, 90, 90),
+            Text = "When cloud AI suggestions are on, the words around your cursor are sent to your chosen provider as you type. Rewrites send only the text you select. Local Ollama on this PC is not gated by the typing toggle. Nothing is sent in Local-only mode or in blocked apps and password fields."
+        };
+        _chkAiTyping = Check("Send words around the cursor to cloud AI while I type");
+        _chkAiRewrite = Check("Allow AI rewrites of selected text");
+        _chkAiPrefetch = Check("Prepare a rewrite as soon as I select text");
         _sectionAi = Section(
             "AI",
             Hint(_lblAiRecommended, "Paste an API key to connect. OpenAI is recommended."),
             _lnkMoreProviders,
             _cmbAIProvider,
-            Hint(_btnGetApiKey, "Opens the provider’s key page, then waits for you to copy a key."),
+            Hint(_btnGetApiKey, "Opens the provider’s key page, then watches your clipboard for a matching key only. Lexon does not store or send anything else from the clipboard. Cancel anytime."),
             Caption("API key"),
             _txtAPIKey,
             _btnCancelWait,
+            _lblAiActive,
             _lblAiStatus,
+            _lblAiExplain,
+            Hint(_chkAiTyping, "Off by default. Applies to OpenAI, Gemini, DeepSeek, and Ollama that is not on this PC. Local Ollama and plugins still work unless Local-only is on."),
+            Hint(_chkAiRewrite, "Explicit rewrites from the Aa chip or shortcut. Does not send text until you ask."),
+            Hint(_chkAiPrefetch, "Off by default. When on, selecting text may send it before you pick a rewrite."),
             _lblAiModel,
             Hint(_cmbAiModel, "Filled automatically. Change only if you want a different model."));
 
@@ -379,7 +414,7 @@ public partial class SettingsForm : Form
         _btnAiLog.Click += OnAiLogClicked;
         _sectionPrivacy = Section(
             "Privacy",
-            Hint(_chkLocalMode, "No cloud AI. Dictionary suggestions still work."),
+            Hint(_chkLocalMode, "Turns off every AI provider immediately, including Ollama. Saved keys stay so you can turn it back on."),
             Caption("Blocked apps"),
             Hint(_blockedRow, "Password fields are always skipped. Add comma-separated process names, for example outlook.exe, or pick a running app."),
             Hint(_btnAiLog, "Shows recent cloud AI requests from this PC."));
@@ -1040,6 +1075,8 @@ public partial class SettingsForm : Form
             SetWidth(_cmbAiModel, left);
             _lblAiRecommended.MaximumSize = new Size(left, 0);
             _lblAiStatus.MaximumSize = new Size(left, 0);
+            _lblAiActive.MaximumSize = new Size(left, 0);
+            _lblAiExplain.MaximumSize = new Size(left, 0);
             FitBlockedAppsRow(left);
             SetWidth(_cmbQuickPause, left);
             SetWidth(_cmbTheme, middle);
@@ -1084,6 +1121,8 @@ public partial class SettingsForm : Form
             SetWidth(_cmbAiModel, 360);
             _lblAiRecommended.MaximumSize = new Size(360, 0);
             _lblAiStatus.MaximumSize = new Size(360, 0);
+            _lblAiActive.MaximumSize = new Size(360, 0);
+            _lblAiExplain.MaximumSize = new Size(360, 0);
             FitBlockedAppsRow(360);
             SetWidth(_cmbQuickPause, 360);
             SetWidth(_cmbTheme, 360);
@@ -1306,10 +1345,22 @@ public partial class SettingsForm : Form
         _cmbQuickPause.SelectedIndexChanged += (_, _) => ApplyNow();
         _chkLocalMode.CheckedChanged += (_, _) =>
         {
-            ApplyNow();
-            UpdateAiEntryMode();
-            ScheduleAiProbe();
+            if (_loading)
+            {
+                return;
+            }
+
+            if (_chkLocalMode.Checked)
+            {
+                EnterLocalOnly();
+                return;
+            }
+
+            LeaveLocalOnly();
         };
+        _chkAiTyping.CheckedChanged += (_, _) => ApplyAiPolicyNow();
+        _chkAiRewrite.CheckedChanged += (_, _) => ApplyAiPolicyNow();
+        _chkAiPrefetch.CheckedChanged += (_, _) => ApplyAiPolicyNow();
         _cmbAIProvider.SelectedIndexChanged += (_, _) =>
         {
             if (_loading)
@@ -1369,14 +1420,11 @@ public partial class SettingsForm : Form
         }
 
         UpdateAiEntryMode();
-        SetAiStatus(
-            _aiValidated && !_activeProvider.Equals("None", StringComparison.OrdinalIgnoreCase)
-                ? (_activeProvider.Equals("Ollama", StringComparison.OrdinalIgnoreCase)
-                    ? "Ollama is the saved provider. Checking…"
-                    : "Key saved. Checking…")
-                : "Paste a key to connect. Lexon will check it automatically.",
-            _aiValidated ? Color.FromArgb(0, 120, 80) : Color.FromArgb(90, 90, 90));
         _chkLocalMode.Checked = _profile.GetSetting("LocalMode", false);
+        _chkAiTyping.Checked = _profile.GetSetting("AiSuggestionsWhileTyping", false);
+        _chkAiRewrite.Checked = _profile.GetSetting("AiRewriteOnRequest", true);
+        _chkAiPrefetch.Checked = _profile.GetSetting("AiPrefetchOnSelection", false);
+        UpdateAiEntryMode();
 
         var blockedApps = _profile.GetSetting<List<string>>("BlockedApplications", new List<string>());
         _txtBlockedApps.Text = string.Join(", ", blockedApps);
@@ -1409,7 +1457,14 @@ public partial class SettingsForm : Form
 
         RefreshLearnedUi();
         _loading = false;
-        if (!_chkLocalMode.Checked)
+        SyncAiConnectionFromLoad();
+        PushAiPolicy();
+        if (_chkLocalMode.Checked)
+        {
+            _aiConnection.EnterLocalOnly();
+            PaintAiStatus(Color.FromArgb(140, 100, 0));
+        }
+        else if (!_chkLocalMode.Checked)
         {
             ScheduleAiProbe();
         }
@@ -1470,6 +1525,9 @@ public partial class SettingsForm : Form
         _profile.SetSetting("AIKeyValidated", _aiValidated);
         _profile.SetSetting("AIModel", SelectedModel());
         _profile.SetSetting("LocalMode", _chkLocalMode.Checked);
+        _profile.SetSetting("AiSuggestionsWhileTyping", _chkAiTyping.Checked);
+        _profile.SetSetting("AiRewriteOnRequest", _chkAiRewrite.Checked);
+        _profile.SetSetting("AiPrefetchOnSelection", _chkAiPrefetch.Checked);
         _profile.SetSetting("BlockedApplications", blockedApps);
         _profile.SetSetting("Theme", selectedTheme);
         _profile.SetSetting("SuggestionSortMode", selectedSortMode);
@@ -1495,6 +1553,7 @@ public partial class SettingsForm : Form
         _privacyGuard.ReplaceBlockedApplications(blockedApps);
         _suggestionPipeline?.SetSortMode(selectedSortMode);
         _suggestionOverlay?.SetPlacement(selectedPlacement);
+        PushAiPolicy();
         SetupMinimizeToTrayBehavior();
     }
 
@@ -1559,6 +1618,11 @@ public partial class SettingsForm : Form
         {
             _lblAiRecommended.Text = provider;
         }
+
+        var aiFeaturesEnabled = !_chkLocalMode.Checked;
+        _chkAiTyping.Enabled = aiFeaturesEnabled;
+        _chkAiRewrite.Enabled = aiFeaturesEnabled;
+        _chkAiPrefetch.Enabled = aiFeaturesEnabled;
     }
 
     private void ScheduleAiProbe()
@@ -1578,6 +1642,78 @@ public partial class SettingsForm : Form
         _lblAiStatus.ForeColor = color;
     }
 
+    private void PaintAiStatus(Color color)
+    {
+        _lblAiActive.Text = _aiConnection.ActiveLine;
+        SetAiStatus(_aiConnection.Detail, color);
+    }
+
+    private string? InstalledProviderName()
+    {
+        var name = _installedProviderName?.Invoke();
+        return string.IsNullOrWhiteSpace(name) ? null : name;
+    }
+
+    private void SyncAiConnectionFromLoad()
+    {
+        if (_chkLocalMode.Checked)
+        {
+            return;
+        }
+
+        var keyPresent = _aiValidated && !_activeProvider.Equals("None", StringComparison.OrdinalIgnoreCase);
+        _aiConnection.SeedFromInstalled(InstalledProviderName(), SelectedModel(), keyPresent);
+        PaintAiStatus(string.IsNullOrEmpty(InstalledProviderName())
+            ? Color.FromArgb(90, 90, 90)
+            : Color.FromArgb(0, 120, 80));
+    }
+
+    private void PushAiPolicy()
+    {
+        var changed = _accessPolicy?.Update(
+            _chkLocalMode.Checked,
+            _chkAiTyping.Checked,
+            _chkAiRewrite.Checked,
+            _chkAiPrefetch.Checked) ?? false;
+        if (changed)
+        {
+            _suggestionPipeline?.BumpAiEpoch();
+        }
+    }
+
+    private void ApplyAiPolicyNow()
+    {
+        if (_loading)
+        {
+            return;
+        }
+
+        PushAiPolicy();
+        ApplyNow();
+    }
+
+    private void EnterLocalOnly()
+    {
+        _aiProbeTimer.Stop();
+        _probeGate.Invalidate();
+        StopClipboardWatch();
+        ApplyNow();
+        _applyAiProvider?.Invoke(null);
+        _aiConnection.EnterLocalOnly();
+        PaintAiStatus(Color.FromArgb(140, 100, 0));
+        UpdateAiEntryMode();
+    }
+
+    private void LeaveLocalOnly()
+    {
+        ApplyNow();
+        UpdateAiEntryMode();
+        ScheduleAiProbe();
+    }
+
+    private bool ProbeStillCurrent(AiProbeGate.Ticket ticket)
+        => !IsDisposed && _probeGate.IsCurrent(ticket) && !_chkLocalMode.Checked;
+
     private async Task ProbeAiAsync()
     {
         if (IsDisposed)
@@ -1587,19 +1723,28 @@ public partial class SettingsForm : Form
 
         if (_chkLocalMode.Checked)
         {
-            SetAiStatus("Local-only mode is on, so AI is not used.", Color.FromArgb(140, 100, 0));
+            _aiConnection.EnterLocalOnly();
+            PaintAiStatus(Color.FromArgb(140, 100, 0));
             return;
         }
 
+        var ticket = _probeGate.Begin();
+        var token = _probeGate.Token;
         var provider = SelectedUiProvider();
         var key = _txtAPIKey.Text.Trim();
 
         if (provider.Equals("None", StringComparison.OrdinalIgnoreCase))
         {
+            if (!ProbeStillCurrent(ticket))
+            {
+                return;
+            }
+
             _activeProvider = "None";
             _activeApiKey = string.Empty;
             _aiValidated = true;
-            SetAiStatus("AI provider disconnected.", Color.FromArgb(90, 90, 90));
+            _aiConnection.EnterDisconnected();
+            PaintAiStatus(Color.FromArgb(90, 90, 90));
             ApplyNow();
             _applyAiProvider?.Invoke(null);
             return;
@@ -1609,21 +1754,15 @@ public partial class SettingsForm : Form
         {
             if (!_watchingClipboard)
             {
-                SetAiStatus("Paste a key to connect. Lexon will check it automatically.", Color.FromArgb(90, 90, 90));
+                _aiConnection.EnterNotConfigured();
+                PaintAiStatus(Color.FromArgb(90, 90, 90));
             }
 
             return;
         }
 
-        var checking = provider.Equals("Ollama", StringComparison.OrdinalIgnoreCase)
-            ? "Checking for Ollama running locally…"
-            : "Checking key…";
-        SetAiStatus(checking, Color.FromArgb(0, 90, 160));
-
-        _aiProbeCts?.Cancel();
-        _aiProbeCts?.Dispose();
-        _aiProbeCts = new CancellationTokenSource();
-        var token = _aiProbeCts.Token;
+        _aiConnection.EnterChecking(provider);
+        PaintAiStatus(Color.FromArgb(0, 90, 160));
 
         AiProbeResult result;
         try
@@ -1635,14 +1774,26 @@ public partial class SettingsForm : Form
             return;
         }
 
-        if (IsDisposed || token.IsCancellationRequested)
+        if (!ProbeStillCurrent(ticket) || token.IsCancellationRequested)
         {
             return;
         }
 
         if (!result.Succeeded)
         {
-            SetAiStatus(result.Message, Color.FromArgb(180, 40, 40));
+            var installed = InstalledProviderName();
+            _aiConnection.EnterFailed(result.Message, installed);
+            PaintAiStatus(Color.FromArgb(180, 40, 40));
+            if (string.IsNullOrEmpty(installed))
+            {
+                _applyAiProvider?.Invoke(null);
+            }
+
+            return;
+        }
+
+        if (!ProbeStillCurrent(ticket))
+        {
             return;
         }
 
@@ -1650,15 +1801,23 @@ public partial class SettingsForm : Form
         _activeApiKey = AiProviderCatalog.UsesApiKey(provider) ? key : string.Empty;
         _aiValidated = true;
         EnsureDefaultModel(provider);
-        SetAiStatus(provider.Equals("Ollama", StringComparison.OrdinalIgnoreCase) ? "Ollama found." : "Connected.", Color.FromArgb(0, 120, 80));
+        var model = SelectedModel();
+        _aiConnection.EnterConnected(provider, model);
+        PaintAiStatus(Color.FromArgb(0, 120, 80));
         ApplyNow();
+        if (!ProbeStillCurrent(ticket))
+        {
+            return;
+        }
+
         try
         {
-            _applyAiProvider?.Invoke(AiProviderCatalog.Create(provider, key, model: SelectedModel()));
+            _applyAiProvider?.Invoke(AiProviderCatalog.Create(provider, key, model: model));
         }
         catch (Exception)
         {
-            SetAiStatus("Connected, but Lexon could not switch providers until restart.", Color.FromArgb(140, 100, 0));
+            _aiConnection.EnterFailed("Lexon could not switch providers.", InstalledProviderName());
+            PaintAiStatus(Color.FromArgb(140, 100, 0));
         }
     }
 
@@ -1773,7 +1932,7 @@ public partial class SettingsForm : Form
         _btnCancelWait.Visible = true;
         _clipboardWatchTimeout.Stop();
         _clipboardWatchTimeout.Start();
-        SetAiStatus("Waiting for you to copy your key from the browser…", Color.FromArgb(0, 90, 160));
+        SetAiStatus("Lexon is watching your clipboard for the next few minutes to catch a key that matches this provider. It only looks for a matching key and does not store or send anything else. Cancel anytime.", Color.FromArgb(0, 90, 160));
     }
 
     private void StopClipboardWatch(string? status = null)
