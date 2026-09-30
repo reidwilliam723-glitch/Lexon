@@ -29,6 +29,7 @@
     <ProjectReference Include="..\Lexon.Service\Lexon.Service.csproj" />
     <ProjectReference Include="..\Lexon.Overlay\Lexon.Overlay.csproj" />
     <ProjectReference Include="..\Lexon.Ui\Lexon.Ui.csproj" />
+    <ProjectReference Include="..\Lexon.SettingsModel\Lexon.SettingsModel.csproj" />
   </ItemGroup>
 
 </Project>

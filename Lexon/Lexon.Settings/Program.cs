@@ -6,6 +6,7 @@ using Lexon.Core;
 using Lexon.Core.Interfaces;
 using Lexon.Core.Models;
 using Lexon.Ui;
+using Lexon.SettingsUi;
 using Velopack;
 
 namespace Lexon.Settings;
@@ -30,6 +31,7 @@ static class Program
     private static AboutForm? _aboutForm;
     private static bool _restartedAfterCrash;
     private static bool _suppressQuickPause;
+    private static bool _enableUiGallery;
 
     /// <summary>
     ///  The main entry point for the application.
@@ -37,9 +39,12 @@ static class Program
     [STAThread]
     static void Main(string[] args)
     {
-        // Must be the first thing that runs: Velopack intercepts the install,
-        // update, and uninstall hook arguments here and exits on its own.
-        VelopackApp.Build().Run();
+        if (args.Any(argument => argument.Equals("--ui-timing", StringComparison.OrdinalIgnoreCase)))
+        {
+            ApplicationConfiguration.Initialize();
+            UiOpenTiming.Run();
+            return;
+        }
 
         if (args.Any(argument => argument.Equals("--paint-probe", StringComparison.OrdinalIgnoreCase)))
         {
@@ -54,6 +59,12 @@ static class Program
             LexonIconFactory.WriteIco(iconPath);
             return;
         }
+
+        // Must run before the rest of startup: Velopack intercepts the install,
+        // update, and uninstall hook arguments here and exits on its own.
+        VelopackApp.Build().Run();
+
+        _enableUiGallery = args.Any(argument => argument.Equals("--ui-gallery", StringComparison.OrdinalIgnoreCase));
 
         _restartedAfterCrash = args.Any(argument => argument.Equals("--after-crash", StringComparison.OrdinalIgnoreCase));
 
@@ -137,6 +148,12 @@ static class Program
             _trayManager.PauseFifteenRequested += OnPauseFifteenRequested;
             _trayManager.PauseThisAppRequested += OnPauseThisAppRequested;
             _trayManager.ResumeRequested += OnResumeRequested;
+            if (_enableUiGallery)
+            {
+                _trayManager.ControlGalleryRequested += (_, _) =>
+                    InvokeOnUiThread(() => SettingsUiHost.ShowGallery(_composition!.ThemeManager));
+                _trayManager.ShowControlGalleryItem();
+            }
             UpdateChecker.BusyChanged += busy => _trayManager?.SetUpdatesBusy(busy);
             _composition.KeyboardShortcutManager.ShortcutTriggered += OnShortcutTriggered;
             _composition.UndoManager.Changed += (_, _) =>
@@ -378,6 +395,14 @@ static class Program
         }
 
         EnsureSettingsForm();
+        if (_composition != null)
+        {
+            SettingsUiHost.Warm(_composition.ThemeManager);
+            if (_enableUiGallery)
+            {
+                SettingsUiHost.ShowGallery(_composition.ThemeManager);
+            }
+        }
     }
 
     private static void EnsureSettingsForm()
@@ -426,6 +451,7 @@ static class Program
         _shuttingDown = true;
         Application.Idle -= WarmSettingsOnIdle;
         Application.Idle -= ShowCoachOnIdle;
+        SettingsUiHost.Shutdown();
         CancelTimedPause();
         if (_settingsForm is { IsDisposed: false })
         {

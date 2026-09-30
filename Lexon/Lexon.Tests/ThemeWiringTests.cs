@@ -50,6 +50,52 @@ public class ThemeWiringTests
         Assert.Equal(ColorTranslator.FromHtml("#2D2D2D"), palette.Background);
         Assert.Equal(ColorTranslator.FromHtml("#0078D4"), palette.SourceColor("Dictionary"));
         Assert.Equal(ColorTranslator.FromHtml("#8844AA"), palette.SourceColor("AI"));
+        Assert.Equal(ColorTranslator.FromHtml("#FFFFFF"), palette.SelectedText);
+    }
+
+    [Fact]
+    public void OverlayThemePalette_SelectedTextUsesOnPrimary()
+    {
+        var palette = new OverlayThemePalette();
+        palette.Apply(new Theme
+        {
+            Name = "DarkBrand",
+            Colors = new ThemeColors
+            {
+                Primary = "#6B9BFF",
+                OnPrimary = "#0B1020",
+                Surface = "#1E2128",
+                Background = "#16181D",
+                Text = "#F2F4F8",
+                TextSecondary = "#A9B1C1",
+                Border = "#4A5162",
+                Success = "#4CC38A",
+                Warning = "#F2B24A",
+                Error = "#FF8A7A",
+                Accent = "#6B9BFF"
+            }
+        });
+
+        Assert.Equal(ColorTranslator.FromHtml("#0B1020"), palette.SelectedText);
+        Assert.Equal(ColorTranslator.FromHtml("#6B9BFF"), palette.SelectedBackground);
+    }
+
+    [Theory]
+    [InlineData("Light", "#0A3BA6", "#FFFFFF")]
+    [InlineData("Dark", "#6B9BFF", "#0B1020")]
+    [InlineData("High Contrast", "#FFFF00", "#000000")]
+    public void BuiltInTheme_SelectedRowUsesOnPrimary(string themeName, string primary, string onPrimary)
+    {
+        var themeManager = new ThemeManager(new MemoryStorage());
+        var theme = themeManager.GetTheme(themeName);
+        Assert.NotNull(theme);
+        Assert.Equal(primary, theme!.Colors.Primary, ignoreCase: true);
+        Assert.Equal(onPrimary, theme.Colors.OnPrimary, ignoreCase: true);
+
+        var palette = new OverlayThemePalette();
+        palette.Apply(theme);
+        Assert.Equal(ColorTranslator.FromHtml(onPrimary), palette.SelectedText);
+        Assert.Equal(ColorTranslator.FromHtml(primary), palette.SelectedBackground);
     }
 
     private sealed class MemoryStorage : IStorage

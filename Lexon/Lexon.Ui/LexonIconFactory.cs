@@ -9,7 +9,7 @@ namespace Lexon.Ui;
 /// </summary>
 public static class LexonIconFactory
 {
-    public static readonly Color Brand = Color.FromArgb(37, 99, 235);
+    public static readonly Color Brand = Color.FromArgb(0x0A, 0x3B, 0xA6);
     public static readonly Color BrandMuted = Color.FromArgb(148, 163, 184);
     public static readonly Color BrandError = Color.FromArgb(220, 38, 38);
     public static readonly Color BrandLearning = Color.FromArgb(5, 150, 105);

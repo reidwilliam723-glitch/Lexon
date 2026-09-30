@@ -39,7 +39,7 @@ public sealed class OverlayThemePalette
         Muted = FromHtml(theme.Colors.TextSecondary);
         Primary = FromHtml(theme.Colors.Primary);
         SelectedBackground = FromHtml(theme.Colors.Primary);
-        SelectedText = Color.White;
+        SelectedText = FromHtml(string.IsNullOrWhiteSpace(theme.Colors.OnPrimary) ? "#FFFFFF" : theme.Colors.OnPrimary);
         HoverBackground = Blend(Background, FromHtml(theme.Colors.Background), 0.35f);
         Add = FromHtml(theme.Colors.Success);
         Remove = FromHtml(theme.Colors.Error);

@@ -40,6 +40,7 @@ public class SystemTrayManager : IDisposable
     public event EventHandler? PauseFifteenRequested;
     public event EventHandler? PauseThisAppRequested;
     public event EventHandler? ResumeRequested;
+    public event EventHandler? ControlGalleryRequested;
 
     public SystemTrayManager()
     {
@@ -103,6 +104,37 @@ public class SystemTrayManager : IDisposable
         _notifyIcon.ContextMenuStrip = _contextMenu;
         _notifyIcon.DoubleClick += (_, _) => SettingsRequested?.Invoke(this, EventArgs.Empty);
         _ = _contextMenu.Handle;
+    }
+
+    /// <summary>
+    /// Adds a hidden-switch tray item used to review WPF templates. Not shown in shipping builds.
+    /// </summary>
+    public void ShowControlGalleryItem()
+    {
+        InvokeOnUiThread(() =>
+        {
+            foreach (ToolStripItem existing in _contextMenu.Items)
+            {
+                if (existing.Text == "Control gallery")
+                {
+                    return;
+                }
+            }
+
+            var item = new ToolStripMenuItem("Control gallery");
+            item.Click += (_, _) => ControlGalleryRequested?.Invoke(this, EventArgs.Empty);
+            var insertAt = _contextMenu.Items.Count;
+            for (var i = 0; i < _contextMenu.Items.Count; i++)
+            {
+                if (_contextMenu.Items[i].Text == "Settings")
+                {
+                    insertAt = i + 1;
+                    break;
+                }
+            }
+
+            _contextMenu.Items.Insert(insertAt, item);
+        });
     }
 
     public void SetStatus(ServiceStatus status, string? additionalInfo = null)

@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Lexon.Core\Lexon.Core.csproj" />
+    <ProjectReference Include="..\Lexon.Profiles\Lexon.Profiles.csproj" />
+    <ProjectReference Include="..\Lexon.AI\Lexon.AI.csproj" />
+    <ProjectReference Include="..\Lexon.Storage\Lexon.Storage.csproj" />
+  </ItemGroup>
+
+</Project>

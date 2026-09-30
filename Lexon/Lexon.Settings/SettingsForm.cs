@@ -11,6 +11,7 @@ using Lexon.Core.Expansion;
 using Lexon.Core;
 using Lexon.Core.Models;
 using Lexon.Overlay.Interfaces;
+using Lexon.SettingsModel;
 using Lexon.Ui;
 using System.Diagnostics;
 using System.Drawing.Drawing2D;
@@ -37,7 +38,6 @@ public partial class SettingsForm : Form
     private CheckBox _chkCheckUpdates = null!;
     private CheckBox _chkOpenFullScreen = null!;
     private ComboBox _cmbQuickPause = null!;
-    private static readonly int[] QuickPauseChoices = [0, 1, 5, 15, 30, 60];
     private ComboBox _cmbAIProvider = null!;
     private TextBox _txtAPIKey = null!;
     private Label _lblAiRecommended = null!;
@@ -97,15 +97,13 @@ public partial class SettingsForm : Form
     private readonly Action<IAIProvider?>? _applyAiProvider;
     private readonly AiAccessPolicy? _accessPolicy;
     private readonly Func<string?>? _installedProviderName;
-    private readonly AiProbeGate _probeGate = new();
-    private readonly AiConnectionStatus _aiConnection = new();
+    private readonly AppSettings _appSettings = new();
+    private readonly AiProbeSession _ai = new();
+    private readonly PersistScheduler _persist;
     private bool _loading;
     private bool _aiAdvancedVisible;
     private bool _watchingClipboard;
     private string? _waitingProvider;
-    private string _activeProvider = "None";
-    private string _activeApiKey = string.Empty;
-    private bool _aiValidated;
     private bool _settingsRevealed;
     private int _paintFreeze;
     private ToolTip? _infoTip;
@@ -138,6 +136,22 @@ public partial class SettingsForm : Form
         _cloudAiLog = cloudAiLog;
         _accessPolicy = accessPolicy;
         _installedProviderName = installedAiProviderName;
+        _persist = new PersistScheduler(() =>
+        {
+            ApplySettings();
+            _ = _profile.SaveAsync();
+        });
+        _ai.IsAlive = () => !IsDisposed;
+        _ai.InstalledProviderName = InstalledProviderName;
+        _ai.ApplyProvider = provider => _applyAiProvider?.Invoke(provider);
+        _ai.Persist = () =>
+        {
+            if (!_loading)
+            {
+                ApplySettings();
+                SchedulePersist();
+            }
+        };
         _persistTimer = new System.Windows.Forms.Timer { Interval = 400 };
         _persistTimer.Tick += (_, _) => FlushPersist();
         _aiProbeTimer = new System.Windows.Forms.Timer { Interval = 500 };
@@ -194,8 +208,8 @@ public partial class SettingsForm : Form
             _aiProbeTimer.Dispose();
             _clipboardWatchTimeout.Stop();
             _clipboardWatchTimeout.Dispose();
-            _probeGate.Invalidate();
-            _probeGate.Dispose();
+            _ai.Gate.Invalidate();
+            _ai.Gate.Dispose();
         };
         VisibleChanged += (_, _) =>
         {
@@ -1400,71 +1414,66 @@ public partial class SettingsForm : Form
     private void LoadSettings()
     {
         _loading = true;
+        _persist.IsLoading = true;
+        _appSettings.Read(_profile);
         _chkAutoStart.Checked = WindowsStartup.IsEnabled();
-        _chkMinimizeToTray.Checked = _profile.GetSetting("MinimizeToTray", true);
-        _chkCheckUpdates.Checked = _profile.GetSetting("EnableAutoUpdates", true);
-        _chkOpenFullScreen.Checked = _profile.GetSetting("OpenSettingsFullScreen", false);
-        _cmbQuickPause.SelectedIndex = PauseIndexFromMinutes(_profile.GetSetting("QuickPauseMinutes", 15));
+        _chkMinimizeToTray.Checked = _appSettings.MinimizeToTray;
+        _chkCheckUpdates.Checked = _appSettings.EnableAutoUpdates;
+        _chkOpenFullScreen.Checked = _appSettings.OpenSettingsFullScreen;
+        _cmbQuickPause.SelectedIndex = QuickPauseOptions.IndexFromMinutes(_appSettings.QuickPauseMinutes);
 
-        var provider = _profile.GetSetting("AIProvider", "None");
-        _activeProvider = string.IsNullOrWhiteSpace(provider) ? "None" : provider;
-        _activeApiKey = _profile.GetSetting("APIKey", string.Empty);
-        _aiValidated = _profile.GetSetting("AIKeyValidated", !string.IsNullOrEmpty(_activeApiKey) || _activeProvider.Equals("Ollama", StringComparison.OrdinalIgnoreCase));
-        var providerIndex = _cmbAIProvider.Items.IndexOf(_activeProvider);
+        _ai.ActiveProvider = _appSettings.AIProvider;
+        _ai.ActiveApiKey = _appSettings.APIKey;
+        _ai.AiValidated = _appSettings.AIKeyValidated;
+        var providerIndex = _cmbAIProvider.Items.IndexOf(_ai.ActiveProvider);
         _cmbAIProvider.SelectedIndex = providerIndex >= 0 ? providerIndex : _cmbAIProvider.Items.IndexOf(AiProviderCatalog.Recommended);
-        _txtAPIKey.Text = _activeApiKey;
-        FillModelChoices(_activeProvider.Equals("None", StringComparison.OrdinalIgnoreCase) ? AiProviderCatalog.Recommended : _activeProvider, _profile.GetSetting("AIModel", string.Empty));
-        if (AiProviderCatalog.ShowAdvancedByDefault(_activeProvider))
+        _txtAPIKey.Text = _ai.ActiveApiKey;
+        FillModelChoices(_ai.ActiveProvider.Equals("None", StringComparison.OrdinalIgnoreCase) ? AiProviderCatalog.Recommended : _ai.ActiveProvider, _appSettings.AIModel);
+        if (AiProviderCatalog.ShowAdvancedByDefault(_ai.ActiveProvider))
         {
             ShowAdvancedProviders();
         }
 
         UpdateAiEntryMode();
-        _chkLocalMode.Checked = _profile.GetSetting("LocalMode", false);
-        _chkAiTyping.Checked = _profile.GetSetting("AiSuggestionsWhileTyping", false);
-        _chkAiRewrite.Checked = _profile.GetSetting("AiRewriteOnRequest", true);
-        _chkAiPrefetch.Checked = _profile.GetSetting("AiPrefetchOnSelection", false);
+        _chkLocalMode.Checked = _appSettings.LocalMode;
+        _chkAiTyping.Checked = _appSettings.AiSuggestionsWhileTyping;
+        _chkAiRewrite.Checked = _appSettings.AiRewriteOnRequest;
+        _chkAiPrefetch.Checked = _appSettings.AiPrefetchOnSelection;
         UpdateAiEntryMode();
 
-        var blockedApps = _profile.GetSetting<List<string>>("BlockedApplications", new List<string>());
-        _txtBlockedApps.Text = string.Join(", ", blockedApps);
+        _txtBlockedApps.Text = BlockedAppList.FormatCsv(_appSettings.BlockedApplications);
 
-        var currentTheme = _profile.GetSetting("Theme", "Light");
-        var themeIndex = _cmbTheme.Items.IndexOf(currentTheme);
+        var themeIndex = _cmbTheme.Items.IndexOf(_appSettings.Theme);
         _cmbTheme.SelectedIndex = themeIndex >= 0 ? themeIndex : 0;
 
-        var sortMode = _profile.GetSetting("SuggestionSortMode", "Relevant");
-        _cmbSuggestionSort.SelectedIndex = string.Equals(sortMode, "Used", StringComparison.OrdinalIgnoreCase) ? 1 : 0;
-
-        var placement = _profile.GetSetting("SuggestionPlacement", "Below");
-        _cmbSuggestionPlacement.SelectedIndex = string.Equals(placement, "Above", StringComparison.OrdinalIgnoreCase) ? 1 : 0;
-        _chkRequireConfirmation.Checked = _profile.GetSetting("RequireConfirmationForEdits", true);
-        var grammarSensitivity = _profile.GetSetting("GrammarSensitivity", "Medium");
-        var grammarIndex = _cmbGrammarSensitivity.Items.IndexOf(grammarSensitivity);
+        _cmbSuggestionSort.SelectedIndex = string.Equals(_appSettings.SuggestionSortMode, "Used", StringComparison.OrdinalIgnoreCase) ? 1 : 0;
+        _cmbSuggestionPlacement.SelectedIndex = string.Equals(_appSettings.SuggestionPlacement, "Above", StringComparison.OrdinalIgnoreCase) ? 1 : 0;
+        _chkRequireConfirmation.Checked = _appSettings.RequireConfirmationForEdits;
+        var grammarIndex = _cmbGrammarSensitivity.Items.IndexOf(_appSettings.GrammarSensitivity);
         _cmbGrammarSensitivity.SelectedIndex = grammarIndex >= 0 ? grammarIndex : 1;
-        _chkMuteCasualGrammar.Checked = _profile.GetSetting("MuteGrammarForCasualApps", false);
-        _chkEnableRewriteHotkey.Checked = _profile.GetSetting("EnableRewriteHotkey", true);
-        _chkGrammarChecking.Checked = _profile.GetSetting("GrammarChecking", true);
-        _chkAutoCorrectTypos.Checked = _profile.GetSetting("AutoCorrectTypos", true);
-        _chkEnableGrammarHotkey.Checked = _profile.GetSetting("EnableGrammarHotkey", true);
-        var mutedGrammar = _profile.GetSetting<List<string>>("GrammarMutedApps", new List<string>());
-        _txtGrammarMutedApps.Text = string.Join(", ", mutedGrammar);
+        _chkMuteCasualGrammar.Checked = _appSettings.MuteGrammarForCasualApps;
+        _chkEnableRewriteHotkey.Checked = _appSettings.EnableRewriteHotkey;
+        _chkGrammarChecking.Checked = _appSettings.GrammarChecking;
+        _chkAutoCorrectTypos.Checked = _appSettings.AutoCorrectTypos;
+        _chkEnableGrammarHotkey.Checked = _appSettings.EnableGrammarHotkey;
+        _txtGrammarMutedApps.Text = BlockedAppList.FormatCsv(_appSettings.GrammarMutedApps);
         _lstAppTone.Items.Clear();
-        foreach (var row in _profile.GetSetting<List<string>>("AppCategoryOverrides", new List<string>()))
+        foreach (var row in _appSettings.AppCategoryOverrides)
         {
             _lstAppTone.Items.Add(row);
         }
 
         RefreshLearnedUi();
         _loading = false;
+        _persist.IsLoading = false;
         SyncAiConnectionFromLoad();
         PushAiPolicy();
         if (_chkLocalMode.Checked)
         {
-            _aiConnection.EnterLocalOnly();
+            _ai.Connection.EnterLocalOnly();
             PaintAiStatus(Color.FromArgb(140, 100, 0));
         }
-        else if (!_chkLocalMode.Checked)
+        else
         {
             ScheduleAiProbe();
         }
@@ -1483,11 +1492,13 @@ public partial class SettingsForm : Form
 
     private void SchedulePersist()
     {
+        _persist.IsLoading = _loading;
         if (_loading)
         {
             return;
         }
 
+        _persist.Schedule(DateTime.UtcNow);
         _persistTimer.Stop();
         _persistTimer.Start();
     }
@@ -1495,83 +1506,59 @@ public partial class SettingsForm : Form
     private void FlushPersist()
     {
         _persistTimer.Stop();
-        if (_loading)
-        {
-            return;
-        }
-
-        ApplySettings();
-        _ = _profile.SaveAsync();
+        _persist.IsLoading = _loading;
+        _persist.Flush();
     }
 
     private void ApplySettings()
     {
-        var blockedApps = _txtBlockedApps.Text
-            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .Select(ApplicationName.Normalize)
-            .Where(name => name.Length > 0)
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToList();
+        var blockedApps = BlockedAppList.Parse(_txtBlockedApps.Text);
 
         WindowsStartup.SetEnabled(_chkAutoStart.Checked);
 
-        var selectedTheme = _cmbTheme.SelectedItem?.ToString() ?? "Light";
-        var selectedSortMode = _cmbSuggestionSort.SelectedIndex == 1 ? "Used" : "Relevant";
-        var selectedPlacement = _cmbSuggestionPlacement.SelectedIndex == 1 ? "Above" : "Below";
+        _appSettings.MinimizeToTray = _chkMinimizeToTray.Checked;
+        _appSettings.EnableAutoUpdates = _chkCheckUpdates.Checked;
+        _appSettings.OpenSettingsFullScreen = _chkOpenFullScreen.Checked;
+        _appSettings.QuickPauseMinutes = QuickPauseOptions.MinutesFromIndex(_cmbQuickPause.SelectedIndex);
+        _appSettings.AIProvider = _ai.ActiveProvider;
+        _appSettings.APIKey = _ai.ActiveApiKey;
+        _appSettings.AIKeyValidated = _ai.AiValidated;
+        _appSettings.AIModel = SelectedModel();
+        _appSettings.LocalMode = _chkLocalMode.Checked;
+        _appSettings.AiSuggestionsWhileTyping = _chkAiTyping.Checked;
+        _appSettings.AiRewriteOnRequest = _chkAiRewrite.Checked;
+        _appSettings.AiPrefetchOnSelection = _chkAiPrefetch.Checked;
+        _appSettings.BlockedApplications = blockedApps;
+        _appSettings.Theme = _cmbTheme.SelectedItem?.ToString() ?? "Light";
+        _appSettings.SuggestionSortMode = _cmbSuggestionSort.SelectedIndex == 1 ? "Used" : "Relevant";
+        _appSettings.SuggestionPlacement = _cmbSuggestionPlacement.SelectedIndex == 1 ? "Above" : "Below";
+        _appSettings.RequireConfirmationForEdits = _chkRequireConfirmation.Checked;
+        _appSettings.GrammarSensitivity = _cmbGrammarSensitivity.SelectedItem?.ToString() ?? "Medium";
+        _appSettings.MuteGrammarForCasualApps = _chkMuteCasualGrammar.Checked;
+        _appSettings.EnableRewriteHotkey = _chkEnableRewriteHotkey.Checked;
+        _appSettings.GrammarChecking = _chkGrammarChecking.Checked;
+        _appSettings.AutoCorrectTypos = _chkAutoCorrectTypos.Checked;
+        _appSettings.EnableGrammarHotkey = _chkEnableGrammarHotkey.Checked;
+        _appSettings.GrammarMutedApps = BlockedAppList.ParseMutedGrammar(_txtGrammarMutedApps.Text);
+        _appSettings.AppCategoryOverrides = _lstAppTone.Items.Cast<object>().Select(i => i.ToString()!).Where(s => !string.IsNullOrWhiteSpace(s)).ToList();
+        _appSettings.Write(_profile);
 
-        _profile.SetSetting("MinimizeToTray", _chkMinimizeToTray.Checked);
-        _profile.SetSetting("EnableAutoUpdates", _chkCheckUpdates.Checked);
-        _profile.SetSetting("OpenSettingsFullScreen", _chkOpenFullScreen.Checked);
-        _profile.SetSetting("QuickPauseMinutes", MinutesFromPauseIndex(_cmbQuickPause.SelectedIndex));
-        _profile.SetSetting("AIProvider", _activeProvider);
-        _profile.SetSetting("APIKey", _activeApiKey);
-        _profile.SetSetting("AIKeyValidated", _aiValidated);
-        _profile.SetSetting("AIModel", SelectedModel());
-        _profile.SetSetting("LocalMode", _chkLocalMode.Checked);
-        _profile.SetSetting("AiSuggestionsWhileTyping", _chkAiTyping.Checked);
-        _profile.SetSetting("AiRewriteOnRequest", _chkAiRewrite.Checked);
-        _profile.SetSetting("AiPrefetchOnSelection", _chkAiPrefetch.Checked);
-        _profile.SetSetting("BlockedApplications", blockedApps);
-        _profile.SetSetting("Theme", selectedTheme);
-        _profile.SetSetting("SuggestionSortMode", selectedSortMode);
-        _profile.SetSetting("SuggestionPlacement", selectedPlacement);
-        _profile.SetSetting("RequireConfirmationForEdits", _chkRequireConfirmation.Checked);
-        _profile.SetSetting("GrammarSensitivity", _cmbGrammarSensitivity.SelectedItem?.ToString() ?? "Medium");
-        _profile.SetSetting("MuteGrammarForCasualApps", _chkMuteCasualGrammar.Checked);
-        _profile.SetSetting("EnableRewriteHotkey", _chkEnableRewriteHotkey.Checked);
-        _profile.SetSetting("GrammarChecking", _chkGrammarChecking.Checked);
-        _profile.SetSetting("AutoCorrectTypos", _chkAutoCorrectTypos.Checked);
-        _profile.SetSetting("EnableGrammarHotkey", _chkEnableGrammarHotkey.Checked);
-        var mutedGrammar = _txtGrammarMutedApps.Text
-            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .ToList();
-        _profile.SetSetting("GrammarMutedApps", mutedGrammar);
-        var toneRows = _lstAppTone.Items.Cast<object>().Select(i => i.ToString()!).Where(s => !string.IsNullOrWhiteSpace(s)).ToList();
-        _profile.SetSetting("AppCategoryOverrides", toneRows);
         if (_editConfirmation != null)
         {
-            _editConfirmation.RequireConfirmation = _chkRequireConfirmation.Checked;
+            _editConfirmation.RequireConfirmation = _appSettings.RequireConfirmationForEdits;
         }
 
         _privacyGuard.ReplaceBlockedApplications(blockedApps);
-        _suggestionPipeline?.SetSortMode(selectedSortMode);
-        _suggestionOverlay?.SetPlacement(selectedPlacement);
+        _suggestionPipeline?.SetSortMode(_appSettings.SuggestionSortMode);
+        _suggestionOverlay?.SetPlacement(_appSettings.SuggestionPlacement);
         PushAiPolicy();
         SetupMinimizeToTrayBehavior();
-    }
-
-    private static int MinutesFromPauseIndex(int index) =>
-        index >= 0 && index < QuickPauseChoices.Length ? QuickPauseChoices[index] : 15;
-
-    private static int PauseIndexFromMinutes(int minutes)
-    {
-        var index = Array.IndexOf(QuickPauseChoices, minutes);
-        return index >= 0 ? index : 3;
     }
 
     private void ShowAdvancedProviders()
     {
         _aiAdvancedVisible = true;
+        _ai.AdvancedVisible = true;
         _cmbAIProvider.Visible = true;
         _lnkMoreProviders.Visible = false;
         _lblAiRecommended.Text = "Provider";
@@ -1579,14 +1566,7 @@ public partial class SettingsForm : Form
     }
 
     private string SelectedUiProvider()
-    {
-        if (_aiAdvancedVisible)
-        {
-            return _cmbAIProvider.SelectedItem?.ToString() ?? AiProviderCatalog.Recommended;
-        }
-
-        return AiProviderCatalog.Recommended;
-    }
+        => AiModelChoices.ResolveUiProvider(_aiAdvancedVisible, _cmbAIProvider.SelectedItem?.ToString());
 
     private void UpdateAiEntryMode()
     {
@@ -1647,8 +1627,8 @@ public partial class SettingsForm : Form
 
     private void PaintAiStatus(Color color)
     {
-        _lblAiActive.Text = _aiConnection.ActiveLine;
-        SetAiStatus(_aiConnection.Detail, color);
+        _lblAiActive.Text = _ai.Connection.ActiveLine;
+        SetAiStatus(_ai.Connection.Detail, color);
     }
 
     private string? InstalledProviderName()
@@ -1664,8 +1644,8 @@ public partial class SettingsForm : Form
             return;
         }
 
-        var keyPresent = _aiValidated && !_activeProvider.Equals("None", StringComparison.OrdinalIgnoreCase);
-        _aiConnection.SeedFromInstalled(InstalledProviderName(), SelectedModel(), keyPresent);
+        var keyPresent = _ai.AiValidated && !_ai.ActiveProvider.Equals("None", StringComparison.OrdinalIgnoreCase);
+        _ai.Connection.SeedFromInstalled(InstalledProviderName(), SelectedModel(), keyPresent);
         PaintAiStatus(string.IsNullOrEmpty(InstalledProviderName())
             ? Color.FromArgb(90, 90, 90)
             : Color.FromArgb(0, 120, 80));
@@ -1698,11 +1678,8 @@ public partial class SettingsForm : Form
     private void EnterLocalOnly()
     {
         _aiProbeTimer.Stop();
-        _probeGate.Invalidate();
         StopClipboardWatch();
-        ApplyNow();
-        _applyAiProvider?.Invoke(null);
-        _aiConnection.EnterLocalOnly();
+        _ai.EnterLocalOnly();
         PaintAiStatus(Color.FromArgb(140, 100, 0));
         UpdateAiEntryMode();
     }
@@ -1714,9 +1691,6 @@ public partial class SettingsForm : Form
         ScheduleAiProbe();
     }
 
-    private bool ProbeStillCurrent(AiProbeGate.Ticket ticket)
-        => !IsDisposed && _probeGate.IsCurrent(ticket) && !_chkLocalMode.Checked;
-
     private async Task ProbeAiAsync()
     {
         if (IsDisposed)
@@ -1724,109 +1698,30 @@ public partial class SettingsForm : Form
             return;
         }
 
-        if (_chkLocalMode.Checked)
-        {
-            _aiConnection.EnterLocalOnly();
-            PaintAiStatus(Color.FromArgb(140, 100, 0));
-            return;
-        }
-
-        var ticket = _probeGate.Begin();
-        var token = _probeGate.Token;
         var provider = SelectedUiProvider();
-        var key = _txtAPIKey.Text.Trim();
-
-        if (provider.Equals("None", StringComparison.OrdinalIgnoreCase))
-        {
-            if (!ProbeStillCurrent(ticket))
-            {
-                return;
-            }
-
-            _activeProvider = "None";
-            _activeApiKey = string.Empty;
-            _aiValidated = true;
-            _aiConnection.EnterDisconnected();
-            PaintAiStatus(Color.FromArgb(90, 90, 90));
-            ApplyNow();
-            _applyAiProvider?.Invoke(null);
-            return;
-        }
-
-        if (AiProviderCatalog.UsesApiKey(provider) && string.IsNullOrEmpty(key))
-        {
-            if (!_watchingClipboard)
-            {
-                _aiConnection.EnterNotConfigured();
-                PaintAiStatus(Color.FromArgb(90, 90, 90));
-            }
-
-            return;
-        }
-
-        _aiConnection.EnterChecking(provider);
-        PaintAiStatus(Color.FromArgb(0, 90, 160));
-
-        AiProbeResult result;
-        try
-        {
-            result = await AiProviderCatalog.ProbeAsync(provider, key, token, SelectedModel());
-        }
-        catch (OperationCanceledException)
-        {
-            return;
-        }
-
-        if (!ProbeStillCurrent(ticket) || token.IsCancellationRequested)
-        {
-            return;
-        }
-
-        if (!result.Succeeded)
-        {
-            var installed = InstalledProviderName();
-            _aiConnection.EnterFailed(result.Message, installed);
-            PaintAiStatus(Color.FromArgb(180, 40, 40));
-            if (string.IsNullOrEmpty(installed))
-            {
-                _applyAiProvider?.Invoke(null);
-            }
-
-            return;
-        }
-
-        if (!ProbeStillCurrent(ticket))
-        {
-            return;
-        }
-
-        _activeProvider = provider;
-        _activeApiKey = AiProviderCatalog.UsesApiKey(provider) ? key : string.Empty;
-        _aiValidated = true;
         EnsureDefaultModel(provider);
-        var model = SelectedModel();
-        if (!ProbeStillCurrent(ticket))
-        {
-            return;
-        }
+        await _ai.ProbeAsyncCore(
+            _chkLocalMode.Checked,
+            provider,
+            _txtAPIKey.Text.Trim(),
+            SelectedModel(),
+            _watchingClipboard);
+        PaintAiFromSession();
+    }
 
-        _aiConnection.EnterConnected(provider, model);
-        PaintAiStatus(Color.FromArgb(0, 120, 80));
-        ApplyNow();
-        if (!ProbeStillCurrent(ticket))
+    private void PaintAiFromSession()
+    {
+        var color = _ai.Connection.State switch
         {
-            return;
-        }
-
-        try
-        {
-            _applyAiProvider?.Invoke(AiProviderCatalog.Create(provider, key, model: model));
-        }
-        catch (Exception)
-        {
-            _aiConnection.EnterFailed("Lexon could not switch providers.", InstalledProviderName());
-            PaintAiStatus(Color.FromArgb(140, 100, 0));
-        }
+            AiConnectionState.LocalOnlyOff => Color.FromArgb(140, 100, 0),
+            AiConnectionState.Checking => Color.FromArgb(0, 90, 160),
+            AiConnectionState.Connected => Color.FromArgb(0, 120, 80),
+            AiConnectionState.Failed => _ai.Connection.Detail.StartsWith("Lexon could not switch", StringComparison.Ordinal)
+                ? Color.FromArgb(140, 100, 0)
+                : Color.FromArgb(180, 40, 40),
+            _ => Color.FromArgb(90, 90, 90)
+        };
+        PaintAiStatus(color);
     }
 
     private const int WmClipboardUpdate = 0x031D;
@@ -1992,16 +1887,16 @@ public partial class SettingsForm : Form
 
     private void FillModelChoices(string provider, string? selected)
     {
-        var models = AiProviderCatalog.Models(provider).ToList();
+        var models = AiModelChoices.ForProvider(provider, selected);
         if (models.Count == 0)
         {
             return;
         }
 
-        var pick = string.IsNullOrWhiteSpace(selected) ? AiProviderCatalog.DefaultModel(provider) : selected;
+        var pick = AiModelChoices.ResolveSelected(provider, string.IsNullOrWhiteSpace(selected) ? null : selected);
         if (!models.Contains(pick))
         {
-            models.Insert(0, pick);
+            pick = models[0];
         }
 
         var previous = _loading;
@@ -2038,16 +1933,10 @@ public partial class SettingsForm : Form
         if (picker.ShowDialog() == DialogResult.OK && !string.IsNullOrEmpty(picker.SelectedProcessName))
         {
             var name = ApplicationName.Normalize(picker.SelectedProcessName);
-            var currentApps = _txtBlockedApps.Text
-                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                .Select(ApplicationName.Normalize)
-                .Where(n => n.Length > 0)
-                .ToList();
-
-            if (!currentApps.Contains(name, StringComparer.OrdinalIgnoreCase))
+            var currentApps = BlockedAppList.Parse(_txtBlockedApps.Text);
+            if (BlockedAppList.TryAdd(currentApps, name, out _))
             {
-                currentApps.Add(name);
-                _txtBlockedApps.Text = string.Join(", ", currentApps);
+                _txtBlockedApps.Text = BlockedAppList.FormatCsv(currentApps);
                 ApplyNow();
             }
         }
@@ -2143,32 +2032,33 @@ public partial class SettingsForm : Form
 
     private void AddAppToneOverride(string processName, AppWritingCategory category)
     {
-        var app = AppCategoryMapper.EnsureExeExtension(processName);
-        if (string.IsNullOrEmpty(app))
+        var rows = _lstAppTone.Items.Cast<object>().Select(i => i.ToString() ?? string.Empty);
+        var next = AppToneList.AddOrReplace(rows, processName, category);
+        _lstAppTone.Items.Clear();
+        foreach (var row in next)
         {
-            return;
+            _lstAppTone.Items.Add(row);
         }
 
-        var row = AppCategoryMapper.FormatRow(app, category);
-        for (var i = _lstAppTone.Items.Count - 1; i >= 0; i--)
-        {
-            if (AppCategoryMapper.TryParseRow(_lstAppTone.Items[i]?.ToString(), out var existing, out _) && existing == app)
-            {
-                _lstAppTone.Items.RemoveAt(i);
-            }
-        }
-
-        _lstAppTone.Items.Add(row);
         ApplyNow();
     }
 
     private void RemoveAppToneOverride()
     {
-        if (_lstAppTone.SelectedIndex >= 0)
+        if (_lstAppTone.SelectedIndex < 0)
         {
-            _lstAppTone.Items.RemoveAt(_lstAppTone.SelectedIndex);
-            ApplyNow();
+            return;
         }
+
+        var rows = _lstAppTone.Items.Cast<object>().Select(i => i.ToString() ?? string.Empty);
+        var next = AppToneList.RemoveAt(rows, _lstAppTone.SelectedIndex);
+        _lstAppTone.Items.Clear();
+        foreach (var row in next)
+        {
+            _lstAppTone.Items.Add(row);
+        }
+
+        ApplyNow();
     }
 
     public void ReloadBlockedApplications()
@@ -2179,7 +2069,7 @@ public partial class SettingsForm : Form
         }
 
         var blocked = _profile.GetSetting<List<string>>("BlockedApplications", []) ?? [];
-        var next = string.Join(", ", blocked);
+        var next = BlockedAppList.FormatCsv(blocked);
         if (_txtBlockedApps.Text != next)
         {
             var loading = _loading;

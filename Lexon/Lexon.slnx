@@ -8,6 +8,8 @@
   <Project Path="Lexon.Profiles/Lexon.Profiles.csproj" />
   <Project Path="Lexon.Service/Lexon.Service.csproj" />
   <Project Path="Lexon.Settings/Lexon.Settings.csproj" />
+  <Project Path="Lexon.SettingsModel/Lexon.SettingsModel.csproj" />
+  <Project Path="Lexon.SettingsUi/Lexon.SettingsUi.csproj" />
   <Project Path="Lexon.Storage\Lexon.Storage.csproj" />
   <Project Path="Lexon.Tests/Lexon.Tests.csproj" />
   <Project Path="Lexon.Ui/Lexon.Ui.csproj" />

@@ -171,13 +171,19 @@ public class ThemeManager
                 Secondary = _currentTheme.Colors.Secondary,
                 Background = _currentTheme.Colors.Background,
                 Surface = _currentTheme.Colors.Surface,
+                SurfaceRaised = _currentTheme.Colors.SurfaceRaised,
                 Text = _currentTheme.Colors.Text,
                 TextSecondary = _currentTheme.Colors.TextSecondary,
                 Accent = _currentTheme.Colors.Accent,
                 Success = _currentTheme.Colors.Success,
                 Warning = _currentTheme.Colors.Warning,
                 Error = _currentTheme.Colors.Error,
-                Border = _currentTheme.Colors.Border
+                Border = _currentTheme.Colors.Border,
+                BorderStrong = _currentTheme.Colors.BorderStrong,
+                PrimaryHover = _currentTheme.Colors.PrimaryHover,
+                PrimaryPressed = _currentTheme.Colors.PrimaryPressed,
+                PrimaryTint = _currentTheme.Colors.PrimaryTint,
+                OnPrimary = _currentTheme.Colors.OnPrimary
             },
             Fonts = new ThemeFonts
             {
@@ -242,21 +248,27 @@ public class ThemeManager
             IsCustom = false,
             Colors = new ThemeColors
             {
-                Primary = "#0078D4",
-                Secondary = "#106EBE",
+                Primary = "#0A3BA6",
+                Secondary = "#0D47C9",
                 Background = "#FFFFFF",
-                Surface = "#F3F2F1",
-                Text = "#201F1E",
-                TextSecondary = "#605E5C",
-                Accent = "#0078D4",
-                Success = "#107C10",
-                Warning = "#FF8C00",
-                Error = "#A80000",
-                Border = "#E1DFDD"
+                Surface = "#F4F6FB",
+                SurfaceRaised = "#FFFFFF",
+                Text = "#10172A",
+                TextSecondary = "#4A5468",
+                Accent = "#0A3BA6",
+                Success = "#0F7B4B",
+                Warning = "#9A5B00",
+                Error = "#B42318",
+                Border = "#D9DFEB",
+                BorderStrong = "#7B869C",
+                PrimaryHover = "#0D47C9",
+                PrimaryPressed = "#082F85",
+                PrimaryTint = "#E7EEFE",
+                OnPrimary = "#FFFFFF"
             },
             Fonts = new ThemeFonts
             {
-                Primary = "Segoe UI",
+                Primary = "Segoe UI Variable Text",
                 Monospace = "Consolas",
                 Size = 9
             },
@@ -277,21 +289,27 @@ public class ThemeManager
             IsCustom = false,
             Colors = new ThemeColors
             {
-                Primary = "#60CDFF",
-                Secondary = "#4CC2FF",
-                Background = "#202020",
-                Surface = "#2D2D2D",
-                Text = "#FFFFFF",
-                TextSecondary = "#B0B0B0",
-                Accent = "#60CDFF",
-                Success = "#4EC9B0",
-                Warning = "#CE9178",
-                Error = "#F48771",
-                Border = "#3E3E42"
+                Primary = "#6B9BFF",
+                Secondary = "#8AB4FF",
+                Background = "#16181D",
+                Surface = "#1E2128",
+                SurfaceRaised = "#262A33",
+                Text = "#F2F4F8",
+                TextSecondary = "#A9B1C1",
+                Accent = "#6B9BFF",
+                Success = "#4CC38A",
+                Warning = "#F2B24A",
+                Error = "#FF8A7A",
+                Border = "#4A5162",
+                BorderStrong = "#6B7590",
+                PrimaryHover = "#8AB4FF",
+                PrimaryPressed = "#5B8CFF",
+                PrimaryTint = "#1F2A44",
+                OnPrimary = "#0B1020"
             },
             Fonts = new ThemeFonts
             {
-                Primary = "Segoe UI",
+                Primary = "Segoe UI Variable Text",
                 Monospace = "Consolas",
                 Size = 9
             },
@@ -315,14 +333,20 @@ public class ThemeManager
                 Primary = "#FFFF00",
                 Secondary = "#FFFFFF",
                 Background = "#000000",
-                Surface = "#1A1A1A",
+                Surface = "#000000",
+                SurfaceRaised = "#000000",
                 Text = "#FFFFFF",
                 TextSecondary = "#FFFF00",
                 Accent = "#FFFF00",
                 Success = "#00FF00",
                 Warning = "#FFFF00",
                 Error = "#FF0000",
-                Border = "#FFFFFF"
+                Border = "#FFFFFF",
+                BorderStrong = "#FFFFFF",
+                PrimaryHover = "#FFFFFF",
+                PrimaryPressed = "#FFFF00",
+                PrimaryTint = "#1A1A1A",
+                OnPrimary = "#000000"
             },
             Fonts = new ThemeFonts
             {
@@ -412,17 +436,23 @@ public class Theme
 /// </summary>
 public class ThemeColors
 {
-    public string Primary { get; set; } = "#0078D4";
-    public string Secondary { get; set; } = "#106EBE";
+    public string Primary { get; set; } = "#0A3BA6";
+    public string Secondary { get; set; } = "#0D47C9";
     public string Background { get; set; } = "#FFFFFF";
-    public string Surface { get; set; } = "#F3F2F1";
-    public string Text { get; set; } = "#201F1E";
-    public string TextSecondary { get; set; } = "#605E5C";
-    public string Accent { get; set; } = "#0078D4";
-    public string Success { get; set; } = "#107C10";
-    public string Warning { get; set; } = "#FF8C00";
-    public string Error { get; set; } = "#A80000";
-    public string Border { get; set; } = "#E1DFDD";
+    public string Surface { get; set; } = "#F4F6FB";
+    public string SurfaceRaised { get; set; } = "#FFFFFF";
+    public string Text { get; set; } = "#10172A";
+    public string TextSecondary { get; set; } = "#4A5468";
+    public string Accent { get; set; } = "#0A3BA6";
+    public string Success { get; set; } = "#0F7B4B";
+    public string Warning { get; set; } = "#9A5B00";
+    public string Error { get; set; } = "#B42318";
+    public string Border { get; set; } = "#D9DFEB";
+    public string BorderStrong { get; set; } = "#7B869C";
+    public string PrimaryHover { get; set; } = "#0D47C9";
+    public string PrimaryPressed { get; set; } = "#082F85";
+    public string PrimaryTint { get; set; } = "#E7EEFE";
+    public string OnPrimary { get; set; } = "#FFFFFF";
 }
 
 /// <summary>
