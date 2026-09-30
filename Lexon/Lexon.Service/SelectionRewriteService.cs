@@ -50,6 +50,7 @@ public sealed class SelectionRewriteService
     private string _prefetchSelection = string.Empty;
     private string _prefetchOption = string.Empty;
     private CancellationTokenSource? _rewriteCts;
+    private bool _enabled = true;
 
     public SelectionRewriteService(
         IAIProvider? aiProvider,
@@ -101,10 +102,26 @@ public sealed class SelectionRewriteService
 
     public bool IsMenuVisible => _menu.IsVisible;
 
+    public void SetEnabled(bool enabled)
+    {
+        _enabled = enabled;
+        if (!enabled)
+        {
+            CancelPending();
+            HideAffordance();
+            _menu.Hide();
+        }
+    }
+
     public void HideAffordance() => _chip?.Hide();
 
     public void ConsiderSelectionAffordance()
     {
+        if (!_enabled)
+        {
+            _chip?.Hide();
+            return;
+        }
         if (_menu.IsVisible || _confirmation.IsPreviewVisible)
         {
             _chip?.Hide();
@@ -139,6 +156,10 @@ public sealed class SelectionRewriteService
 
     public bool TryHandleKey(KeyboardEventArgs e)
     {
+        if (!_enabled)
+        {
+            return false;
+        }
         if (_confirmation.TryHandleKey(e.VirtualKey, e.IsShiftPressed, e.IsControlPressed, e.IsAltPressed))
         {
             e.Handled = true;
@@ -187,6 +208,7 @@ public sealed class SelectionRewriteService
             return true;
         }
 
+#if DEBUG
         if (e.VirtualKey == 0x50 && e.IsControlPressed && e.IsAltPressed && !e.IsShiftPressed)
         {
             e.Handled = true;
@@ -200,6 +222,7 @@ public sealed class SelectionRewriteService
                 trustKey: "preview-harness");
             return true;
         }
+#endif
 
         if (e.IsShiftPressed && e.VirtualKey is 37 or 38 or 39 or 40 or 35 or 36)
         {
@@ -243,6 +266,10 @@ public sealed class SelectionRewriteService
 
     private void ShowRewriteMenu(int? x, int? y, bool preferCache)
     {
+        if (!_enabled)
+        {
+            return;
+        }
         var context = Enrich(_focusTracker.GetCurrentContext());
         if (_privacyGuard.ShouldBlockAssistance(context))
         {
@@ -540,7 +567,7 @@ public sealed class SelectionRewriteService
                 return;
             }
 
-            _textInjector.ReplaceText(selected, next);
+            _textInjector.ReplaceSelection(next);
             _undoManager.RecordOperation(selected, next);
             _personalization.RecordCharactersInserted(next.Length);
             _personalization.RecordRewriteOutcome(_pendingCategory, _pendingStyle, true);
@@ -685,7 +712,7 @@ public sealed class SelectionRewriteService
     private void NoteCloudSend(TextContext context, string action)
     {
         var provider = _aiProvider;
-        if (!CloudAiNames.IsCloud(provider?.Name))
+        if (!CloudAiNames.RequiresTypingConsent(provider?.Name, provider?.NetworkEndpoint))
         {
             return;
         }

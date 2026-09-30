@@ -64,9 +64,9 @@ public sealed class CloudAiActivityLog
     /// Records a typing-suggestion send. Cloud providers only. At most one
     /// entry per app per minute so the log is not flushed by keystrokes.
     /// </summary>
-    public bool TryRecordSuggest(string? provider, string? applicationName)
+    public bool TryRecordSuggest(string? provider, string? applicationName, string? endpoint = null)
     {
-        if (!CloudAiNames.IsCloud(provider))
+        if (!CloudAiNames.RequiresTypingConsent(provider, endpoint))
         {
             return false;
         }

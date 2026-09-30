@@ -1,3 +1,4 @@
+using Lexon.Core;
 using Lexon.Input.Interfaces;
 using System.Runtime.InteropServices;
 
@@ -260,17 +261,25 @@ public class TextInjector : ITextInjector
         };
     }
 
-    public void ReplaceText(string oldText, string newText)
+    public void ReplaceText(string oldText, string newText, bool selectionStillActive = false)
     {
         if (string.IsNullOrEmpty(oldText) && string.IsNullOrEmpty(newText)) return;
 
-        // Delete old text
-        if (!string.IsNullOrEmpty(oldText))
+        var deletes = TextReplacement.BackspacesForReplace(oldText, selectionStillActive);
+        if (deletes > 0)
         {
-            DeleteBackward(oldText.Length);
+            DeleteBackward(deletes);
         }
 
-        // Insert new text
+        if (!string.IsNullOrEmpty(newText))
+        {
+            InjectText(newText);
+        }
+    }
+
+    public void ReplaceSelection(string newText)
+    {
+        DeleteBackward(1);
         if (!string.IsNullOrEmpty(newText))
         {
             InjectText(newText);

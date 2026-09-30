@@ -1508,6 +1508,9 @@ public partial class SettingsForm : Form
     {
         var blockedApps = _txtBlockedApps.Text
             .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(ApplicationName.Normalize)
+            .Where(name => name.Length > 0)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
 
         WindowsStartup.SetEnabled(_chkAutoStart.Checked);
@@ -1802,6 +1805,11 @@ public partial class SettingsForm : Form
         _aiValidated = true;
         EnsureDefaultModel(provider);
         var model = SelectedModel();
+        if (!ProbeStillCurrent(ticket))
+        {
+            return;
+        }
+
         _aiConnection.EnterConnected(provider, model);
         PaintAiStatus(Color.FromArgb(0, 120, 80));
         ApplyNow();
@@ -2029,13 +2037,16 @@ public partial class SettingsForm : Form
         using var picker = new ProcessPickerForm("Select a running application to block:");
         if (picker.ShowDialog() == DialogResult.OK && !string.IsNullOrEmpty(picker.SelectedProcessName))
         {
+            var name = ApplicationName.Normalize(picker.SelectedProcessName);
             var currentApps = _txtBlockedApps.Text
                 .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Select(ApplicationName.Normalize)
+                .Where(n => n.Length > 0)
                 .ToList();
 
-            if (!currentApps.Contains(picker.SelectedProcessName))
+            if (!currentApps.Contains(name, StringComparer.OrdinalIgnoreCase))
             {
-                currentApps.Add(picker.SelectedProcessName);
+                currentApps.Add(name);
                 _txtBlockedApps.Text = string.Join(", ", currentApps);
                 ApplyNow();
             }

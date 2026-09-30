@@ -141,7 +141,7 @@ public class SuggestionPipeline : ISuggestionPipeline
         {
             foreach (var provider in providers)
             {
-                _aiLog?.TryRecordSuggest(provider.Name, context.ApplicationName);
+                _aiLog?.TryRecordSuggest(provider.Name, context.ApplicationName, provider.NetworkEndpoint);
             }
         }
 

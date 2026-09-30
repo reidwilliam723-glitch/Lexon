@@ -152,8 +152,7 @@ public class WritingAssistanceHotkeys
 
     private void ReplaceText(string oldText, string newText)
     {
-        _textInjector.DeleteBackward(oldText.Length);
-        _textInjector.InjectText(newText);
+        _textInjector.ReplaceText(oldText, newText);
         _undoManager.RecordOperation(oldText, newText);
     }
 

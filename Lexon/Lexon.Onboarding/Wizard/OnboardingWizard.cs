@@ -393,7 +393,7 @@ public class PrivacyDisclosureStep : WizardStep
             "• Learned vocabulary and writing style\n\n" +
             "What can leave this computer:\n" +
             "• Cloud AI while typing — off by default. If you turn it on, the words around the caret go to your chosen provider as you type.\n" +
-            "• Rewrites of selected text — on by default once a provider is connected. Only the selection is sent, and only when you ask (Aa chip or Ctrl+Alt+R).\n" +
+            "• Rewrites of selected text — on by default once a provider is connected. The selection is sent with optional tone and writing-style hints (not the rest of the document), and only when you ask (Aa chip or Ctrl+Alt+R).\n" +
             "• Prefetch on selection — off by default. If you turn it on, selecting text may send it before you pick a rewrite.\n" +
             "• Local-only mode turns all of the above off immediately, including local Ollama. Saved keys are kept so you can turn it back on.\n" +
             "• If you never add an API key, nothing is sent to OpenAI, Gemini, or DeepSeek.\n\n" +

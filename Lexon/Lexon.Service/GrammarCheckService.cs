@@ -27,6 +27,7 @@ public sealed class GrammarCheckService
     private readonly GlanceOverlay? _glance;
     private readonly ISuggestionOverlay? _suggestions;
     private string _sourceText = string.Empty;
+    private bool _sourceWasSelection;
     private List<GrammarMatch> _matches = [];
     private long _pauseGeneration;
     private string _lastCheckedFingerprint = string.Empty;
@@ -244,12 +245,13 @@ public sealed class GrammarCheckService
             liveText = _focusTracker.GetTypedBufferText();
         }
 
+        var useSelection = !silentIfNone;
         var text = ResolveCheckText(
             selected,
             liveText,
             context.PreviousWords,
             _focusTracker.GetTypedBufferText(),
-            useSelection: !silentIfNone);
+            useSelection);
 
         if (string.IsNullOrWhiteSpace(text))
         {
@@ -270,6 +272,7 @@ public sealed class GrammarCheckService
 
         _lastCheckedFingerprint = fingerprint;
         _sourceText = text;
+        _sourceWasSelection = useSelection && !string.IsNullOrWhiteSpace(selected);
         var sensitivity = _profile.GetSetting("GrammarSensitivity", "Medium");
         var found = RuleBasedGrammarChecker.Find(text, sensitivity);
         var limit = sensitivity switch
@@ -369,7 +372,7 @@ public sealed class GrammarCheckService
         _sourceText = next;
         _confirmation.RequestEdit(original, next, caret.X, caret.Y, () =>
         {
-            _injector.ReplaceText(original, next);
+            _injector.ReplaceText(original, next, selectionStillActive: _sourceWasSelection);
             _undo.RecordOperation(original, next);
         }, trustKey: "grammar-fix");
     }

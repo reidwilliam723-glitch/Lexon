@@ -29,6 +29,7 @@ public sealed class AiProbeGate : IDisposable
     public Ticket Begin()
     {
         var generation = Interlocked.Increment(ref _generation);
+        CancelAndReplace();
         return new Ticket(generation);
     }
 

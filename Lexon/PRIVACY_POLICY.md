@@ -1,6 +1,6 @@
 # Lexon Privacy Policy
 
-**Last Updated: September 29, 2026**
+**Last Updated: September 30, 2026**
 
 ## Introduction
 
@@ -25,21 +25,19 @@ AI features are **opt-in** and controlled in Settings. Existing installs keep yo
 When a cloud provider is connected, Lexon may send:
 
 - **Typing context** (previous words, current word, following words) — only if **Send words around the cursor to cloud AI while I type** is on. Off by default.
-- **Selected text for a rewrite** — only if **Allow AI rewrites of selected text** is on (default on) and you ask via the Aa chip or shortcut.
+- **Selected text for a rewrite**, plus the rewrite instruction and optional tone or writing-style hints (not the rest of the document) — only if **Allow AI rewrites of selected text** is on (default on) and you ask via the Aa chip or shortcut.
 - **Selected text before you pick a rewrite** — only if **Prepare a rewrite as soon as I select text** is on. Off by default.
 
-Requests go to the provider you chose (OpenAI, Gemini, or DeepSeek), not through Lexon servers. **Local-only mode** stops all AI, including Ollama on this PC, immediately without deleting your key.
+Requests go to the provider you chose (OpenAI, Gemini, DeepSeek, or Ollama), not through Lexon servers. **Local-only mode** stops all AI, including Ollama on this PC, immediately without deleting your key.
 
 Ollama bound to this machine is treated as local. An Ollama host that is not loopback is treated like a cloud send for the typing toggle.
 
-Lexon does not send text from password fields or from apps you have blocked.
+Lexon does not send text from password fields, from fields it cannot confirm are not password fields, or from apps you have blocked.
 
 ### 3. Analytics and Crash Data
-To improve our services, we may collect:
+Lexon does **not** send usage statistics, telemetry, or crash reports to Lexon or to a third-party analytics vendor.
 
-- **Anonymous Usage Statistics**: Feature usage patterns, performance metrics
-- **Crash Reports**: Error logs and diagnostic information when the application crashes
-- **Telemetry Data**: Application performance and stability metrics
+Diagnostic files (for example `%LocalAppData%\Lexon\placement.log`) may be written **on this computer** while investigating a bug. They are not uploaded. A Group Policy flag named EnableCrashReporting exists for enterprise builds; the shipping app does not transmit crash reports.
 
 ## How We Use Your Information
 
@@ -66,34 +64,34 @@ To improve our services, we may collect:
 - Data is stored locally on your device in `%LocalAppData%\Lexon`
 
 ### Cloud Services
-- AI requests are sent directly to OpenAI, not through our servers
-- Your API key is stored locally and never transmitted to our servers
-- We do not have access to your OpenAI API key or usage data
+- AI requests are sent directly to the provider you configured (OpenAI, Gemini, DeepSeek, or Ollama), not through Lexon servers
+- Your API key is stored locally (DPAPI) and never transmitted to Lexon
+- We do not have access to your provider API key or that provider's usage data
 
 ### Data Retention
-- Local data is retained according to your settings preferences
-- Crash logs are retained for 30 days
-- Analytics data is anonymized and retained for 12 months
+- Learned vocabulary, settings, and the local cloud-activity log (provider/app/action only, no typed text) stay on this device until you clear them or uninstall
+- Lexon does not operate a 30-day crash-log or 12-month analytics store
+- Your chosen AI provider's retention rules apply to any text you send them
 
 ## Data Sharing and Disclosure
 
 We do not sell, rent, or share your personal information with third parties for marketing purposes. We may share data in the following circumstances:
 
 ### 1. Third-Party AI Services
-- Text context is sent to OpenAI for AI-powered suggestions
-- OpenAI's privacy policy governs their use of this data
-- You can disable AI features to use only local suggestions
+- When you enable a cloud or remote AI feature, text you submit is sent to that provider
+- That provider's privacy policy governs their use of the data
+- You can use local-only mode, or never add an API key, to keep assistance on this PC
 
 ### 2. Service Providers
-- We may engage trusted third parties to perform services on our behalf
-- These providers have limited access to your data and are bound by confidentiality obligations
+- Lexon does not hire processors to collect your typing data
+- Optional app updates are downloaded from the update source configured in the app (Velopack)
 
 ### 3. Legal Requirements
 - We may disclose information if required by law or to protect our rights
 - This includes responding to legal processes, court orders, or government requests
 
 ### 4. Business Transfers
-- In the event of a merger, acquisition, or sale of assets, your data may be transferred
+- In the event of a merger, acquisition, or sale of assets, this policy would be updated before any change in who operates Lexon
 
 ## Your Privacy Rights
 
@@ -115,9 +113,9 @@ You have the following rights regarding your personal information:
 - Block specific applications from receiving suggestions
 
 ### 4. Opt-Out
-- Disable analytics and crash reporting
-- Enable local-only mode for complete privacy
-- Opt-out of data collection features
+- Do not enable cloud AI while typing, rewrites, or prefetch
+- Enable local-only mode to stop all AI immediately
+- Block specific applications; password fields are skipped automatically
 
 ## Children's Privacy
 
@@ -137,11 +135,7 @@ We may update this Privacy Policy from time to time. We will notify you of any m
 
 ## Contact Us
 
-If you have questions about this Privacy Policy or our data practices, please contact us through:
-
-- **In-App Support**: Use the help/support feature in the application
-- **Website**: Visit our official website for contact information
-- **Email**: [Your support email address]
+If you have questions about this Privacy Policy or our data practices, use the in-app About box or the GitHub repository for this project. There is no separate Lexon support email or marketing website operated by this build.
 
 ## Legal Basis for Processing (GDPR)
 
@@ -174,4 +168,4 @@ If you are a California resident, you have the right to:
 
 ---
 
-This Privacy Policy is effective as of August 18, 2026 and will remain in effect until modified.
+This Privacy Policy is effective as of September 30, 2026 and will remain in effect until modified.

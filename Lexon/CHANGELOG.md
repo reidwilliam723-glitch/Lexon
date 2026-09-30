@@ -2,6 +2,15 @@
 
 All notable changes to Lexon will be documented in this file.
 
+## [1.0.8] - 2026-09-30
+
+### Privacy and reliability
+- Password and other secure fields are detected before any text is read. Unknown fields fail closed. Buffering, learning, expansion, and AI are skipped there.
+- Rewriting selected text uses a single Backspace so surrounding text is not deleted. Non-selection replaces count graphemes (emoji-safe).
+- Blocked app names are normalized so `putty.exe` matches the stored `putty` list, including on the typing path.
+- Double-press Ctrl now pauses rewrite, buffering, and writing-style learning as well as suggestions, and clears typed buffers.
+- Plugins stay unloaded unless EnablePlugins is on. A new AI probe cancels the previous request. Remote Ollama sends are logged. `publish.ps1` can only delete under the repo publish folder.
+
 ## [1.0.7] - 2026-09-29
 
 ### Privacy and AI control

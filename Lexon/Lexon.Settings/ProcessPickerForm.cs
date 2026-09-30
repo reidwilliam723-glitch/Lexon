@@ -1,3 +1,4 @@
+using Lexon.Core;
 using System.Diagnostics;
 using System.Drawing;
 
@@ -101,7 +102,7 @@ public partial class ProcessPickerForm : Form
         foreach (var process in processes)
         {
             var displayName = $"{process.ProcessName} - {process.MainWindowTitle}";
-            _processListBox.Items.Add(new ProcessItem(process.ProcessName, displayName));
+            _processListBox.Items.Add(new ProcessItem(ApplicationName.Normalize(process.ProcessName), displayName));
             process.Dispose();
         }
     }
@@ -122,7 +123,7 @@ public partial class ProcessPickerForm : Form
         foreach (var process in processes)
         {
             var displayName = $"{process.ProcessName} - {process.MainWindowTitle}";
-            _processListBox.Items.Add(new ProcessItem(process.ProcessName, displayName));
+            _processListBox.Items.Add(new ProcessItem(ApplicationName.Normalize(process.ProcessName), displayName));
             process.Dispose();
         }
     }

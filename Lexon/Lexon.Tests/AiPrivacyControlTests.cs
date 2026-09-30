@@ -39,6 +39,17 @@ public class AiProbeGateTests
     }
 
     [Fact]
+    public void Begin_CancelsPreviousToken()
+    {
+        using var gate = new AiProbeGate();
+        _ = gate.Begin();
+        var token = gate.Token;
+        _ = gate.Begin();
+        Assert.True(token.IsCancellationRequested);
+        Assert.False(gate.Token.IsCancellationRequested);
+    }
+
+    [Fact]
     public void Invalidate_CancelsToken()
     {
         using var gate = new AiProbeGate();
@@ -374,6 +385,16 @@ public class CloudSuggestLogTests
         var log = new CloudAiActivityLog();
         Assert.False(log.TryRecordSuggest("Ollama", "notepad"));
         Assert.Empty(log.Snapshot());
+    }
+
+    [Fact]
+    public void TryRecordSuggest_RecordsRemoteOllama()
+    {
+        var log = new CloudAiActivityLog();
+        Assert.True(log.TryRecordSuggest("Ollama", "notepad", "http://10.0.0.8:11434"));
+        var entry = Assert.Single(log.Snapshot());
+        Assert.Equal("Ollama", entry.Provider);
+        Assert.Equal("suggest", entry.Action);
     }
 }
 

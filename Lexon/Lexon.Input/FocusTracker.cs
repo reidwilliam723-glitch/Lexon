@@ -1,3 +1,4 @@
+using Lexon.Core;
 using Lexon.Core.Models;
 using Lexon.Input.Interfaces;
 using System.Runtime.InteropServices;
@@ -237,6 +238,11 @@ public class FocusTracker : IFocusTracker
     {
         _isRunning = false;
         _focusCheckTimer?.Dispose();
+        ClearTypedBuffers();
+    }
+
+    public void ClearTypedBuffers()
+    {
         lock (_bufferLock)
         {
             _textBuffers.Clear();
@@ -245,32 +251,58 @@ public class FocusTracker : IFocusTracker
         }
     }
 
+    public bool IsCurrentFieldSecure()
+    {
+        var hWnd = GetEditorForegroundWindow();
+        if (hWnd == IntPtr.Zero)
+        {
+            return true;
+        }
+
+        return SecureFieldProbe.IsSecure(GetFocusedControlHandle(hWnd));
+    }
+
+    public string GetForegroundApplicationName()
+    {
+        var hWnd = GetEditorForegroundWindow();
+        if (hWnd == IntPtr.Zero)
+        {
+            return string.Empty;
+        }
+
+        return ApplicationName.Normalize(GetProcessBaseName(hWnd));
+    }
+
     public TextContext GetCurrentContext()
     {
         var hWnd = GetEditorForegroundWindow();
         if (hWnd == IntPtr.Zero)
         {
-            return new TextContext();
+            return new TextContext { IsPasswordField = true };
         }
 
         var title = new StringBuilder(256);
         GetWindowText(hWnd, title, title.Capacity);
 
-        GetWindowThreadProcessId(hWnd, out uint processId);
-        var processHandle = OpenProcess(0x0410, false, processId); // PROCESS_QUERY_INFORMATION
+        var processName = ApplicationName.Normalize(GetProcessBaseName(hWnd));
+        var controlHandle = GetFocusedControlHandle(hWnd);
+        var isSecure = SecureFieldProbe.IsSecure(controlHandle);
 
-        var processName = new StringBuilder(256);
-        if (processHandle != IntPtr.Zero)
+        if (isSecure)
         {
-            GetModuleBaseName(processHandle, IntPtr.Zero, processName, (uint)processName.Capacity);
-            CloseHandle(processHandle);
+            DiagnosticLog.Write($"GetCurrentContext: hwnd=0x{hWnd:X} process={processName} title=\"{title}\" secure=true (skipped text read)");
+            return new TextContext
+            {
+                ApplicationName = processName,
+                WindowTitle = title.ToString(),
+                Timestamp = DateTime.UtcNow,
+                IsPasswordField = true
+            };
         }
 
-        // Get text context using UI Automation or fallback buffer
         var textContext = ExtractTextContext(hWnd);
-        textContext.IsPasswordField = IsPasswordControl(GetFocusedControlHandle(hWnd));
-
-        textContext.ApplicationName = processName.ToString();
+        textContext.IsPasswordField = false;
+        textContext.ApplicationName = processName;
         textContext.WindowTitle = title.ToString();
         textContext.Timestamp = DateTime.UtcNow;
 
@@ -1060,6 +1092,11 @@ public class FocusTracker : IFocusTracker
     {
         var hWnd = GetEditorForegroundWindow();
         if (hWnd == IntPtr.Zero) return;
+
+        if (SecureFieldProbe.IsSecure(GetFocusedControlHandle(hWnd)))
+        {
+            return;
+        }
 
         DiagnosticLog.Write($"AddTypedCharacter: char={DiagnosticLog.Escape(character.ToString())} foreground hwnd=0x{hWnd:X}");
         AdvanceEstimate(character);

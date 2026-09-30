@@ -128,6 +128,7 @@ public static class LexonServiceComposer
         
         // Initialize plugin manager
         var pluginManager = new PluginManager(storage);
+        pluginManager.IsEnabled = profile.GetSetting("EnablePlugins", false);
         
         // Initialize theme manager
         var themeManager = new ThemeManager(storage);
@@ -264,7 +265,7 @@ public static class LexonServiceComposer
         {
             textExpansionManager.SetEnabled(isEnabled);
             suggestionPipeline.SetEnabled(isEnabled);
-            grammarCheck.SetEnabled(isEnabled);
+            lexonService.SetAssistanceEnabled(isEnabled);
             if (!isEnabled)
             {
                 suggestionOverlay.Hide();
@@ -380,52 +381,72 @@ public static class LexonServiceComposer
             var aiSettings = gpoManager.AISettings;
             var privacySettings = gpoManager.PrivacySettings;
 
-            // Apply general settings (only if not set by user)
-            if (!profile.HasSetting("AutoStart"))
-            {
-                profile.SetSetting("AutoStart", generalSettings.AutoStart);
-            }
-            if (!profile.HasSetting("MinimizeToTray"))
-            {
-                profile.SetSetting("MinimizeToTray", generalSettings.MinimizeToTray);
-            }
-            if (!profile.HasSetting("LocalMode"))
-            {
-                profile.SetSetting("LocalMode", generalSettings.LocalMode);
-            }
+            ApplyPolicy(profile, gpoManager, "AutoStart", () => profile.SetSetting("AutoStart", generalSettings.AutoStart));
+            ApplyPolicy(profile, gpoManager, "MinimizeToTray", () => profile.SetSetting("MinimizeToTray", generalSettings.MinimizeToTray));
+            ApplyPolicy(profile, gpoManager, "LocalMode", () => profile.SetSetting("LocalMode", generalSettings.LocalMode));
 
-            // Apply AI settings (only if not set by user)
-            if (!profile.HasSetting("AIProvider") && !string.IsNullOrEmpty(aiSettings.Provider))
+            ApplyPolicy(profile, gpoManager, "Provider", () =>
             {
-                profile.SetSetting("AIProvider", aiSettings.Provider);
-            }
-            if (!profile.HasSetting("APIKey") && !string.IsNullOrEmpty(aiSettings.APIKey))
+                if (!string.IsNullOrEmpty(aiSettings.Provider))
+                {
+                    profile.SetSetting("AIProvider", aiSettings.Provider);
+                }
+            }, profileKey: "AIProvider");
+            ApplyPolicy(profile, gpoManager, "APIKey", () =>
             {
-                profile.SetSetting("APIKey", aiSettings.APIKey);
-            }
+                if (!string.IsNullOrEmpty(aiSettings.APIKey))
+                {
+                    profile.SetSetting("APIKey", aiSettings.APIKey);
+                }
+            });
+            ApplyPolicy(profile, gpoManager, "Model", () =>
+            {
+                if (!string.IsNullOrEmpty(aiSettings.Model))
+                {
+                    profile.SetSetting("AIModel", aiSettings.Model);
+                }
+            }, profileKey: "AIModel");
+            ApplyPolicy(profile, gpoManager, "BaseUrl", () =>
+            {
+                if (!string.IsNullOrEmpty(aiSettings.BaseUrl))
+                {
+                    profile.SetSetting("OllamaBaseUrl", aiSettings.BaseUrl);
+                }
+            }, profileKey: "OllamaBaseUrl");
 
-            // Apply privacy settings
-            if (!profile.HasSetting("EnableTelemetry"))
-            {
-                profile.SetSetting("EnableTelemetry", privacySettings.EnableTelemetry);
-            }
-            if (!profile.HasSetting("EnableCrashReporting"))
-            {
-                profile.SetSetting("EnableCrashReporting", privacySettings.EnableCrashReporting);
-            }
+            ApplyPolicy(profile, gpoManager, "EnableTelemetry", () => profile.SetSetting("EnableTelemetry", privacySettings.EnableTelemetry));
+            ApplyPolicy(profile, gpoManager, "EnableCrashReporting", () => profile.SetSetting("EnableCrashReporting", privacySettings.EnableCrashReporting));
 
             // Apply blocked applications
             var blockedApps = gpoManager.BlockedApplications;
             if (blockedApps.Length > 0)
             {
                 var existingApps = profile.GetSetting<List<string>>("BlockedApplications", new List<string>());
-                var mergedApps = existingApps.Union(blockedApps).Distinct().ToList();
+                var mergedApps = existingApps
+                    .Concat(blockedApps)
+                    .Select(ApplicationName.Normalize)
+                    .Where(name => name.Length > 0)
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToList();
                 profile.SetSetting("BlockedApplications", mergedApps);
             }
         }
         catch
         {
             // If Group Policy application fails, continue with user settings
+        }
+    }
+
+    private static void ApplyPolicy(
+        Profile profile,
+        GroupPolicyManager gpoManager,
+        string policyName,
+        Action apply,
+        string? profileKey = null)
+    {
+        if (gpoManager.IsPolicyManaged(policyName) || !profile.HasSetting(profileKey ?? policyName))
+        {
+            apply();
         }
     }
 

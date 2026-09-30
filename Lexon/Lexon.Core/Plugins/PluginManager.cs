@@ -18,7 +18,7 @@ public class PluginManager
     private Dictionary<string, bool> _pendingPluginStates = new();
     private const string PluginsConfigKey = "plugins_config";
     
-    public bool IsEnabled { get; set; } = true;
+    public bool IsEnabled { get; set; }
     public event EventHandler<PluginEventArgs>? PluginLoaded;
     public event EventHandler<PluginEventArgs>? PluginUnloaded;
     public event EventHandler<PluginErrorEventArgs>? PluginError;

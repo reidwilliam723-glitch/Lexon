@@ -16,9 +16,17 @@ public interface ITextInjector
     void DeleteBackward(int count);
 
     /// <summary>
-    /// Replaces old text with new text
+    /// Replaces old text with new text. Use
+    /// <paramref name="selectionStillActive"/> when the target is still
+    /// highlighted so a single Backspace deletes the selection instead of
+    /// characters before it.
     /// </summary>
-    void ReplaceText(string oldText, string newText);
+    void ReplaceText(string oldText, string newText, bool selectionStillActive = false);
+
+    /// <summary>
+    /// Replaces the current selection (one Backspace, then insert).
+    /// </summary>
+    void ReplaceSelection(string newText);
 
     /// <summary>
     /// Injects text via clipboard as a fallback method

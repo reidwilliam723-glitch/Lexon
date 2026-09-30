@@ -1,3 +1,4 @@
+using Lexon.Core;
 using Lexon.Core.Interfaces;
 using Lexon.Core.Models;
 
@@ -38,7 +39,8 @@ public class PrivacyGuard : IPrivacyGuard
 
     public bool IsApplicationBlocked(string applicationName)
     {
-        return !string.IsNullOrEmpty(applicationName) && _blockedApplications.Contains(applicationName);
+        var normalized = ApplicationName.Normalize(applicationName);
+        return !string.IsNullOrEmpty(normalized) && _blockedApplications.Contains(normalized);
     }
 
     public bool ShouldBlockAssistance(TextContext context)
@@ -62,12 +64,20 @@ public class PrivacyGuard : IPrivacyGuard
 
     public void AddBlockedApplication(string applicationName)
     {
-        _blockedApplications.Add(applicationName);
+        var normalized = ApplicationName.Normalize(applicationName);
+        if (!string.IsNullOrEmpty(normalized))
+        {
+            _blockedApplications.Add(normalized);
+        }
     }
 
     public void RemoveBlockedApplication(string applicationName)
     {
-        _blockedApplications.Remove(applicationName);
+        var normalized = ApplicationName.Normalize(applicationName);
+        if (!string.IsNullOrEmpty(normalized))
+        {
+            _blockedApplications.Remove(normalized);
+        }
     }
 
     public void ReplaceBlockedApplications(IEnumerable<string> applicationNames)
@@ -77,10 +87,7 @@ public class PrivacyGuard : IPrivacyGuard
 
         foreach (var applicationName in applicationNames)
         {
-            if (!string.IsNullOrWhiteSpace(applicationName))
-            {
-                _blockedApplications.Add(applicationName.Trim());
-            }
+            AddBlockedApplication(applicationName);
         }
     }
 

@@ -31,6 +31,7 @@ public class LexonService
     private MouseListener? _mouseListener;
     private CancellationTokenSource? _cancellationTokenSource;
     private bool _suppressSuggestionOverlay;
+    private bool _assistanceEnabled = true;
     private bool _isOverlayVisible = false;
     private long _suggestionGeneration = 0;
 
@@ -171,8 +172,48 @@ public class LexonService
         // Hide and dispose overlay
         _suggestionOverlay.Hide();
         _suggestionOverlay.Dispose();
+        _grammarOverlay?.Hide();
+        _grammarOverlay?.Dispose();
 
         await Task.CompletedTask;
+    }
+
+    public void SetAssistanceEnabled(bool enabled)
+    {
+        _assistanceEnabled = enabled;
+        if (!enabled)
+        {
+            HideSuggestions();
+            _focusTracker.ClearTypedBuffers();
+            _rewrite?.SetEnabled(false);
+            _grammar?.SetEnabled(false);
+            Interlocked.Increment(ref _suggestionGeneration);
+        }
+        else
+        {
+            _rewrite?.SetEnabled(true);
+            _grammar?.SetEnabled(true);
+        }
+    }
+
+    private bool IsAssistanceSuppressed()
+    {
+        if (!_assistanceEnabled)
+        {
+            return true;
+        }
+
+        if (_focusTracker.IsCurrentFieldSecure())
+        {
+            return true;
+        }
+
+        if (_privacyGuard.IsApplicationBlocked(_focusTracker.GetForegroundApplicationName()))
+        {
+            return true;
+        }
+
+        return _privacyGuard.ShouldBlockAssistance(_currentContext);
     }
 
     private TextContext _currentContext = new();
@@ -271,7 +312,9 @@ public class LexonService
         var previousContext = _currentContext;
         var windowChanged = !string.Equals(previousContext.ApplicationName, context.ApplicationName, StringComparison.Ordinal)
             || !string.Equals(previousContext.WindowTitle, context.WindowTitle, StringComparison.Ordinal);
-        if (windowChanged && !previousContext.IsPasswordField && !string.IsNullOrWhiteSpace(previousContext.FullText))
+        if (windowChanged
+            && !_privacyGuard.ShouldBlockAssistance(previousContext)
+            && !string.IsNullOrWhiteSpace(previousContext.FullText))
         {
             _suggestionPipeline.LearnWritingStyle(previousContext.FullText, previousContext);
         }
@@ -292,7 +335,8 @@ public class LexonService
 
     private void OnKeyPressed(object? sender, Input.Interfaces.KeyboardEventArgs e)
     {
-        if (_rewrite?.TryHandleKey(e) == true || _grammar?.TryHandleKey(e) == true)
+        if (_assistanceEnabled
+            && (_rewrite?.TryHandleKey(e) == true || _grammar?.TryHandleKey(e) == true))
         {
             return;
         }
@@ -317,6 +361,16 @@ public class LexonService
         _keyboardShortcutManager.OnKeyPressed(e);
         if (e.Handled)
         {
+            return;
+        }
+
+        if (IsAssistanceSuppressed())
+        {
+            if (e.VirtualKey == 27)
+            {
+                HideSuggestions();
+            }
+
             return;
         }
 
@@ -618,7 +672,7 @@ public class LexonService
         {
             return;
         }
-        if (!_suggestionPipeline.IsEnabled)
+        if (!_suggestionPipeline.IsEnabled || IsAssistanceSuppressed())
         {
             HideSuggestions();
             return;

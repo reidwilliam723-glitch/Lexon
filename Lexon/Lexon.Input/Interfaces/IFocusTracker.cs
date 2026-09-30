@@ -18,4 +18,7 @@ public interface IFocusTracker
     void Start();
     void Stop();
     void AddTypedCharacter(char character);
+    bool IsCurrentFieldSecure();
+    string GetForegroundApplicationName();
+    void ClearTypedBuffers();
 }
