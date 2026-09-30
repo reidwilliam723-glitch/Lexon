@@ -257,6 +257,121 @@ public class AiProbeSessionTests
         Assert.Equal(expected, AiModelChoices.ResolveSelected(provider, null));
     }
 
+    [Fact]
+    public async Task OnStatusChanged_ReportsCheckingBeforeProbeCompletesThenConnected()
+    {
+        var gate = new TaskCompletionSource<AiProbeResult>();
+        var states = new List<AiConnectionState>();
+        AiProbeSession session = null!;
+        session = new AiProbeSession
+        {
+            ProbeAsync = async (_, _, _, _) => await gate.Task,
+            OnStatusChanged = () => states.Add(session.Connection.State),
+            ApplyProvider = _ => { },
+            CreateProvider = (_, _, _) => new FakeProvider()
+        };
+
+        var probe = session.ProbeAsyncCore(false, "OpenAI", "sk-test", "gpt-4o-mini", false);
+        Assert.Equal([AiConnectionState.Checking], states);
+        Assert.False(probe.IsCompleted);
+
+        gate.SetResult(AiProbeResult.Ok("ok"));
+        await probe;
+        Assert.Equal([AiConnectionState.Checking, AiConnectionState.Connected], states);
+    }
+
+    [Fact]
+    public async Task StaleProbeResult_DoesNotRaiseStatusCallback()
+    {
+        var gate = new TaskCompletionSource<AiProbeResult>();
+        var states = new List<AiConnectionState>();
+        AiProbeSession session = null!;
+        session = new AiProbeSession
+        {
+            ProbeAsync = async (_, _, _, _) => await gate.Task,
+            OnStatusChanged = () => states.Add(session.Connection.State),
+            ApplyProvider = _ => { }
+        };
+
+        var first = session.ProbeAsyncCore(false, "OpenAI", "sk-a", "gpt-4o-mini", false);
+        Assert.Equal(AiConnectionState.Checking, Assert.Single(states));
+
+        await session.ProbeAsyncCore(false, "None", "", "", false);
+        var countAfterNone = states.Count;
+        Assert.Equal(AiConnectionState.NotConfigured, states[^1]);
+
+        gate.SetResult(AiProbeResult.Ok("late"));
+        await first;
+        Assert.Equal(countAfterNone, states.Count);
+    }
+
+    [Fact]
+    public async Task LocalOnly_ReportsImmediately()
+    {
+        var states = new List<AiConnectionState>();
+        AiProbeSession session = null!;
+        session = new AiProbeSession
+        {
+            OnStatusChanged = () => states.Add(session.Connection.State),
+            ApplyProvider = _ => { }
+        };
+
+        session.EnterLocalOnly();
+        Assert.Equal(AiConnectionState.LocalOnlyOff, Assert.Single(states));
+
+        states.Clear();
+        await session.ProbeAsyncCore(true, "OpenAI", "sk-test", "gpt-4o-mini", false);
+        Assert.Equal(AiConnectionState.LocalOnlyOff, Assert.Single(states));
+    }
+
+    [Fact]
+    public async Task ResolveModelAfterSuccess_IsNotCalled_ForNoneEmptyKeyLocalOnlyOrFailedProbe()
+    {
+        var calls = 0;
+        Func<string, string> resolve = model =>
+        {
+            calls++;
+            return model;
+        };
+
+        await new AiProbeSession { ResolveModelAfterSuccess = resolve }.ProbeAsyncCore(false, "None", "", "gpt-4o-mini", false);
+        await new AiProbeSession { ResolveModelAfterSuccess = resolve }.ProbeAsyncCore(false, "OpenAI", "", "gpt-4o-mini", false);
+        await new AiProbeSession { ResolveModelAfterSuccess = resolve }.ProbeAsyncCore(true, "OpenAI", "sk-test", "gpt-4o-mini", false);
+        await new AiProbeSession
+        {
+            ResolveModelAfterSuccess = resolve,
+            ProbeAsync = (_, _, _, _) => Task.FromResult(AiProbeResult.Error("no"))
+        }.ProbeAsyncCore(false, "OpenAI", "sk-test", "gpt-4o-mini", false);
+
+        Assert.Equal(0, calls);
+    }
+
+    [Fact]
+    public async Task ResolveModelAfterSuccess_IsCalledOnce_BeforeEnterConnected()
+    {
+        var order = new List<string>();
+        AiProbeSession session = null!;
+        session = new AiProbeSession
+        {
+            ProbeAsync = (_, _, _, _) => Task.FromResult(AiProbeResult.Ok("ok")),
+            ResolveModelAfterSuccess = model =>
+            {
+                order.Add("resolve");
+                Assert.Equal(AiConnectionState.Checking, session.Connection.State);
+                return model;
+            },
+            OnStatusChanged = () => order.Add(session.Connection.State.ToString()),
+            ApplyProvider = _ => { },
+            CreateProvider = (_, _, _) => new FakeProvider()
+        };
+
+        await session.ProbeAsyncCore(false, "OpenAI", "sk-test", "gpt-4o-mini", false);
+
+        Assert.Equal(["Checking", "resolve", "Connected"], order);
+        Assert.Equal(AiConnectionState.Connected, session.Connection.State);
+        Assert.Equal("gpt-4o-mini", session.Connection.ConnectedModel);
+    }
+
     private sealed class FakeProvider : IAIProvider
     {
         public string Name => "OpenAI";
@@ -268,5 +383,50 @@ public class AiProbeSessionTests
         public Task<string> ChangeToneAsync(string text, string tone, CancellationToken cancellationToken = default) => Task.FromResult(text);
         public Task<AiProbeResult> ProbeAsync(CancellationToken cancellationToken = default) => Task.FromResult(AiProbeResult.Ok("ok"));
         public Task WarmupAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
+    }
+}
+
+public class HexColorTests
+{
+    [Theory]
+    [InlineData("#0A3BA6", 255, 10, 59, 166)]
+    [InlineData("0A3BA6", 255, 10, 59, 166)]
+    [InlineData("#0a3ba6", 255, 10, 59, 166)]
+    [InlineData("0a3ba6", 255, 10, 59, 166)]
+    [InlineData("#FF0A3BA6", 255, 10, 59, 166)]
+    [InlineData("ff0a3ba6", 255, 10, 59, 166)]
+    [InlineData("#800A3BA6", 128, 10, 59, 166)]
+    [InlineData("800A3BA6", 128, 10, 59, 166)]
+    public void Parse_AcceptsRgbAndArgb(string hex, byte a, byte r, byte g, byte b)
+    {
+        var color = HexColor.Parse(hex);
+        Assert.Equal(a, color.A);
+        Assert.Equal(r, color.R);
+        Assert.Equal(g, color.G);
+        Assert.Equal(b, color.B);
+        Assert.True(HexColor.TryParse(hex, out var parsed));
+        Assert.Equal(color, parsed);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("#")]
+    [InlineData("123")]
+    [InlineData("#12345")]
+    [InlineData("#1234567")]
+    [InlineData("#GGGGGG")]
+    [InlineData("not-a-color")]
+    public void InvalidInput_DoesNotBecomeBlackSilentlyInDebug(string hex)
+    {
+        Assert.False(HexColor.TryParse(hex, out _));
+#if DEBUG
+        Assert.Throws<FormatException>(() => HexColor.Parse(hex));
+#else
+        var fallback = HexColor.Parse(hex);
+        Assert.Equal((byte)255, fallback.A);
+        Assert.Equal((byte)0, fallback.R);
+        Assert.Equal((byte)0, fallback.G);
+        Assert.Equal((byte)0, fallback.B);
+#endif
     }
 }

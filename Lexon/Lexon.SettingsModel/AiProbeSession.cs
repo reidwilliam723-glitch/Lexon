@@ -6,15 +6,12 @@ namespace Lexon.SettingsModel;
 
 public sealed class AiProbeSession
 {
-    public readonly record struct ProbePaint(string Kind);
-
     public AiProbeGate Gate { get; } = new();
     public AiConnectionStatus Connection { get; } = new();
 
     public string ActiveProvider { get; set; } = "None";
     public string ActiveApiKey { get; set; } = string.Empty;
     public bool AiValidated { get; set; }
-    public bool AdvancedVisible { get; set; }
 
     public Func<bool> IsAlive { get; set; } = static () => true;
     public Func<string?> InstalledProviderName { get; set; } = static () => null;
@@ -24,7 +21,15 @@ public sealed class AiProbeSession
         = static (provider, key, model) => AiProviderCatalog.Create(provider, key, model: model);
     public Action<IAIProvider?> ApplyProvider { get; set; } = static _ => { };
     public Action Persist { get; set; } = static () => { };
-    public Action OnTurnAiOffImmediately { get; set; } = static () => { };
+    public Action? OnStatusChanged { get; set; }
+
+    /// <summary>
+    /// Called only after a successful probe. The argument is the model that was
+    /// sent to the probe; the result is used for <see cref="AiConnectionStatus.EnterConnected"/>
+    /// and provider creation. Default: keep the model, or the catalog default when blank.
+    /// </summary>
+    public Func<string, string> ResolveModelAfterSuccess { get; set; }
+        = static model => model;
 
     public bool ProbeStillCurrent(AiProbeGate.Ticket ticket, bool localMode)
         => IsAlive() && Gate.IsCurrent(ticket) && !localMode;
@@ -34,8 +39,7 @@ public sealed class AiProbeSession
         Gate.Invalidate();
         Persist();
         ApplyProvider(null);
-        Connection.EnterLocalOnly();
-        OnTurnAiOffImmediately();
+        SetConnection(() => Connection.EnterLocalOnly());
     }
 
     public async Task ProbeAsyncCore(bool localMode, string uiProvider, string key, string model, bool watchingClipboard)
@@ -47,7 +51,7 @@ public sealed class AiProbeSession
 
         if (localMode)
         {
-            Connection.EnterLocalOnly();
+            SetConnection(() => Connection.EnterLocalOnly());
             return;
         }
 
@@ -64,7 +68,7 @@ public sealed class AiProbeSession
             ActiveProvider = "None";
             ActiveApiKey = string.Empty;
             AiValidated = true;
-            Connection.EnterDisconnected();
+            SetConnection(() => Connection.EnterDisconnected());
             Persist();
             ApplyProvider(null);
             return;
@@ -74,13 +78,13 @@ public sealed class AiProbeSession
         {
             if (!watchingClipboard)
             {
-                Connection.EnterNotConfigured();
+                SetConnection(() => Connection.EnterNotConfigured());
             }
 
             return;
         }
 
-        Connection.EnterChecking(uiProvider);
+        SetConnection(() => Connection.EnterChecking(uiProvider));
 
         AiProbeResult result;
         try
@@ -100,7 +104,7 @@ public sealed class AiProbeSession
         if (!result.Succeeded)
         {
             var installed = InstalledProviderName();
-            Connection.EnterFailed(result.Message, installed);
+            SetConnection(() => Connection.EnterFailed(result.Message, installed));
             if (string.IsNullOrEmpty(installed))
             {
                 ApplyProvider(null);
@@ -117,10 +121,13 @@ public sealed class AiProbeSession
         ActiveProvider = uiProvider;
         ActiveApiKey = AiProviderCatalog.UsesApiKey(uiProvider) ? key : string.Empty;
         AiValidated = true;
-        var resolvedModel = string.IsNullOrWhiteSpace(model)
-            ? AiProviderCatalog.DefaultModel(uiProvider)
-            : model;
-        Connection.EnterConnected(uiProvider, resolvedModel);
+        var resolvedModel = ResolveModelAfterSuccess(model);
+        if (string.IsNullOrWhiteSpace(resolvedModel))
+        {
+            resolvedModel = AiProviderCatalog.DefaultModel(uiProvider);
+        }
+
+        SetConnection(() => Connection.EnterConnected(uiProvider, resolvedModel));
         Persist();
         if (!ProbeStillCurrent(ticket, localMode))
         {
@@ -133,7 +140,13 @@ public sealed class AiProbeSession
         }
         catch (Exception)
         {
-            Connection.EnterFailed("Lexon could not switch providers.", InstalledProviderName());
+            SetConnection(() => Connection.EnterFailed("Lexon could not switch providers.", InstalledProviderName()));
         }
+    }
+
+    private void SetConnection(Action enter)
+    {
+        enter();
+        OnStatusChanged?.Invoke();
     }
 }

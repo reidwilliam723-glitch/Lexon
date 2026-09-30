@@ -114,11 +114,6 @@ public partial class SettingsForm : Form
 
     internal bool LayoutIsWide => _wideLayoutActive;
 
-    public SettingsForm()
-        : this(null, null, null)
-    {
-    }
-
     public SettingsForm(Profile? profile, PrivacyGuard? privacyGuard, IStorage? storage, ThemeManager? themeManager = null, SuggestionPipeline? suggestionPipeline = null, ISuggestionOverlay? suggestionOverlay = null, PersonalizationManager? personalization = null, TextExpansionManager? expansions = null, IEditConfirmation? editConfirmation = null, Action<IAIProvider?>? applyAiProvider = null, CloudAiActivityLog? cloudAiLog = null, AiAccessPolicy? accessPolicy = null, Func<string?>? installedAiProviderName = null)
     {
         _ownsProfile = profile == null;
@@ -144,6 +139,26 @@ public partial class SettingsForm : Form
         _ai.IsAlive = () => !IsDisposed;
         _ai.InstalledProviderName = InstalledProviderName;
         _ai.ApplyProvider = provider => _applyAiProvider?.Invoke(provider);
+        _ai.OnStatusChanged = () =>
+        {
+            if (IsDisposed)
+            {
+                return;
+            }
+
+            if (InvokeRequired)
+            {
+                BeginInvoke(PaintAiFromSession);
+                return;
+            }
+
+            PaintAiFromSession();
+        };
+        _ai.ResolveModelAfterSuccess = _ =>
+        {
+            EnsureDefaultModel(SelectedUiProvider());
+            return SelectedModel();
+        };
         _ai.Persist = () =>
         {
             if (!_loading)
@@ -152,8 +167,16 @@ public partial class SettingsForm : Form
                 SchedulePersist();
             }
         };
-        _persistTimer = new System.Windows.Forms.Timer { Interval = 400 };
-        _persistTimer.Tick += (_, _) => FlushPersist();
+        _persistTimer = new System.Windows.Forms.Timer { Interval = 100 };
+        _persistTimer.Tick += (_, _) =>
+        {
+            _persist.IsLoading = _loading;
+            _persist.TryFlushDue(DateTime.UtcNow);
+            if (!_persist.HasPending)
+            {
+                _persistTimer.Stop();
+            }
+        };
         _aiProbeTimer = new System.Windows.Forms.Timer { Interval = 500 };
         _aiProbeTimer.Tick += (_, _) =>
         {
@@ -1499,8 +1522,10 @@ public partial class SettingsForm : Form
         }
 
         _persist.Schedule(DateTime.UtcNow);
-        _persistTimer.Stop();
-        _persistTimer.Start();
+        if (!_persistTimer.Enabled)
+        {
+            _persistTimer.Start();
+        }
     }
 
     private void FlushPersist()
@@ -1558,7 +1583,6 @@ public partial class SettingsForm : Form
     private void ShowAdvancedProviders()
     {
         _aiAdvancedVisible = true;
-        _ai.AdvancedVisible = true;
         _cmbAIProvider.Visible = true;
         _lnkMoreProviders.Visible = false;
         _lblAiRecommended.Text = "Provider";
@@ -1680,7 +1704,6 @@ public partial class SettingsForm : Form
         _aiProbeTimer.Stop();
         StopClipboardWatch();
         _ai.EnterLocalOnly();
-        PaintAiStatus(Color.FromArgb(140, 100, 0));
         UpdateAiEntryMode();
     }
 
@@ -1699,14 +1722,12 @@ public partial class SettingsForm : Form
         }
 
         var provider = SelectedUiProvider();
-        EnsureDefaultModel(provider);
         await _ai.ProbeAsyncCore(
             _chkLocalMode.Checked,
             provider,
             _txtAPIKey.Text.Trim(),
             SelectedModel(),
             _watchingClipboard);
-        PaintAiFromSession();
     }
 
     private void PaintAiFromSession()

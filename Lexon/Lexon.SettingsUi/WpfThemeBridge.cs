@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Media;
 using Lexon.Core.Theming;
+using Lexon.SettingsModel;
 using MediaColor = System.Windows.Media.Color;
 
 namespace Lexon.SettingsUi;
@@ -13,9 +14,8 @@ public static class WpfThemeBridge
     {
         var colors = windowsHighContrast ? SystemHighContrast() : FromTheme(theme);
         var dict = new ResourceDictionary();
-        foreach (var (key, hex) in colors)
+        foreach (var (key, color) in colors)
         {
-            var color = Parse(hex);
             dict[key] = color;
             dict[key + "Brush"] = new SolidColorBrush(color);
         }
@@ -47,63 +47,52 @@ public static class WpfThemeBridge
         }
     }
 
-    private static Dictionary<string, string> FromTheme(Theme theme)
+    private static Dictionary<string, MediaColor> FromTheme(Theme theme)
     {
         var c = theme.Colors;
-        return new Dictionary<string, string>
+        return new Dictionary<string, MediaColor>
         {
-            ["Background"] = c.Background,
-            ["Surface"] = c.Surface,
-            ["SurfaceRaised"] = c.SurfaceRaised,
-            ["Border"] = c.Border,
-            ["BorderStrong"] = c.BorderStrong,
-            ["Text"] = c.Text,
-            ["TextSecondary"] = c.TextSecondary,
-            ["Primary"] = c.Primary,
-            ["PrimaryHover"] = c.PrimaryHover,
-            ["PrimaryPressed"] = c.PrimaryPressed,
-            ["PrimaryTint"] = c.PrimaryTint,
-            ["OnPrimary"] = c.OnPrimary,
-            ["Success"] = c.Success,
-            ["Warning"] = c.Warning,
-            ["Error"] = c.Error
+            ["Background"] = ToMedia(c.Background),
+            ["Surface"] = ToMedia(c.Surface),
+            ["SurfaceRaised"] = ToMedia(c.SurfaceRaised),
+            ["Border"] = ToMedia(c.Border),
+            ["BorderStrong"] = ToMedia(c.BorderStrong),
+            ["Text"] = ToMedia(c.Text),
+            ["TextSecondary"] = ToMedia(c.TextSecondary),
+            ["Primary"] = ToMedia(c.Primary),
+            ["PrimaryHover"] = ToMedia(c.PrimaryHover),
+            ["PrimaryPressed"] = ToMedia(c.PrimaryPressed),
+            ["PrimaryTint"] = ToMedia(c.PrimaryTint),
+            ["OnPrimary"] = ToMedia(c.OnPrimary),
+            ["Success"] = ToMedia(c.Success),
+            ["Warning"] = ToMedia(c.Warning),
+            ["Error"] = ToMedia(c.Error)
         };
     }
 
-    private static Dictionary<string, string> SystemHighContrast()
-    {
-        string Hex(MediaColor c) => $"#{c.A:X2}{c.R:X2}{c.G:X2}{c.B:X2}";
-        return new Dictionary<string, string>
+    private static Dictionary<string, MediaColor> SystemHighContrast()
+        => new()
         {
-            ["Background"] = Hex(SystemColors.WindowColor),
-            ["Surface"] = Hex(SystemColors.WindowColor),
-            ["SurfaceRaised"] = Hex(SystemColors.WindowColor),
-            ["Border"] = Hex(SystemColors.WindowTextColor),
-            ["BorderStrong"] = Hex(SystemColors.WindowTextColor),
-            ["Text"] = Hex(SystemColors.WindowTextColor),
-            ["TextSecondary"] = Hex(SystemColors.GrayTextColor),
-            ["Primary"] = Hex(SystemColors.HighlightColor),
-            ["PrimaryHover"] = Hex(SystemColors.HighlightTextColor),
-            ["PrimaryPressed"] = Hex(SystemColors.HighlightColor),
-            ["PrimaryTint"] = Hex(SystemColors.WindowColor),
-            ["OnPrimary"] = Hex(SystemColors.HighlightTextColor),
-            ["Success"] = Hex(SystemColors.WindowTextColor),
-            ["Warning"] = Hex(SystemColors.GrayTextColor),
-            ["Error"] = Hex(SystemColors.WindowTextColor)
+            ["Background"] = SystemColors.WindowColor,
+            ["Surface"] = SystemColors.WindowColor,
+            ["SurfaceRaised"] = SystemColors.WindowColor,
+            ["Border"] = SystemColors.WindowTextColor,
+            ["BorderStrong"] = SystemColors.WindowTextColor,
+            ["Text"] = SystemColors.WindowTextColor,
+            ["TextSecondary"] = SystemColors.GrayTextColor,
+            ["Primary"] = SystemColors.HighlightColor,
+            ["PrimaryHover"] = SystemColors.HighlightTextColor,
+            ["PrimaryPressed"] = SystemColors.HighlightColor,
+            ["PrimaryTint"] = SystemColors.WindowColor,
+            ["OnPrimary"] = SystemColors.HighlightTextColor,
+            ["Success"] = SystemColors.WindowTextColor,
+            ["Warning"] = SystemColors.GrayTextColor,
+            ["Error"] = SystemColors.WindowTextColor
         };
-    }
 
-    private static MediaColor Parse(string hex)
+    private static MediaColor ToMedia(string hex)
     {
-        var value = hex.Trim().TrimStart('#');
-        if (value.Length == 6)
-        {
-            return MediaColor.FromRgb(
-                Convert.ToByte(value[..2], 16),
-                Convert.ToByte(value[2..4], 16),
-                Convert.ToByte(value[4..6], 16));
-        }
-
-        return MediaColor.FromRgb(0, 0, 0);
+        var parsed = HexColor.Parse(hex);
+        return MediaColor.FromArgb(parsed.A, parsed.R, parsed.G, parsed.B);
     }
 }

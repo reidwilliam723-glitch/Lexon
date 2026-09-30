@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Windows;
 using System.Windows.Forms.Integration;
 using Lexon.Core.Theming;
@@ -13,18 +14,15 @@ public static class SettingsUiHost
     private static ControlGalleryWindow? _gallery;
     private static ThemeManager? _themes;
     private static bool _themeHooked;
+    private static PropertyChangedEventHandler? _systemParametersHandler;
 
     public static void Warm(ThemeManager themes)
     {
         _themes = themes;
         var app = WpfBootstrap.EnsureApplication();
         WpfThemeBridge.ApplyTo(app, themes.CurrentTheme);
-        if (!_themeHooked)
-        {
-            _themeHooked = true;
-            themes.ThemeChanged += (_, e) => WpfThemeBridge.ApplyTo(app, e.NewTheme);
-        }
-
+        HookTheme(themes);
+        HookSystemParameters(app);
         _ = EnsureGallery();
     }
 
@@ -39,6 +37,18 @@ public static class SettingsUiHost
 
     public static void Shutdown()
     {
+        if (_systemParametersHandler != null)
+        {
+            SystemParameters.StaticPropertyChanged -= _systemParametersHandler;
+            _systemParametersHandler = null;
+        }
+
+        if (_themes != null && _themeHooked)
+        {
+            _themes.ThemeChanged -= OnThemeChanged;
+            _themeHooked = false;
+        }
+
         try
         {
             Application.Current?.Shutdown();
@@ -64,6 +74,70 @@ public static class SettingsUiHost
         Pump();
         warm.Stop();
         return (cold.ElapsedMilliseconds, warm.ElapsedMilliseconds);
+    }
+
+    private static void HookTheme(ThemeManager themes)
+    {
+        if (_themeHooked)
+        {
+            return;
+        }
+
+        _themeHooked = true;
+        themes.ThemeChanged += OnThemeChanged;
+    }
+
+    private static void OnThemeChanged(object? sender, ThemeChangedEventArgs e)
+    {
+        var app = Application.Current;
+        if (app == null)
+        {
+            return;
+        }
+
+        void Apply() => WpfThemeBridge.ApplyTo(app, e.NewTheme);
+        if (app.Dispatcher.CheckAccess())
+        {
+            Apply();
+        }
+        else
+        {
+            app.Dispatcher.BeginInvoke(Apply);
+        }
+    }
+
+    private static void HookSystemParameters(Application app)
+    {
+        if (_systemParametersHandler != null)
+        {
+            return;
+        }
+
+        _systemParametersHandler = (_, e) =>
+        {
+            if (e.PropertyName is not (nameof(SystemParameters.HighContrast)
+                or nameof(SystemParameters.ClientAreaAnimation)))
+            {
+                return;
+            }
+
+            var themes = _themes;
+            if (themes == null)
+            {
+                return;
+            }
+
+            void Apply() => WpfThemeBridge.ApplyTo(app, themes.CurrentTheme);
+            if (app.Dispatcher.CheckAccess())
+            {
+                Apply();
+            }
+            else
+            {
+                app.Dispatcher.BeginInvoke(Apply);
+            }
+        };
+        SystemParameters.StaticPropertyChanged += _systemParametersHandler;
     }
 
     private static void Pump()
