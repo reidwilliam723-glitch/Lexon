@@ -118,6 +118,13 @@ public class SettingsUiTests
         _ = new StatusPill { Content = "Ok" };
         _ = new InlineBanner { Content = "Note" };
         _ = new RevealPasswordBox { Password = "x" };
+        _ = new System.Windows.Controls.CheckBox { Content = "Check" };
+        _ = new System.Windows.Controls.RadioButton { Content = "Radio" };
+        _ = new System.Windows.Controls.ToolTip { Content = "Tip" };
+        _ = new System.Windows.Controls.Primitives.ScrollBar();
+        _ = new System.Windows.Controls.ListBoxItem { Content = "Item" };
+        _ = new System.Windows.Controls.ContextMenu();
+        _ = new System.Windows.Controls.MenuItem { Header = "Copy" };
     }
 
     private static void AssertThemeContrast(ResourceDictionary dict, string label)
