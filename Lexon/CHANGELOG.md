@@ -2,6 +2,37 @@
 
 All notable changes to Lexon will be documented in this file.
 
+## [1.2.0] - 2026-10-02
+
+### Settings UI
+- WinForms buttons now use `OnPrimary` text plus hover, pressed, and a visible border, so High Contrast and Dark stay readable.
+- `--ui-gallery` makes Ctrl+Shift+S open the WPF control gallery (and bring the existing window forward) instead of the old Settings form.
+- Reduced motion is no longer ignored: `PopupAnimation` comes only from `WpfThemeBridge`.
+- Combo dropdown lines up with the field; the scrollbar no longer shoves page content sideways on hover.
+- Secondary and Subtle hover/pressed show a Primary border when the fill barely changes.
+- CheckBox and RadioButton accept clicks in the gap beside the label. ListBox, ToolTip, and InfoTip follow the theme and keyboard focus.
+
+## [1.0.11] - 2026-10-02
+
+### Settings UI
+- Control gallery behind `--ui-gallery`, with a Disabled toggle and names on every demo control.
+- Button hover and pressed contrast stays at least 4.5:1. Windows High Contrast primary hover stays readable.
+- ToggleSwitch animates both ways. WPF no longer warms up for every user while SettingsForm is the default.
+- Remaining chrome is themed: scrollbar, checkbox, radio, tooltip, list item, and context menu.
+
+## [1.0.10] - 2026-09-30
+
+### Reliability
+- High Contrast colours parse correctly (8-digit hex).
+- Settings shows Checking while an AI probe is in flight.
+- Persist debounce matches production (400 ms, 100 ms poll).
+
+## [1.0.9] - 2026-09-30
+
+### Settings UI
+- Testable settings model (`Lexon.SettingsModel`) and the WPF settings UI foundation (`Lexon.SettingsUi`).
+- WinForms `SettingsForm` remains the default; the gallery is behind `--ui-gallery`.
+
 ## [1.0.8] - 2026-09-30
 
 ### Privacy and reliability
