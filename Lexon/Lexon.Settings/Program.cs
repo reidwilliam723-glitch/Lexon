@@ -395,13 +395,9 @@ static class Program
         }
 
         EnsureSettingsForm();
-        if (_composition != null)
+        if (_enableUiGallery && _composition != null)
         {
-            SettingsUiHost.Warm(_composition.ThemeManager);
-            if (_enableUiGallery)
-            {
-                SettingsUiHost.ShowGallery(_composition.ThemeManager);
-            }
+            SettingsUiHost.ShowGallery(_composition.ThemeManager);
         }
     }
 

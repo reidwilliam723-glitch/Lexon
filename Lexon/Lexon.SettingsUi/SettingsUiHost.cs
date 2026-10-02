@@ -23,7 +23,6 @@ public static class SettingsUiHost
         WpfThemeBridge.ApplyTo(app, themes.CurrentTheme);
         HookTheme(themes);
         HookSystemParameters(app);
-        _ = EnsureGallery();
     }
 
     public static void ShowGallery(ThemeManager themes)

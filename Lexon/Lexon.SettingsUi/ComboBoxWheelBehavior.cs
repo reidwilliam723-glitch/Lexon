@@ -42,7 +42,7 @@ public static class ComboBoxWheelBehavior
         }
 
         e.Handled = true;
-        var parent = FindParent<ScrollViewer>(combo);
+        var parent = FindScrollableAncestor(combo);
         parent?.RaiseEvent(new MouseWheelEventArgs(e.MouseDevice, e.Timestamp, e.Delta)
         {
             RoutedEvent = UIElement.MouseWheelEvent,
@@ -50,19 +50,24 @@ public static class ComboBoxWheelBehavior
         });
     }
 
-    private static T? FindParent<T>(DependencyObject child) where T : DependencyObject
+    private static ScrollViewer? FindScrollableAncestor(DependencyObject child)
     {
+        ScrollViewer? first = null;
         var current = VisualTreeHelper.GetParent(child);
         while (current != null)
         {
-            if (current is T match)
+            if (current is ScrollViewer viewer)
             {
-                return match;
+                first ??= viewer;
+                if (viewer.ScrollableHeight > 0)
+                {
+                    return viewer;
+                }
             }
 
             current = VisualTreeHelper.GetParent(current);
         }
 
-        return null;
+        return first;
     }
 }

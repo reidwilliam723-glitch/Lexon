@@ -1,4 +1,5 @@
 using System.Windows;
+using System.Windows.Controls.Primitives;
 using System.Windows.Media;
 using Lexon.Core.Theming;
 using Lexon.SettingsModel;
@@ -21,6 +22,9 @@ public static class WpfThemeBridge
         }
 
         dict["MotionEnabled"] = SystemParameters.ClientAreaAnimation;
+        dict["PopupAnimation"] = SystemParameters.ClientAreaAnimation
+            ? PopupAnimation.Slide
+            : PopupAnimation.None;
         dict["HoverDuration"] = new Duration(SystemParameters.ClientAreaAnimation
             ? TimeSpan.FromMilliseconds(120)
             : TimeSpan.Zero);
@@ -64,6 +68,7 @@ public static class WpfThemeBridge
             ["PrimaryPressed"] = ToMedia(c.PrimaryPressed),
             ["PrimaryTint"] = ToMedia(c.PrimaryTint),
             ["OnPrimary"] = ToMedia(c.OnPrimary),
+            ["OnPrimaryHover"] = ToMedia(c.OnPrimary),
             ["Success"] = ToMedia(c.Success),
             ["Warning"] = ToMedia(c.Warning),
             ["Error"] = ToMedia(c.Error)
@@ -85,6 +90,7 @@ public static class WpfThemeBridge
             ["PrimaryPressed"] = SystemColors.HighlightColor,
             ["PrimaryTint"] = SystemColors.WindowColor,
             ["OnPrimary"] = SystemColors.HighlightTextColor,
+            ["OnPrimaryHover"] = SystemColors.HighlightColor,
             ["Success"] = SystemColors.WindowTextColor,
             ["Warning"] = SystemColors.GrayTextColor,
             ["Error"] = SystemColors.WindowTextColor

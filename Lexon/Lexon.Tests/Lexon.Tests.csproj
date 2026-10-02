@@ -7,7 +7,14 @@
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
     <UseWindowsForms>true</UseWindowsForms>
+    <UseWPF>true</UseWPF>
   </PropertyGroup>
+
+  <ItemGroup>
+    <Using Include="System.IO" />
+    <Using Include="System.Net" />
+    <Using Include="System.Net.Http" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.8.0" />
@@ -30,6 +37,7 @@
     <ProjectReference Include="..\Lexon.Overlay\Lexon.Overlay.csproj" />
     <ProjectReference Include="..\Lexon.Ui\Lexon.Ui.csproj" />
     <ProjectReference Include="..\Lexon.SettingsModel\Lexon.SettingsModel.csproj" />
+    <ProjectReference Include="..\Lexon.SettingsUi\Lexon.SettingsUi.csproj" />
   </ItemGroup>
 
 </Project>

@@ -6,6 +6,9 @@ namespace Lexon.SettingsUi;
 
 public class RevealPasswordBox : Control
 {
+    private PasswordBox? _passwordBox;
+    private ToggleButton? _reveal;
+
     static RevealPasswordBox()
     {
         DefaultStyleKeyProperty.OverrideMetadata(typeof(RevealPasswordBox), new FrameworkPropertyMetadata(typeof(RevealPasswordBox)));
@@ -32,34 +35,54 @@ public class RevealPasswordBox : Control
 
     public override void OnApplyTemplate()
     {
-        base.OnApplyTemplate();
-        if (GetTemplateChild("PART_Password") is PasswordBox box)
+        if (_passwordBox != null)
         {
-            if (box.Password != Password)
+            _passwordBox.PasswordChanged -= OnBoxPasswordChanged;
+        }
+
+        if (_reveal != null)
+        {
+            _reveal.Checked -= OnRevealChecked;
+            _reveal.Unchecked -= OnRevealUnchecked;
+        }
+
+        base.OnApplyTemplate();
+
+        _passwordBox = GetTemplateChild("PART_Password") as PasswordBox;
+        if (_passwordBox != null)
+        {
+            if (_passwordBox.Password != Password)
             {
-                box.Password = Password ?? string.Empty;
+                _passwordBox.Password = Password ?? string.Empty;
             }
 
-            box.PasswordChanged += (_, _) =>
-            {
-                if (Password != box.Password)
-                {
-                    Password = box.Password;
-                }
-            };
+            _passwordBox.PasswordChanged += OnBoxPasswordChanged;
         }
 
-        if (GetTemplateChild("PART_Reveal") is ToggleButton toggle)
+        _reveal = GetTemplateChild("PART_Reveal") as ToggleButton;
+        if (_reveal != null)
         {
-            toggle.Checked += (_, _) => IsRevealed = true;
-            toggle.Unchecked += (_, _) => IsRevealed = false;
+            _reveal.Checked += OnRevealChecked;
+            _reveal.Unchecked += OnRevealUnchecked;
         }
     }
+
+    private void OnBoxPasswordChanged(object sender, RoutedEventArgs e)
+    {
+        if (_passwordBox != null && Password != _passwordBox.Password)
+        {
+            Password = _passwordBox.Password;
+        }
+    }
+
+    private void OnRevealChecked(object sender, RoutedEventArgs e) => IsRevealed = true;
+
+    private void OnRevealUnchecked(object sender, RoutedEventArgs e) => IsRevealed = false;
 
     private static void OnPasswordChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
         if (d is RevealPasswordBox control
-            && control.Template?.FindName("PART_Password", control) is PasswordBox box
+            && control._passwordBox is { } box
             && box.Password != (e.NewValue as string ?? string.Empty))
         {
             box.Password = e.NewValue as string ?? string.Empty;

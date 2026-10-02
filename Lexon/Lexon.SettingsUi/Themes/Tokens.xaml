@@ -23,4 +23,5 @@
   <CornerRadius x:Key="RadiusPill">999</CornerRadius>
 
   <FontWeight x:Key="BodyStrongWeight">SemiBold</FontWeight>
+  <PopupAnimation x:Key="PopupAnimation">Slide</PopupAnimation>
 </ResourceDictionary>

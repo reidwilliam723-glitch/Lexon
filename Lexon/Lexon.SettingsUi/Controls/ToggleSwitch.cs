@@ -7,8 +7,8 @@ namespace Lexon.SettingsUi;
 
 public class ToggleSwitch : ToggleButton
 {
-    private const double OffX = 0;
-    private const double OnX = 20;
+    internal const double OffX = 0;
+    internal const double OnX = 20;
     private TranslateTransform? _thumbTx;
     private bool _templateReady;
 
@@ -37,6 +37,9 @@ public class ToggleSwitch : ToggleButton
         SetThumbX(OffX, animate: _templateReady);
     }
 
+    internal double ThumbX
+        => _thumbTx == null ? 0 : (double)_thumbTx.GetValue(TranslateTransform.XProperty);
+
     private void SetThumbX(double to, bool animate)
     {
         if (_thumbTx == null)
@@ -44,16 +47,18 @@ public class ToggleSwitch : ToggleButton
             return;
         }
 
+        var from = (double)_thumbTx.GetValue(TranslateTransform.XProperty);
         _thumbTx.BeginAnimation(TranslateTransform.XProperty, null);
-        if (!animate)
-        {
-            _thumbTx.X = to;
-            return;
-        }
+        _thumbTx.X = to;
 
         var duration = TryFindResource("ToggleDuration") is Duration found
             ? found
             : new Duration(TimeSpan.Zero);
-        _thumbTx.BeginAnimation(TranslateTransform.XProperty, new DoubleAnimation(to, duration));
+        if (!animate || !duration.HasTimeSpan || duration.TimeSpan == TimeSpan.Zero)
+        {
+            return;
+        }
+
+        _thumbTx.BeginAnimation(TranslateTransform.XProperty, new DoubleAnimation(from, to, duration));
     }
 }
