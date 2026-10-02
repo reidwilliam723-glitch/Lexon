@@ -50,10 +50,12 @@
     <Style.Triggers>
       <Trigger Property="IsMouseOver" Value="True">
         <Setter Property="Background" Value="{DynamicResource PrimaryHoverBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource OnPrimaryHoverBrush}"/>
         <Setter Property="Foreground" Value="{DynamicResource OnPrimaryHoverBrush}"/>
       </Trigger>
       <Trigger Property="IsPressed" Value="True">
         <Setter Property="Background" Value="{DynamicResource PrimaryPressedBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource OnPrimaryBrush}"/>
         <Setter Property="Foreground" Value="{DynamicResource OnPrimaryBrush}"/>
       </Trigger>
     </Style.Triggers>
@@ -66,12 +68,12 @@
     <Style.Triggers>
       <Trigger Property="IsMouseOver" Value="True">
         <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
-        <Setter Property="BorderBrush" Value="{DynamicResource BorderStrongBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource PrimaryBrush}"/>
         <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
       </Trigger>
       <Trigger Property="IsPressed" Value="True">
         <Setter Property="Background" Value="{DynamicResource BackgroundBrush}"/>
-        <Setter Property="BorderBrush" Value="{DynamicResource BorderStrongBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource PrimaryPressedBrush}"/>
         <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
       </Trigger>
     </Style.Triggers>
@@ -84,10 +86,12 @@
     <Style.Triggers>
       <Trigger Property="IsMouseOver" Value="True">
         <Setter Property="Background" Value="{DynamicResource PrimaryTintBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource PrimaryBrush}"/>
         <Setter Property="Foreground" Value="{DynamicResource PrimaryBrush}"/>
       </Trigger>
       <Trigger Property="IsPressed" Value="True">
         <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource PrimaryPressedBrush}"/>
         <Setter Property="Foreground" Value="{DynamicResource PrimaryBrush}"/>
       </Trigger>
     </Style.Triggers>
@@ -235,6 +239,7 @@
                               ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
                               ContentTemplateSelector="{TemplateBinding ItemTemplateSelector}"/>
             <Popup x:Name="PART_Popup" AllowsTransparency="True" Placement="Bottom"
+                   HorizontalOffset="-16"
                    IsOpen="{TemplateBinding IsDropDownOpen}"
                    PopupAnimation="{DynamicResource PopupAnimation}">
               <Border Background="{DynamicResource SurfaceRaisedBrush}" BorderBrush="{DynamicResource BorderStrongBrush}"
@@ -249,6 +254,15 @@
             </Popup>
           </Grid>
           <ControlTemplate.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+              <Setter Property="BorderBrush" Value="{DynamicResource PrimaryBrush}"/>
+            </Trigger>
+            <Trigger Property="IsKeyboardFocusWithin" Value="True">
+              <Setter Property="BorderBrush" Value="{DynamicResource PrimaryBrush}"/>
+            </Trigger>
+            <Trigger Property="IsDropDownOpen" Value="True">
+              <Setter Property="BorderBrush" Value="{DynamicResource PrimaryBrush}"/>
+            </Trigger>
             <Trigger Property="IsEnabled" Value="False">
               <Setter Property="Opacity" Value="0.5"/>
               <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
@@ -298,6 +312,29 @@
     <Setter Property="BorderBrush" Value="{DynamicResource BorderStrongBrush}"/>
     <Setter Property="BorderThickness" Value="1"/>
     <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="ListBox">
+          <Border x:Name="bd" Background="{TemplateBinding Background}"
+                  BorderBrush="{TemplateBinding BorderBrush}"
+                  BorderThickness="{TemplateBinding BorderThickness}"
+                  CornerRadius="{DynamicResource RadiusControl}">
+            <ScrollViewer Padding="{TemplateBinding Padding}" Focusable="False"
+                          HorizontalScrollBarVisibility="{TemplateBinding ScrollViewer.HorizontalScrollBarVisibility}"
+                          VerticalScrollBarVisibility="{TemplateBinding ScrollViewer.VerticalScrollBarVisibility}">
+              <ItemsPresenter/>
+            </ScrollViewer>
+          </Border>
+          <ControlTemplate.Triggers>
+            <Trigger Property="IsEnabled" Value="False">
+              <Setter Property="Opacity" Value="0.5"/>
+              <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
+              <Setter TargetName="bd" Property="Background" Value="{DynamicResource SurfaceBrush}"/>
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
   </Style>
 
   <Style TargetType="{x:Type local:NavItem}">
@@ -439,13 +476,36 @@
       <Setter.Value>
         <ControlTemplate TargetType="Thumb">
           <Border x:Name="bd" Background="{DynamicResource BorderStrongBrush}"
-                  CornerRadius="4" Margin="1"/>
+                  CornerRadius="4" Margin="4,2"/>
           <ControlTemplate.Triggers>
             <Trigger Property="IsMouseOver" Value="True">
               <Setter TargetName="bd" Property="Background" Value="{DynamicResource PrimaryBrush}"/>
+              <Setter TargetName="bd" Property="Margin" Value="1"/>
             </Trigger>
             <Trigger Property="IsDragging" Value="True">
               <Setter TargetName="bd" Property="Background" Value="{DynamicResource PrimaryPressedBrush}"/>
+              <Setter TargetName="bd" Property="Margin" Value="1"/>
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <Style x:Key="LexonScrollBarThumbHorizontal" TargetType="Thumb" BasedOn="{StaticResource LexonScrollBarThumb}">
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="Thumb">
+          <Border x:Name="bd" Background="{DynamicResource BorderStrongBrush}"
+                  CornerRadius="4" Margin="2,4"/>
+          <ControlTemplate.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+              <Setter TargetName="bd" Property="Background" Value="{DynamicResource PrimaryBrush}"/>
+              <Setter TargetName="bd" Property="Margin" Value="1"/>
+            </Trigger>
+            <Trigger Property="IsDragging" Value="True">
+              <Setter TargetName="bd" Property="Background" Value="{DynamicResource PrimaryPressedBrush}"/>
+              <Setter TargetName="bd" Property="Margin" Value="1"/>
             </Trigger>
           </ControlTemplate.Triggers>
         </ControlTemplate>
@@ -494,7 +554,7 @@
           <RepeatButton Style="{StaticResource LexonScrollRepeat}" Command="ScrollBar.PageRightCommand"/>
         </Track.IncreaseRepeatButton>
         <Track.Thumb>
-          <Thumb Style="{StaticResource LexonScrollBarThumb}"/>
+          <Thumb Style="{StaticResource LexonScrollBarThumbHorizontal}"/>
         </Track.Thumb>
       </Track>
     </Grid>
@@ -504,31 +564,17 @@
     <Setter Property="FocusVisualStyle" Value="{StaticResource LexonFocusVisual}"/>
     <Setter Property="Background" Value="Transparent"/>
     <Setter Property="Foreground" Value="{DynamicResource BorderStrongBrush}"/>
-    <Setter Property="Width" Value="8"/>
-    <Setter Property="MinWidth" Value="8"/>
+    <Setter Property="Width" Value="12"/>
+    <Setter Property="MinWidth" Value="12"/>
     <Setter Property="Template" Value="{StaticResource LexonVerticalScrollBar}"/>
     <Style.Triggers>
       <Trigger Property="Orientation" Value="Horizontal">
         <Setter Property="Width" Value="Auto"/>
         <Setter Property="MinWidth" Value="0"/>
-        <Setter Property="Height" Value="8"/>
-        <Setter Property="MinHeight" Value="8"/>
-        <Setter Property="Template" Value="{StaticResource LexonHorizontalScrollBar}"/>
-      </Trigger>
-      <Trigger Property="IsMouseOver" Value="True">
-        <Setter Property="Width" Value="12"/>
-        <Setter Property="MinWidth" Value="12"/>
-      </Trigger>
-      <MultiTrigger>
-        <MultiTrigger.Conditions>
-          <Condition Property="Orientation" Value="Horizontal"/>
-          <Condition Property="IsMouseOver" Value="True"/>
-        </MultiTrigger.Conditions>
         <Setter Property="Height" Value="12"/>
         <Setter Property="MinHeight" Value="12"/>
-        <Setter Property="Width" Value="Auto"/>
-        <Setter Property="MinWidth" Value="0"/>
-      </MultiTrigger>
+        <Setter Property="Template" Value="{StaticResource LexonHorizontalScrollBar}"/>
+      </Trigger>
       <Trigger Property="IsEnabled" Value="False">
         <Setter Property="Opacity" Value="0.5"/>
       </Trigger>
@@ -545,7 +591,7 @@
     <Setter Property="Template">
       <Setter.Value>
         <ControlTemplate TargetType="CheckBox">
-          <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+          <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Background="Transparent">
             <Border x:Name="box" Width="18" Height="18" CornerRadius="3"
                     Background="{TemplateBinding Background}"
                     BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1">
@@ -587,7 +633,7 @@
     <Setter Property="Template">
       <Setter.Value>
         <ControlTemplate TargetType="RadioButton">
-          <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+          <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Background="Transparent">
             <Grid Width="18" Height="18">
               <Ellipse x:Name="outer" Fill="{TemplateBinding Background}"
                        Stroke="{TemplateBinding BorderBrush}" StrokeThickness="1"/>
@@ -634,7 +680,7 @@
           <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
                   BorderThickness="{TemplateBinding BorderThickness}"
                   CornerRadius="{DynamicResource RadiusControl}" Padding="{TemplateBinding Padding}"
-                  MaxWidth="{TemplateBinding MaxWidth}"
+                  MaxWidth="{TemplateBinding MaxWidth}" Margin="8"
                   Effect="{DynamicResource FlyoutShadow}">
             <ContentPresenter>
               <ContentPresenter.Resources>
@@ -716,6 +762,7 @@
     </Setter>
   </Style>
 
+  <!-- Checkmarks and submenu arrows are not supported yet; TextBox/PasswordBox menus are flat. -->
   <Style TargetType="MenuItem">
     <Setter Property="FocusVisualStyle" Value="{StaticResource LexonFocusVisual}"/>
     <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
