@@ -13,6 +13,17 @@ public static class ThemeUi
 
     public static Color Primary(Theme theme) => ColorTranslator.FromHtml(theme.Colors.Primary);
 
+    public static Color OnPrimary(Theme theme)
+        => string.IsNullOrWhiteSpace(theme.Colors.OnPrimary)
+            ? Color.White
+            : ColorTranslator.FromHtml(theme.Colors.OnPrimary);
+
+    public static Color PrimaryHover(Theme theme) => ColorTranslator.FromHtml(theme.Colors.PrimaryHover);
+
+    public static Color PrimaryPressed(Theme theme) => ColorTranslator.FromHtml(theme.Colors.PrimaryPressed);
+
+    public static Color BorderStrong(Theme theme) => ColorTranslator.FromHtml(theme.Colors.BorderStrong);
+
     public static Color InputBack(Theme theme)
     {
         var background = Background(theme);
@@ -100,10 +111,14 @@ public static class ThemeUi
                 check.ForeColor = Foreground(theme);
                 return;
             case Button button:
+                button.UseVisualStyleBackColor = false;
                 button.BackColor = Primary(theme);
-                button.ForeColor = Color.White;
+                button.ForeColor = OnPrimary(theme);
                 button.FlatStyle = FlatStyle.Flat;
-                button.FlatAppearance.BorderSize = 0;
+                button.FlatAppearance.BorderSize = 1;
+                button.FlatAppearance.BorderColor = BorderStrong(theme);
+                button.FlatAppearance.MouseOverBackColor = PrimaryHover(theme);
+                button.FlatAppearance.MouseDownBackColor = PrimaryPressed(theme);
                 return;
             case ComboBox combo:
                 StyleComboBox(combo, theme);
