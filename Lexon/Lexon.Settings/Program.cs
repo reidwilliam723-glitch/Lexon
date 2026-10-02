@@ -383,7 +383,31 @@ static class Program
 
         // Swallow Ctrl+Shift+S so the foreground app does not also receive it.
         e.EventArgs.Handled = true;
-        _trayManager?.InvokeOnUiThread(() => OnSettingsRequested(null, EventArgs.Empty));
+        InvokeOnUiThread(() =>
+        {
+            if (_enableUiGallery && _composition != null)
+            {
+                try
+                {
+                    SettingsUiHost.ShowGallery(_composition.ThemeManager);
+                }
+                catch (Exception ex)
+                {
+                    using var owner = new Form { TopMost = true, ShowInTaskbar = false };
+                    owner.Show();
+                    MessageBox.Show(
+                        owner,
+                        $"Could not open the control gallery.\n\n{ex.GetType().Name}: {ex.Message}",
+                        "Lexon",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Error);
+                }
+
+                return;
+            }
+
+            OnSettingsRequested(null, EventArgs.Empty);
+        });
     }
 
     private static void WarmSettingsOnIdle(object? sender, EventArgs e)
@@ -394,11 +418,13 @@ static class Program
             return;
         }
 
-        EnsureSettingsForm();
         if (_enableUiGallery && _composition != null)
         {
             SettingsUiHost.ShowGallery(_composition.ThemeManager);
+            return;
         }
+
+        EnsureSettingsForm();
     }
 
     private static void EnsureSettingsForm()

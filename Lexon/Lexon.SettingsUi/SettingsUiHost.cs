@@ -30,6 +30,11 @@ public static class SettingsUiHost
         Warm(themes);
         var window = EnsureGallery();
         ElementHost.EnableModelessKeyboardInterop(window);
+        if (window.WindowState == WindowState.Minimized)
+        {
+            window.WindowState = WindowState.Normal;
+        }
+
         window.Show();
         window.Activate();
     }
