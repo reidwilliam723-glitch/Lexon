@@ -501,6 +501,7 @@
   </ControlTemplate>
 
   <Style TargetType="ScrollBar">
+    <Setter Property="FocusVisualStyle" Value="{StaticResource LexonFocusVisual}"/>
     <Setter Property="Background" Value="Transparent"/>
     <Setter Property="Foreground" Value="{DynamicResource BorderStrongBrush}"/>
     <Setter Property="Width" Value="8"/>

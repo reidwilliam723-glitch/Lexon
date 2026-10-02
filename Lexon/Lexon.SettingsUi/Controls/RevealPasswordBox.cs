@@ -1,4 +1,5 @@
 using System.Windows;
+using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 
@@ -7,6 +8,7 @@ namespace Lexon.SettingsUi;
 public class RevealPasswordBox : Control
 {
     private PasswordBox? _passwordBox;
+    private TextBox? _plain;
     private ToggleButton? _reveal;
 
     static RevealPasswordBox()
@@ -59,11 +61,33 @@ public class RevealPasswordBox : Control
             _passwordBox.PasswordChanged += OnBoxPasswordChanged;
         }
 
+        _plain = GetTemplateChild("PART_Plain") as TextBox;
         _reveal = GetTemplateChild("PART_Reveal") as ToggleButton;
         if (_reveal != null)
         {
             _reveal.Checked += OnRevealChecked;
             _reveal.Unchecked += OnRevealUnchecked;
+        }
+
+        ApplyAccessibleName();
+    }
+
+    private void ApplyAccessibleName()
+    {
+        var name = AutomationProperties.GetName(this);
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return;
+        }
+
+        if (_passwordBox != null)
+        {
+            AutomationProperties.SetName(_passwordBox, name);
+        }
+
+        if (_plain != null)
+        {
+            AutomationProperties.SetName(_plain, name);
         }
     }
 

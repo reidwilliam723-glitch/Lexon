@@ -93,8 +93,13 @@ public sealed class ControlGalleryWindow : Window
         var toggle = new ToggleSwitch { Margin = new Thickness(0, 8, 0, 8) };
         AutomationProperties.SetName(toggle, "Demo toggle");
         stack.Children.Add(toggle);
-        _demoCombo = new ComboBox { Margin = new Thickness(0, 0, 0, 8), MinWidth = 240 };
-        foreach (var item in new[] { "Most Relevant", "Most Used", "Newest", "Oldest", "A to Z", "Z to A" })
+        _demoCombo = new ComboBox { Margin = new Thickness(0, 0, 0, 8), MinWidth = 240, MaxDropDownHeight = 140 };
+        foreach (var item in new[]
+                 {
+                     "Most Relevant", "Most Used", "Newest", "Oldest", "A to Z", "Z to A",
+                     "Recently edited", "Recently opened", "By author", "By size",
+                     "By language", "By folder", "Pinned first", "Unsorted"
+                 })
         {
             _demoCombo.Items.Add(item);
         }
@@ -135,13 +140,43 @@ public sealed class ControlGalleryWindow : Window
         stack.Children.Add(nav);
 
         var list = new ListBox { Height = 96, Margin = new Thickness(0, 0, 0, 8) };
-        foreach (var app in new[] { "putty", "mstsc", "notepad", "chrome", "slack" })
+        foreach (var app in new[] { "putty", "mstsc", "notepad", "chrome", "slack", "outlook", "teams", "figma" })
         {
             list.Items.Add(app);
         }
 
         AutomationProperties.SetName(list, "Blocked apps");
         stack.Children.Add(list);
+
+        var chrome = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 8) };
+        var tipButton = new Button { Content = "Hover for tip", Margin = new Thickness(0, 0, 8, 0) };
+        tipButton.SetResourceReference(StyleProperty, "SecondaryButton");
+        tipButton.ToolTip = "SurfaceRaised tooltip with wrapping text that stays readable in Dark and High Contrast.";
+        AutomationProperties.SetName(tipButton, "Hover for tip");
+        chrome.Children.Add(tipButton);
+
+        var menuButton = new Button { Content = "Open menu" };
+        menuButton.SetResourceReference(StyleProperty, "SecondaryButton");
+        AutomationProperties.SetName(menuButton, "Open menu");
+        var menu = new ContextMenu();
+        var copy = new MenuItem { Header = "Copy", InputGestureText = "Ctrl+C" };
+        AutomationProperties.SetName(copy, "Copy");
+        menu.Items.Add(copy);
+        menu.Items.Add(new Separator());
+        var paste = new MenuItem { Header = "Paste", InputGestureText = "Ctrl+V" };
+        AutomationProperties.SetName(paste, "Paste");
+        menu.Items.Add(paste);
+        var delete = new MenuItem { Header = "Delete", IsEnabled = false };
+        AutomationProperties.SetName(delete, "Delete");
+        menu.Items.Add(delete);
+        menuButton.ContextMenu = menu;
+        menuButton.Click += (_, _) =>
+        {
+            menu.PlacementTarget = menuButton;
+            menu.IsOpen = true;
+        };
+        chrome.Children.Add(menuButton);
+        stack.Children.Add(chrome);
 
         stack.Children.Add(new Card
         {
