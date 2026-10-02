@@ -72,6 +72,15 @@ public class RevealPasswordBox : Control
         ApplyAccessibleName();
     }
 
+    protected override void OnPropertyChanged(DependencyPropertyChangedEventArgs e)
+    {
+        base.OnPropertyChanged(e);
+        if (e.Property == AutomationProperties.NameProperty)
+        {
+            ApplyAccessibleName();
+        }
+    }
+
     private void ApplyAccessibleName()
     {
         var name = AutomationProperties.GetName(this);

@@ -1,6 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Input;
+using System.Windows.Controls.Primitives;
 
 namespace Lexon.SettingsUi;
 
@@ -53,36 +53,11 @@ public class InfoTip : Button
         set => SetValue(TipProperty, value);
     }
 
-    protected override void OnGotKeyboardFocus(KeyboardFocusChangedEventArgs e)
+    public InfoTip()
     {
-        base.OnGotKeyboardFocus(e);
-        SetTipOpen(true);
-    }
-
-    protected override void OnLostKeyboardFocus(KeyboardFocusChangedEventArgs e)
-    {
-        base.OnLostKeyboardFocus(e);
-        SetTipOpen(false);
-    }
-
-    private void SetTipOpen(bool open)
-    {
-        if (string.IsNullOrWhiteSpace(Tip))
-        {
-            return;
-        }
-
-        if (ToolTip is not ToolTip tip)
-        {
-            tip = new ToolTip { Content = Tip };
-            ToolTip = tip;
-        }
-        else
-        {
-            tip.Content = Tip;
-        }
-
-        tip.IsOpen = open;
+        ToolTipService.SetShowsToolTipOnKeyboardFocus(this, true);
+        ToolTipService.SetPlacement(this, PlacementMode.Bottom);
+        ToolTipService.SetPlacementTarget(this, this);
     }
 }
 
