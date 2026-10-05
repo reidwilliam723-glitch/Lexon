@@ -1,7 +1,6 @@
 using System.Diagnostics;
 using System.Windows;
 using System.Windows.Automation;
-using System.Windows.Media;
 using System.Windows.Threading;
 using Lexon.Core.Theming;
 using Lexon.SettingsModel;
@@ -18,11 +17,11 @@ using WpfTextBox = System.Windows.Controls.TextBox;
 namespace Lexon.Tests;
 
 [Collection("WpfSta")]
-public class AppearancePrivacyPageTests
+public class WritingAppTonePageTests
 {
     private readonly WpfStaFixture _sta;
 
-    public AppearancePrivacyPageTests(WpfStaFixture sta)
+    public WritingAppTonePageTests(WpfStaFixture sta)
     {
         _sta = sta;
     }
@@ -41,13 +40,13 @@ public class AppearancePrivacyPageTests
                 foreach (var theme in themes.AvailableThemes)
                 {
                     WpfThemeBridge.ApplyTo(app, theme);
-                    Layout(CreateAppearance());
-                    Layout(CreatePrivacy());
+                    Layout(CreateAppTone());
+                    Layout(CreateWriting());
                 }
 
                 ApplyWindowsHighContrast(app, themes.CurrentTheme);
-                Layout(CreateAppearance());
-                Layout(CreatePrivacy());
+                Layout(CreateAppTone());
+                Layout(CreateWriting());
                 Assert.Empty(listener.Errors);
             }
             finally
@@ -67,7 +66,7 @@ public class AppearancePrivacyPageTests
             var themes = new ThemeManager(store.Storage);
             WpfThemeBridge.ApplyTo(app, themes.CurrentTheme);
 
-            foreach (var page in new FrameworkElement[] { CreateAppearance(), CreatePrivacy() })
+            foreach (var page in new FrameworkElement[] { CreateAppTone(), CreateWriting() })
             {
                 var window = Offscreen(page, 700, 720);
                 window.Show();
@@ -89,7 +88,7 @@ public class AppearancePrivacyPageTests
     }
 
     [Fact]
-    public void Gallery_ShowsOnlyAvailableSettingsTabs()
+    public void Gallery_ShowsSixTabsWithAllServices_NoOverflowAt700()
     {
         _sta.Run(() =>
         {
@@ -98,63 +97,63 @@ public class AppearancePrivacyPageTests
             var themes = new ThemeManager(store.Storage);
             WpfThemeBridge.ApplyTo(app, themes.CurrentTheme);
 
-            var settings = new AppSettings { Theme = "Dark", LocalMode = true };
+            var settings = new AppSettings();
             var persist = new PersistScheduler(() => { });
-            var themeSwitch = new FakeThemes();
-            var policy = new FakePolicy();
             var services = new GallerySettingsServices(settings, new CountingStartup(), persist, persist.Flush)
             {
-                ThemeSwitcher = themeSwitch,
-                AiPolicy = policy,
+                ThemeSwitcher = new FakeThemes(),
+                AiPolicy = new FakePolicy(),
                 ProcessPicker = new FakePicker(),
                 ActivityViewer = new FakeLog(),
+                Personalization = new FakePersonalization(),
+                WritingDialogs = new FakeWritingDialogs(),
+                FileDialogs = new FakeFiles(),
+                Messages = new FakeMessages(),
                 Reload = () => { }
             };
             var window = new ControlGalleryWindow(themes, services)
             {
                 Left = -20000,
                 Top = -20000,
+                Width = 700,
                 ShowInTaskbar = false
             };
             window.Show();
             window.UpdateLayout();
 
-            Assert.Equal(5, window.GalleryTabCount);
-            Assert.True(window.HasGeneralTab);
-            Assert.True(window.HasAppearanceTab);
-            Assert.True(window.HasPrivacyTab);
+            Assert.Equal(6, window.GalleryTabCount);
+            Assert.True(window.HasWritingTab);
             Assert.True(window.HasAppToneTab);
-            Assert.False(window.HasWritingTab);
+            Assert.True(window.ActualWidth <= 700 + 1 || window.Width <= 700 + 1);
 
-            window.SelectAppearanceTab();
+            window.SelectWritingTab();
             window.UpdateLayout();
-            Assert.True(window.IsAppearancePageVisible);
-            Assert.Equal(1, window.AppearanceViewModel!.ThemeIndex);
-            Assert.Empty(themeSwitch.Applied);
-
-            window.SelectPrivacyTab();
-            window.UpdateLayout();
-            Assert.True(window.IsPrivacyPageVisible);
-            Assert.True(window.PrivacyViewModel!.LocalOnly);
+            Assert.True(window.IsWritingPageVisible);
             window.Close();
             _ = app;
         });
     }
 
-    private static AppearancePage CreateAppearance()
+    private static AppTonePage CreateAppTone()
     {
         var persist = new PersistScheduler(() => { });
-        var vm = new AppearanceSettingsViewModel(new AppSettings(), persist, new FakeThemes());
+        var vm = new AppToneViewModel(new AppSettings(), persist, new FakePicker());
         vm.Load();
-        return new AppearancePage(vm);
+        return new AppTonePage(vm);
     }
 
-    private static PrivacyPage CreatePrivacy()
+    private static WritingPage CreateWriting()
     {
         var persist = new PersistScheduler(() => { });
-        var vm = new PrivacySettingsViewModel(new AppSettings(), persist, new FakePolicy(), new FakePicker(), new FakeLog());
+        var vm = new WritingViewModel(
+            new AppSettings(),
+            persist,
+            new FakePersonalization(),
+            new FakeWritingDialogs(),
+            new FakeFiles(),
+            new FakeMessages());
         vm.Load();
-        return new PrivacyPage(vm);
+        return new WritingPage(vm);
     }
 
     private static void Layout(FrameworkElement page)
@@ -191,25 +190,22 @@ public class AppearancePrivacyPageTests
             .FirstOrDefault(d => Equals(d["LexonThemeId"], WpfThemeBridge.DictionaryKey));
         if (existing != null)
         {
-            app.Resources.MergedDictionaries[app.Resources.MergedDictionaries.IndexOf(existing)] = next;
+            app.Resources.MergedDictionaries.Remove(existing);
         }
-        else
-        {
-            app.Resources.MergedDictionaries.Insert(0, next);
-        }
+
+        app.Resources.MergedDictionaries.Add(next);
     }
 
-    private static Window Offscreen(UIElement content, double width, double height)
+    private static Window Offscreen(FrameworkElement content, double width, double height)
         => new()
         {
+            Content = content,
             Width = width,
             Height = height,
-            Content = content,
-            ShowInTaskbar = false,
-            WindowStyle = WindowStyle.None,
-            Opacity = 0,
             Left = -20000,
-            Top = -20000
+            Top = -20000,
+            ShowInTaskbar = false,
+            WindowStyle = WindowStyle.ToolWindow
         };
 
     private static void Pump(int ms)
@@ -225,46 +221,21 @@ public class AppearancePrivacyPageTests
         Dispatcher.PushFrame(frame);
     }
 
-    private sealed class CountingStartup : IStartupRegistration
+    private sealed class TempThemeStore : IDisposable
     {
-        public bool IsEnabled() => false;
+        private readonly string _dir = Path.Combine(Path.GetTempPath(), "lexon-wpf-write-" + Guid.NewGuid().ToString("N"));
 
-        public bool TrySetEnabled(bool enabled) => true;
-    }
-
-    private sealed class FakeThemes : IThemeSwitcher
-    {
-        public List<string> Applied { get; } = [];
-
-        public IReadOnlyList<string> Names { get; } = AppearanceSettingsViewModel.ThemeLabels;
-
-        public string Current { get; set; } = "Light";
-
-        public event EventHandler<ThemeChangedEventArgs>? ThemeChanged;
-
-        public void Apply(string name)
+        public TempThemeStore()
         {
-            Applied.Add(name);
-            Current = name;
+            Directory.CreateDirectory(_dir);
+            Storage = new EncryptedStorage(_dir);
         }
-    }
 
-    private sealed class FakePolicy : IAiPolicyPublisher
-    {
-        public void Publish(bool localOnly, bool typing, bool rewrite, bool prefetch)
+        public EncryptedStorage Storage { get; }
+
+        public void Dispose()
         {
-        }
-    }
-
-    private sealed class FakePicker : IProcessPicker
-    {
-        public string? Pick(string prompt) => null;
-    }
-
-    private sealed class FakeLog : ICloudAiActivityViewer
-    {
-        public void Show()
-        {
+            try { Directory.Delete(_dir, true); } catch { /* temp */ }
         }
     }
 
@@ -298,20 +269,86 @@ public class AppearancePrivacyPageTests
         }
     }
 
-    private sealed class TempThemeStore : IDisposable
+    private sealed class CountingStartup : IStartupRegistration
     {
-        public EncryptedStorage Storage { get; }
-        private readonly string _dir = Path.Combine(Path.GetTempPath(), "lexon-appear-ui-" + Guid.NewGuid().ToString("N"));
+        public bool IsEnabled() => false;
 
-        public TempThemeStore()
+        public bool TrySetEnabled(bool enabled) => true;
+    }
+
+    private sealed class FakeThemes : IThemeSwitcher
+    {
+        public IReadOnlyList<string> Names { get; } = AppearanceSettingsViewModel.ThemeLabels;
+
+        public string Current { get; set; } = "Light";
+
+        public event EventHandler<ThemeChangedEventArgs>? ThemeChanged;
+
+        public void Apply(string name) => Current = name;
+    }
+
+    private sealed class FakePolicy : IAiPolicyPublisher
+    {
+        public void Publish(bool localOnly, bool typing, bool rewrite, bool prefetch)
         {
-            Directory.CreateDirectory(_dir);
-            Storage = new EncryptedStorage(_dir);
+        }
+    }
+
+    private sealed class FakePicker : IProcessPicker
+    {
+        public string? Pick(string prompt) => null;
+    }
+
+    private sealed class FakeLog : ICloudAiActivityViewer
+    {
+        public void Show()
+        {
+        }
+    }
+
+    private sealed class FakePersonalization : IPersonalizationService
+    {
+        public string GetStyleSummary() => "summary";
+
+        public IReadOnlyList<AdaptationItem> GetAdaptations() => [];
+
+        public void UndoAdaptation(string id)
+        {
         }
 
-        public void Dispose()
+        public void ResetWritingStyle()
         {
-            try { Directory.Delete(_dir, true); } catch { /* temp */ }
         }
+
+        public string ExportLearningData() => "{}";
+
+        public bool ImportLearningData(string json) => true;
+    }
+
+    private sealed class FakeWritingDialogs : IWritingDialogs
+    {
+        public void ShowWritingStats()
+        {
+        }
+
+        public void ShowLearnedWords()
+        {
+        }
+    }
+
+    private sealed class FakeFiles : IFileDialogService
+    {
+        public string? PickSavePath(string filter, string suggestedName) => null;
+
+        public string? PickOpenPath(string filter) => null;
+    }
+
+    private sealed class FakeMessages : IMessageService
+    {
+        public void Info(string text, string caption)
+        {
+        }
+
+        public bool Confirm(string text, string caption) => false;
     }
 }

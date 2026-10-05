@@ -24,14 +24,17 @@ public sealed class ControlGalleryWindow : Window
     private NavItem? _appearanceTab;
     private NavItem? _privacyTab;
     private NavItem? _appToneTab;
+    private NavItem? _writingTab;
     private GeneralPage? _generalPage;
     private AppearancePage? _appearancePage;
     private PrivacyPage? _privacyPage;
     private AppTonePage? _appTonePage;
+    private WritingPage? _writingPage;
     private GeneralSettingsViewModel? _generalVm;
     private AppearanceSettingsViewModel? _appearanceVm;
     private PrivacySettingsViewModel? _privacyVm;
     private AppToneViewModel? _appToneVm;
+    private WritingViewModel? _writingVm;
     private DispatcherTimer? _persistTimer;
 
     public ControlGalleryWindow(ThemeManager? themes = null, GallerySettingsServices? services = null)
@@ -96,6 +99,20 @@ public sealed class ControlGalleryWindow : Window
                 services.Pages.Add(_appToneVm);
             }
 
+            if (services.WritingDialogs != null && services.FileDialogs != null && services.Messages != null)
+            {
+                _writingVm = new WritingViewModel(
+                    services.Settings,
+                    services.Persist,
+                    services.Personalization,
+                    services.WritingDialogs,
+                    services.FileDialogs,
+                    services.Messages);
+                _writingVm.PropertyChanged += OnSettingsPropertyChanged;
+                _writingPage = new WritingPage(_writingVm);
+                services.Pages.Add(_writingVm);
+            }
+
             services.AttachOwner?.Invoke(this);
             _persistTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(100) };
             _persistTimer.Tick += (_, _) =>
@@ -119,12 +136,15 @@ public sealed class ControlGalleryWindow : Window
 
     internal bool HasAppToneTab => _appToneTab != null;
 
+    internal bool HasWritingTab => _writingTab != null;
+
     internal int GalleryTabCount
         => (_controlsTab != null ? 1 : 0)
            + (_generalTab != null ? 1 : 0)
            + (_appearanceTab != null ? 1 : 0)
            + (_privacyTab != null ? 1 : 0)
-           + (_appToneTab != null ? 1 : 0);
+           + (_appToneTab != null ? 1 : 0)
+           + (_writingTab != null ? 1 : 0);
 
     internal bool IsGeneralPageVisible => _generalPage != null && _contentHost?.Content == _generalPage;
 
@@ -134,6 +154,8 @@ public sealed class ControlGalleryWindow : Window
 
     internal bool IsAppTonePageVisible => _appTonePage != null && _contentHost?.Content == _appTonePage;
 
+    internal bool IsWritingPageVisible => _writingPage != null && _contentHost?.Content == _writingPage;
+
     internal GeneralSettingsViewModel? GeneralViewModel => _generalVm;
 
     internal AppearanceSettingsViewModel? AppearanceViewModel => _appearanceVm;
@@ -141,6 +163,8 @@ public sealed class ControlGalleryWindow : Window
     internal PrivacySettingsViewModel? PrivacyViewModel => _privacyVm;
 
     internal AppToneViewModel? AppToneViewModel => _appToneVm;
+
+    internal WritingViewModel? WritingViewModel => _writingVm;
 
     internal void SelectGeneralTab()
     {
@@ -179,6 +203,14 @@ public sealed class ControlGalleryWindow : Window
         if (_appToneTab != null)
         {
             _appToneTab.IsChecked = true;
+        }
+    }
+
+    internal void SelectWritingTab()
+    {
+        if (_writingTab != null)
+        {
+            _writingTab.IsChecked = true;
         }
     }
 
@@ -313,6 +345,14 @@ public sealed class ControlGalleryWindow : Window
             AutomationProperties.SetName(_appToneTab, "App tone");
             _appToneTab.Checked += (_, _) => ShowAppToneContent();
             tabs.Children.Add(_appToneTab);
+        }
+
+        if (_writingPage != null)
+        {
+            _writingTab = new NavItem { Content = "Writing", GroupName = "galleryTabs", Margin = new Thickness(0, 0, 8, 4) };
+            AutomationProperties.SetName(_writingTab, "Writing");
+            _writingTab.Checked += (_, _) => ShowWritingContent();
+            tabs.Children.Add(_writingTab);
         }
 
         DockPanel.SetDock(tabs, Dock.Top);
@@ -535,6 +575,17 @@ public sealed class ControlGalleryWindow : Window
         ReloadPage(_appToneVm);
     }
 
+    private void ShowWritingContent()
+    {
+        if (_contentHost != null)
+        {
+            _contentHost.Content = _writingPage;
+        }
+
+        ReloadPage(_writingVm);
+        _writingVm?.RefreshLearning();
+    }
+
     private void ReloadCleanPages()
     {
         if (_services == null)
@@ -561,6 +612,15 @@ public sealed class ControlGalleryWindow : Window
         if (_appToneVm is { IsDirty: false })
         {
             _appToneVm.Load();
+        }
+
+        if (_writingVm is { IsDirty: false })
+        {
+            _writingVm.Load();
+        }
+        else
+        {
+            _writingVm?.RefreshLearning();
         }
 
         // Dirty pages only exist if a prior flush failed; keep values and retry.
@@ -597,6 +657,9 @@ public sealed class ControlGalleryWindow : Window
             case AppToneViewModel appTone:
                 appTone.Load();
                 break;
+            case WritingViewModel writing:
+                writing.Load();
+                break;
         }
     }
 
@@ -612,7 +675,10 @@ public sealed class ControlGalleryWindow : Window
             return;
         }
 
-        if (e.PropertyName == nameof(GeneralSettingsViewModel.StatusMessage))
+        if (e.PropertyName == nameof(GeneralSettingsViewModel.StatusMessage)
+            || e.PropertyName == nameof(WritingViewModel.StyleSummary)
+            || e.PropertyName == nameof(WritingViewModel.SelectedAdaptationIndex)
+            || e.PropertyName == nameof(WritingViewModel.CanUndoAdaptation))
         {
             return;
         }

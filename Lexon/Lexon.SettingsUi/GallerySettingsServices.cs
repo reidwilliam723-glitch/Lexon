@@ -47,6 +47,14 @@ public sealed class GallerySettingsServices
 
     public ICloudAiActivityViewer? ActivityViewer { get; init; }
 
+    public IPersonalizationService? Personalization { get; init; }
+
+    public IWritingDialogs? WritingDialogs { get; init; }
+
+    public IFileDialogService? FileDialogs { get; init; }
+
+    public IMessageService? Messages { get; init; }
+
     public Action<Window>? AttachOwner { get; init; }
 
     public IList<IOwnedSettingsPage> Pages { get; } = [];

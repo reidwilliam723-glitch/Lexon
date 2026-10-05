@@ -441,6 +441,13 @@ static class Program
         settings.Read(profile);
         var picker = new ProcessPickerAdapter();
         var viewer = new CloudAiActivityViewer(_composition.CloudAiLog);
+        var writingDialogs = new WritingDialogsAdapter(
+            _composition.PersonalizationManager,
+            _composition.TextExpansionManager,
+            _composition.SuggestionPipeline,
+            _composition.ThemeManager);
+        var fileDialogs = new WpfFileDialogService();
+        var messages = new WpfMessageService();
         PersistScheduler persist = null!;
         GallerySettingsServices services = null!;
         persist = new PersistScheduler(() =>
@@ -463,11 +470,20 @@ static class Program
             AiPolicy = new AiPolicyPublisher(_composition.AiAccessPolicy, _composition.SuggestionPipeline),
             ProcessPicker = picker,
             ActivityViewer = viewer,
+            Personalization = _composition.PersonalizationManager != null
+                ? new PersonalizationServiceAdapter(_composition.PersonalizationManager)
+                : null,
+            WritingDialogs = writingDialogs,
+            FileDialogs = fileDialogs,
+            Messages = messages,
             AttachOwner = window =>
             {
                 var owner = WpfDialogOwner.From(window);
                 picker.Owner = () => owner;
                 viewer.Owner = () => owner;
+                writingDialogs.Owner = () => owner;
+                fileDialogs.Owner = window;
+                messages.Owner = window;
             }
         };
         _galleryServices = services;

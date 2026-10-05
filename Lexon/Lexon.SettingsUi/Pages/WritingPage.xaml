@@ -1,0 +1,207 @@
+<UserControl x:Class="Lexon.SettingsUi.WritingPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:Lexon.SettingsUi"
+             xmlns:model="clr-namespace:Lexon.SettingsModel;assembly=Lexon.SettingsModel">
+  <ScrollViewer HorizontalScrollBarVisibility="Disabled"
+                VerticalScrollBarVisibility="Auto"
+                Focusable="False">
+    <StackPanel Margin="16" HorizontalAlignment="Stretch">
+      <local:SectionHeader Title="Writing" Margin="0,0,0,12" IsTabStop="False"/>
+
+      <local:InlineBanner Margin="0,0,0,12" IsTabStop="False"
+                          AutomationProperties.Name="Live settings. Changes here are saved.">
+        <TextBlock Text="Live settings. Changes here are saved." TextWrapping="Wrap"
+                   Foreground="{DynamicResource TextBrush}"
+                   FontFamily="{DynamicResource LexonFontFamily}"
+                   FontSize="{DynamicResource BodyFontSize}"/>
+      </local:InlineBanner>
+
+      <local:Card IsTabStop="False" Margin="0,0,0,12">
+        <StackPanel>
+          <local:SectionHeader Title="Learning" Margin="0,0,0,12" IsTabStop="False"/>
+
+          <Button Content="View writing stats…"
+                  HorizontalAlignment="Left" Margin="0,0,0,4"
+                  Click="OnWritingStats"
+                  Style="{DynamicResource SecondaryButton}"
+                  AutomationProperties.Name="View writing stats…"
+                  AutomationProperties.HelpText="Words, pace, and style collected while you type."/>
+          <TextBlock Text="Words, pace, and style collected while you type."
+                     TextWrapping="Wrap" Margin="0,0,0,12"
+                     Foreground="{DynamicResource TextSecondaryBrush}"
+                     FontFamily="{DynamicResource LexonFontFamily}"
+                     FontSize="{DynamicResource CaptionFontSize}"/>
+
+          <Button Content="Manage learned words…"
+                  HorizontalAlignment="Left" Margin="0,0,0,4"
+                  Click="OnLearnedWords"
+                  Style="{DynamicResource SecondaryButton}"
+                  AutomationProperties.Name="Manage learned words…"
+                  AutomationProperties.HelpText="Vocabulary Lexon learned from you."/>
+          <TextBlock Text="Vocabulary Lexon learned from you."
+                     TextWrapping="Wrap" Margin="0,0,0,12"
+                     Foreground="{DynamicResource TextSecondaryBrush}"
+                     FontFamily="{DynamicResource LexonFontFamily}"
+                     FontSize="{DynamicResource CaptionFontSize}"/>
+
+          <Button Content="Export learned data…"
+                  HorizontalAlignment="Left" Margin="0,0,0,4"
+                  Click="OnExport"
+                  Style="{DynamicResource SecondaryButton}"
+                  AutomationProperties.Name="Export learned data…"
+                  AutomationProperties.HelpText="Save learned vocabulary and style as a JSON file."/>
+          <TextBlock Text="Save learned vocabulary and style as a JSON file."
+                     TextWrapping="Wrap" Margin="0,0,0,12"
+                     Foreground="{DynamicResource TextSecondaryBrush}"
+                     FontFamily="{DynamicResource LexonFontFamily}"
+                     FontSize="{DynamicResource CaptionFontSize}"/>
+
+          <Button Content="Import learned data…"
+                  HorizontalAlignment="Left" Margin="0,0,0,4"
+                  Click="OnImport"
+                  Style="{DynamicResource SecondaryButton}"
+                  AutomationProperties.Name="Import learned data…"
+                  AutomationProperties.HelpText="Restore learned vocabulary and style from a JSON file."/>
+          <TextBlock Text="Restore learned vocabulary and style from a JSON file."
+                     TextWrapping="Wrap" Margin="0,0,0,12"
+                     Foreground="{DynamicResource TextSecondaryBrush}"
+                     FontFamily="{DynamicResource LexonFontFamily}"
+                     FontSize="{DynamicResource CaptionFontSize}"/>
+
+          <TextBlock Text="Detected writing style" TextWrapping="Wrap" Margin="0,0,0,4"
+                     Foreground="{DynamicResource TextBrush}"
+                     FontFamily="{DynamicResource LexonFontFamily}"
+                     FontSize="{DynamicResource BodyFontSize}"/>
+          <TextBlock Text="{Binding StyleSummary}" TextWrapping="Wrap" Margin="0,0,0,8"
+                     Foreground="{DynamicResource TextBrush}"
+                     FontFamily="{DynamicResource LexonFontFamily}"
+                     FontSize="{DynamicResource BodyFontSize}"
+                     AutomationProperties.Name="Detected writing style"/>
+
+          <Button Content="Reset writing style"
+                  HorizontalAlignment="Left" Margin="0,0,0,4"
+                  Click="OnResetStyle"
+                  Style="{DynamicResource SecondaryButton}"
+                  AutomationProperties.Name="Reset writing style"
+                  AutomationProperties.HelpText="Clears the detected style for this profile."/>
+          <TextBlock Text="Clears the detected style for this profile."
+                     TextWrapping="Wrap" Margin="0,0,0,12"
+                     Foreground="{DynamicResource TextSecondaryBrush}"
+                     FontFamily="{DynamicResource LexonFontFamily}"
+                     FontSize="{DynamicResource CaptionFontSize}"/>
+
+          <TextBlock Text="Style adjustments" TextWrapping="Wrap" Margin="0,0,0,4"
+                     Foreground="{DynamicResource TextBrush}"
+                     FontFamily="{DynamicResource LexonFontFamily}"
+                     FontSize="{DynamicResource BodyFontSize}"/>
+          <ListBox ItemsSource="{Binding Adaptations}"
+                   SelectedIndex="{Binding SelectedAdaptationIndex}"
+                   Height="72"
+                   Margin="0,0,0,4"
+                   HorizontalAlignment="Stretch" MinWidth="0"
+                   DisplayMemberPath="DisplayText"
+                   AutomationProperties.Name="Style adjustments"
+                   AutomationProperties.HelpText="From repeated rejections of a suggestion."/>
+          <TextBlock Text="From repeated rejections of a suggestion."
+                     TextWrapping="Wrap" Margin="0,0,0,8"
+                     Foreground="{DynamicResource TextSecondaryBrush}"
+                     FontFamily="{DynamicResource LexonFontFamily}"
+                     FontSize="{DynamicResource CaptionFontSize}"/>
+          <Button Content="Undo selected adjustment"
+                  HorizontalAlignment="Left"
+                  Click="OnUndoAdaptation"
+                  IsEnabled="{Binding CanUndoAdaptation}"
+                  Style="{DynamicResource SecondaryButton}"
+                  AutomationProperties.Name="Undo selected adjustment"/>
+        </StackPanel>
+      </local:Card>
+
+      <local:Card IsTabStop="False">
+        <StackPanel>
+          <local:SectionHeader Title="Grammar" Margin="0,0,0,12" IsTabStop="False"/>
+
+          <CheckBox Content="Suggest grammar fixes automatically"
+                    IsChecked="{Binding GrammarChecking}"
+                    AutomationProperties.Name="Suggest grammar fixes automatically"
+                    AutomationProperties.HelpText="Local rules: agreement, typos, punctuation. Tab accepts a fix. No shortcut required."/>
+          <TextBlock Text="Local rules: agreement, typos, punctuation. Tab accepts a fix. No shortcut required."
+                     TextWrapping="Wrap" Margin="0,4,0,12"
+                     Foreground="{DynamicResource TextSecondaryBrush}"
+                     FontFamily="{DynamicResource LexonFontFamily}"
+                     FontSize="{DynamicResource CaptionFontSize}"/>
+
+          <CheckBox Content="Auto-correct known typos"
+                    IsChecked="{Binding AutoCorrectTypos}"
+                    AutomationProperties.Name="Auto-correct known typos"
+                    AutomationProperties.HelpText="Only the built-in misspelling list. Learned words are left alone."/>
+          <TextBlock Text="Only the built-in misspelling list. Learned words are left alone."
+                     TextWrapping="Wrap" Margin="0,4,0,12"
+                     Foreground="{DynamicResource TextSecondaryBrush}"
+                     FontFamily="{DynamicResource LexonFontFamily}"
+                     FontSize="{DynamicResource CaptionFontSize}"/>
+
+          <TextBlock Text="Grammar sensitivity" TextWrapping="Wrap" Margin="0,0,0,4"
+                     Foreground="{DynamicResource TextBrush}"
+                     FontFamily="{DynamicResource LexonFontFamily}"
+                     FontSize="{DynamicResource BodyFontSize}"/>
+          <ComboBox ItemsSource="{x:Static model:WritingViewModel.SensitivityLabels}"
+                    SelectedIndex="{Binding SensitivityIndex}"
+                    HorizontalAlignment="Stretch" MinWidth="0"
+                    AutomationProperties.Name="Grammar sensitivity"
+                    AutomationProperties.HelpText="Higher flags more issues."/>
+          <TextBlock Text="Higher flags more issues."
+                     TextWrapping="Wrap" Margin="0,4,0,12"
+                     Foreground="{DynamicResource TextSecondaryBrush}"
+                     FontFamily="{DynamicResource LexonFontFamily}"
+                     FontSize="{DynamicResource CaptionFontSize}"/>
+
+          <CheckBox Content="Mute grammar checks in casual apps"
+                    IsChecked="{Binding MuteGrammarForCasualApps}"
+                    AutomationProperties.Name="Mute grammar checks in casual apps"
+                    AutomationProperties.HelpText="Skip grammar in chat and other casual apps."/>
+          <TextBlock Text="Skip grammar in chat and other casual apps."
+                     TextWrapping="Wrap" Margin="0,4,0,12"
+                     Foreground="{DynamicResource TextSecondaryBrush}"
+                     FontFamily="{DynamicResource LexonFontFamily}"
+                     FontSize="{DynamicResource CaptionFontSize}"/>
+
+          <TextBlock Text="Muted grammar apps" TextWrapping="Wrap" Margin="0,0,0,4"
+                     Foreground="{DynamicResource TextBrush}"
+                     FontFamily="{DynamicResource LexonFontFamily}"
+                     FontSize="{DynamicResource BodyFontSize}"/>
+          <TextBox Text="{Binding MutedAppsText, UpdateSourceTrigger=PropertyChanged}"
+                   HorizontalAlignment="Stretch" MinWidth="0"
+                   Margin="0,0,0,4"
+                   AutomationProperties.Name="Muted grammar apps"
+                   AutomationProperties.HelpText="Comma-separated process names."/>
+          <TextBlock Text="Comma-separated process names."
+                     TextWrapping="Wrap" Margin="0,0,0,12"
+                     Foreground="{DynamicResource TextSecondaryBrush}"
+                     FontFamily="{DynamicResource LexonFontFamily}"
+                     FontSize="{DynamicResource CaptionFontSize}"/>
+
+          <CheckBox Content="Rewrite shortcut (Ctrl+Alt+R)"
+                    IsChecked="{Binding EnableRewriteHotkey}"
+                    AutomationProperties.Name="Rewrite shortcut (Ctrl+Alt+R)"
+                    AutomationProperties.HelpText="You can also select text and click Aa."/>
+          <TextBlock Text="You can also select text and click Aa."
+                     TextWrapping="Wrap" Margin="0,4,0,12"
+                     Foreground="{DynamicResource TextSecondaryBrush}"
+                     FontFamily="{DynamicResource LexonFontFamily}"
+                     FontSize="{DynamicResource CaptionFontSize}"/>
+
+          <CheckBox Content="Grammar shortcut (Ctrl+Alt+G)"
+                    IsChecked="{Binding EnableGrammarHotkey}"
+                    AutomationProperties.Name="Grammar shortcut (Ctrl+Alt+G)"
+                    AutomationProperties.HelpText="Run a grammar check immediately."/>
+          <TextBlock Text="Run a grammar check immediately."
+                     TextWrapping="Wrap" Margin="0,4,0,0"
+                     Foreground="{DynamicResource TextSecondaryBrush}"
+                     FontFamily="{DynamicResource LexonFontFamily}"
+                     FontSize="{DynamicResource CaptionFontSize}"/>
+        </StackPanel>
+      </local:Card>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

@@ -2,6 +2,11 @@
 
 All notable changes to Lexon will be documented in this file.
 
+## [1.5.0] - 2026-10-05
+
+### Settings UI
+- `--ui-gallery` gets App tone and Writing tabs. Fixed: a stale gallery tab could overwrite newer Local-only and blocked-app values written by the classic form; pages now write only what the user changed, flush when the window loses focus, and reload when it regains it. Live effects now apply immediately. Export/import of learned data now reports file errors instead of crashing. The classic Settings form is still the default.
+
 ## [1.4.0] - 2026-10-05
 
 ### Settings UI
