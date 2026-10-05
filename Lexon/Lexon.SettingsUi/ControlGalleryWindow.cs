@@ -1,21 +1,33 @@
+using System.ComponentModel;
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Threading;
 using Lexon.Core.Theming;
+using Lexon.SettingsModel;
 
 namespace Lexon.SettingsUi;
 
 public sealed class ControlGalleryWindow : Window
 {
     private readonly ThemeManager? _themes;
+    private readonly GallerySettingsServices? _services;
     private readonly ClipboardHwndListener _clipboard = new();
     private ComboBox _demoCombo = null!;
     private UIElement _demoHost = null!;
+    private UIElement _controlsContent = null!;
+    private ContentControl? _contentHost;
+    private NavItem? _controlsTab;
+    private NavItem? _generalTab;
+    private GeneralPage? _generalPage;
+    private GeneralSettingsViewModel? _generalVm;
+    private DispatcherTimer? _persistTimer;
 
-    public ControlGalleryWindow(ThemeManager? themes = null)
+    public ControlGalleryWindow(ThemeManager? themes = null, GallerySettingsServices? services = null)
     {
         _themes = themes;
+        _services = services;
         Title = "Lexon control gallery";
         Width = 720;
         Height = 720;
@@ -27,14 +39,81 @@ public sealed class ControlGalleryWindow : Window
         SetResourceReference(ForegroundProperty, "TextBrush");
         PreviewKeyDown += OnPreviewKeyDown;
         Loaded += OnLoaded;
-        Closed += (_, _) => _clipboard.Dispose();
+        IsVisibleChanged += OnIsVisibleChanged;
+        Closed += (_, _) =>
+        {
+            FlushPendingSaves();
+            _clipboard.Dispose();
+        };
+
+        if (services != null)
+        {
+            _generalVm = new GeneralSettingsViewModel(services.Settings, services.Startup, services.Persist);
+            _generalVm.OpenFullScreenChanged += OnOpenFullScreenChanged;
+            _generalVm.PropertyChanged += OnGeneralPropertyChanged;
+            _generalPage = new GeneralPage(_generalVm);
+            _persistTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(100) };
+            _persistTimer.Tick += (_, _) =>
+            {
+                services.Persist.TryFlushDue(DateTime.UtcNow);
+                if (!services.Persist.HasPending)
+                {
+                    _persistTimer.Stop();
+                }
+            };
+        }
+
         Content = Build();
+    }
+
+    internal bool HasGeneralTab => _generalTab != null;
+
+    internal bool IsGeneralPageVisible => _generalPage != null && _contentHost?.Content == _generalPage;
+
+    internal GeneralSettingsViewModel? GeneralViewModel => _generalVm;
+
+    internal void SelectGeneralTab()
+    {
+        if (_generalTab != null)
+        {
+            _generalTab.IsChecked = true;
+        }
+    }
+
+    internal void SelectControlsTab()
+    {
+        if (_controlsTab != null)
+        {
+            _controlsTab.IsChecked = true;
+        }
+    }
+
+    internal void NotifyShown()
+    {
+        ReloadGeneral();
+        if (IsVisible)
+        {
+            _persistTimer?.Start();
+        }
+    }
+
+    internal void FlushPendingSaves()
+    {
+        _persistTimer?.Stop();
+        _services?.Save();
     }
 
     private void OnPreviewKeyDown(object sender, KeyEventArgs e)
     {
         if (e.Key != Key.Escape)
         {
+            return;
+        }
+
+        if (Keyboard.FocusedElement is ComboBox { IsDropDownOpen: true } focused)
+        {
+            focused.IsDropDownOpen = false;
+            e.Handled = true;
             return;
         }
 
@@ -70,6 +149,49 @@ public sealed class ControlGalleryWindow : Window
         DockPanel.SetDock(toolbar, Dock.Top);
         root.Children.Add(toolbar);
 
+        _controlsContent = BuildControls();
+
+        if (_services == null)
+        {
+            root.Children.Add(_controlsContent);
+            return root;
+        }
+
+        var tabs = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Margin = new Thickness(16, 0, 16, 8)
+        };
+        KeyboardNavigation.SetTabNavigation(tabs, KeyboardNavigationMode.Once);
+        KeyboardNavigation.SetDirectionalNavigation(tabs, KeyboardNavigationMode.Cycle);
+        AutomationProperties.SetName(tabs, "Gallery tabs");
+
+        _controlsTab = new NavItem
+        {
+            Content = "Controls",
+            IsChecked = true,
+            GroupName = "galleryTabs",
+            Margin = new Thickness(0, 0, 8, 0)
+        };
+        AutomationProperties.SetName(_controlsTab, "Controls");
+        _controlsTab.Checked += (_, _) => ShowControlsContent();
+
+        _generalTab = new NavItem { Content = "General", GroupName = "galleryTabs" };
+        AutomationProperties.SetName(_generalTab, "General");
+        _generalTab.Checked += (_, _) => ShowGeneralContent();
+
+        tabs.Children.Add(_controlsTab);
+        tabs.Children.Add(_generalTab);
+        DockPanel.SetDock(tabs, Dock.Top);
+        root.Children.Add(tabs);
+
+        _contentHost = new ContentControl { Content = _controlsContent };
+        root.Children.Add(_contentHost);
+        return root;
+    }
+
+    private UIElement BuildControls()
+    {
         var scroll = new ScrollViewer { VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
         var stack = new StackPanel { Margin = new Thickness(16), MaxWidth = 560 };
         _demoHost = stack;
@@ -190,8 +312,7 @@ public sealed class ControlGalleryWindow : Window
         stack.Children.Add(new InlineBanner { Content = new TextBlock { Text = "Clipboard listener is attached to this window." }, Margin = new Thickness(0, 0, 0, 16) });
 
         scroll.Content = stack;
-        root.Children.Add(scroll);
-        return root;
+        return scroll;
     }
 
     private Button ThemeButton(string name)
@@ -210,5 +331,70 @@ public sealed class ControlGalleryWindow : Window
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
         _clipboard.Attach(this);
+    }
+
+    private void OnIsVisibleChanged(object sender, DependencyPropertyChangedEventArgs e)
+    {
+        if (IsVisible)
+        {
+            ReloadGeneral();
+            _persistTimer?.Start();
+            return;
+        }
+
+        FlushPendingSaves();
+    }
+
+    private void ShowControlsContent()
+    {
+        if (_contentHost != null)
+        {
+            _contentHost.Content = _controlsContent;
+        }
+    }
+
+    private void ShowGeneralContent()
+    {
+        if (_contentHost != null)
+        {
+            _contentHost.Content = _generalPage;
+        }
+
+        ReloadGeneral();
+    }
+
+    private void ReloadGeneral()
+    {
+        if (_services == null || _generalVm == null)
+        {
+            return;
+        }
+
+        _services.Reload();
+        _generalVm.Load();
+    }
+
+    private void OnOpenFullScreenChanged(bool open)
+    {
+        WindowState = open ? WindowState.Maximized : WindowState.Normal;
+    }
+
+    private void OnGeneralPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (_services == null || _services.Persist.IsLoading)
+        {
+            return;
+        }
+
+        if (e.PropertyName == nameof(GeneralSettingsViewModel.StatusMessage))
+        {
+            return;
+        }
+
+        _services.Push();
+        if (IsVisible)
+        {
+            _persistTimer?.Start();
+        }
     }
 }

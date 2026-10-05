@@ -1,0 +1,109 @@
+<UserControl x:Class="Lexon.SettingsUi.GeneralPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:Lexon.SettingsUi"
+             xmlns:model="clr-namespace:Lexon.SettingsModel;assembly=Lexon.SettingsModel">
+  <ScrollViewer HorizontalScrollBarVisibility="Disabled"
+                VerticalScrollBarVisibility="Auto"
+                Focusable="False">
+    <StackPanel Margin="16" HorizontalAlignment="Stretch">
+      <local:SectionHeader Title="General" Margin="0,0,0,12" IsTabStop="False"/>
+
+      <local:InlineBanner Margin="0,0,0,12" IsTabStop="False"
+                          AutomationProperties.Name="Live settings. Changes here are saved.">
+        <TextBlock Text="Live settings. Changes here are saved." TextWrapping="Wrap"
+                   Foreground="{DynamicResource TextBrush}"
+                   FontFamily="{DynamicResource LexonFontFamily}"
+                   FontSize="{DynamicResource BodyFontSize}"/>
+      </local:InlineBanner>
+
+      <local:InlineBanner Margin="0,0,0,12" IsTabStop="False"
+                          AutomationProperties.Name="{Binding StatusMessage}">
+        <local:InlineBanner.Style>
+          <Style TargetType="local:InlineBanner">
+            <Setter Property="Visibility" Value="Visible"/>
+            <Style.Triggers>
+              <DataTrigger Binding="{Binding StatusMessage}" Value="">
+                <Setter Property="Visibility" Value="Collapsed"/>
+              </DataTrigger>
+              <DataTrigger Binding="{Binding StatusMessage}" Value="{x:Null}">
+                <Setter Property="Visibility" Value="Collapsed"/>
+              </DataTrigger>
+            </Style.Triggers>
+          </Style>
+        </local:InlineBanner.Style>
+        <TextBlock Text="{Binding StatusMessage}" TextWrapping="Wrap"
+                   Foreground="{DynamicResource TextBrush}"
+                   FontFamily="{DynamicResource LexonFontFamily}"
+                   FontSize="{DynamicResource BodyFontSize}"/>
+      </local:InlineBanner>
+
+      <local:Card IsTabStop="False">
+        <StackPanel>
+          <CheckBox Content="Start with Windows"
+                    IsChecked="{Binding StartWithWindows}"
+                    AutomationProperties.Name="Start with Windows"
+                    AutomationProperties.HelpText="Launch Lexon when you sign in to Windows."/>
+          <TextBlock Text="Launch Lexon when you sign in to Windows."
+                     TextWrapping="Wrap"
+                     Margin="0,4,0,12"
+                     Foreground="{DynamicResource TextSecondaryBrush}"
+                     FontFamily="{DynamicResource LexonFontFamily}"
+                     FontSize="{DynamicResource CaptionFontSize}"/>
+
+          <CheckBox Content="Minimize to system tray"
+                    IsChecked="{Binding MinimizeToTray}"
+                    AutomationProperties.Name="Minimize to system tray"
+                    AutomationProperties.HelpText="Close hides Settings. Lexon stays in the tray."/>
+          <TextBlock Text="Close hides Settings. Lexon stays in the tray."
+                     TextWrapping="Wrap"
+                     Margin="0,4,0,12"
+                     Foreground="{DynamicResource TextSecondaryBrush}"
+                     FontFamily="{DynamicResource LexonFontFamily}"
+                     FontSize="{DynamicResource CaptionFontSize}"/>
+
+          <CheckBox Content="Check for updates on startup"
+                    IsChecked="{Binding CheckForUpdates}"
+                    AutomationProperties.Name="Check for updates on startup"
+                    AutomationProperties.HelpText="Asks before installing anything."/>
+          <TextBlock Text="Asks before installing anything."
+                     TextWrapping="Wrap"
+                     Margin="0,4,0,12"
+                     Foreground="{DynamicResource TextSecondaryBrush}"
+                     FontFamily="{DynamicResource LexonFontFamily}"
+                     FontSize="{DynamicResource CaptionFontSize}"/>
+
+          <CheckBox Content="Open Settings full screen"
+                    IsChecked="{Binding OpenSettingsFullScreen}"
+                    AutomationProperties.Name="Open Settings full screen"
+                    AutomationProperties.HelpText="Opens maximized so the three-column layout is used."/>
+          <TextBlock Text="Opens maximized so the three-column layout is used."
+                     TextWrapping="Wrap"
+                     Margin="0,4,0,12"
+                     Foreground="{DynamicResource TextSecondaryBrush}"
+                     FontFamily="{DynamicResource LexonFontFamily}"
+                     FontSize="{DynamicResource CaptionFontSize}"/>
+
+          <TextBlock Text="Double-press Ctrl pauses for"
+                     TextWrapping="Wrap"
+                     Margin="0,0,0,4"
+                     Foreground="{DynamicResource TextBrush}"
+                     FontFamily="{DynamicResource LexonFontFamily}"
+                     FontSize="{DynamicResource BodyFontSize}"/>
+          <ComboBox ItemsSource="{x:Static model:GeneralSettingsViewModel.QuickPauseLabels}"
+                    SelectedIndex="{Binding QuickPauseIndex}"
+                    HorizontalAlignment="Stretch"
+                    MinWidth="0"
+                    AutomationProperties.Name="Double-press Ctrl pauses for"
+                    AutomationProperties.HelpText="How long Lexon stays off after you double-press Ctrl. It turns itself back on when the time is up, or sooner if you double-press Ctrl again."/>
+          <TextBlock Text="How long Lexon stays off after you double-press Ctrl. It turns itself back on when the time is up, or sooner if you double-press Ctrl again."
+                     TextWrapping="Wrap"
+                     Margin="0,4,0,0"
+                     Foreground="{DynamicResource TextSecondaryBrush}"
+                     FontFamily="{DynamicResource LexonFontFamily}"
+                     FontSize="{DynamicResource CaptionFontSize}"/>
+        </StackPanel>
+      </local:Card>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

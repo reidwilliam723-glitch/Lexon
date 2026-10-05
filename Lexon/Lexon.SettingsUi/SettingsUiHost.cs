@@ -25,10 +25,10 @@ public static class SettingsUiHost
         HookSystemParameters(app);
     }
 
-    public static void ShowGallery(ThemeManager themes)
+    public static void ShowGallery(ThemeManager themes, GallerySettingsServices? services = null)
     {
         Warm(themes);
-        var window = EnsureGallery();
+        var window = EnsureGallery(services);
         ElementHost.EnableModelessKeyboardInterop(window);
         if (window.WindowState == WindowState.Minimized)
         {
@@ -37,6 +37,7 @@ public static class SettingsUiHost
 
         window.Show();
         window.Activate();
+        window.NotifyShown();
     }
 
     public static void Shutdown()
@@ -150,17 +151,18 @@ public static class SettingsUiHost
         dispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.Loaded);
     }
 
-    public static ControlGalleryWindow EnsureGallery()
+    public static ControlGalleryWindow EnsureGallery(GallerySettingsServices? services = null)
     {
         if (_gallery != null)
         {
             return _gallery;
         }
 
-        _gallery = new ControlGalleryWindow(_themes);
+        _gallery = new ControlGalleryWindow(_themes, services);
         _gallery.Closing += (_, e) =>
         {
             e.Cancel = true;
+            _gallery.FlushPendingSaves();
             _gallery.Hide();
         };
         return _gallery;

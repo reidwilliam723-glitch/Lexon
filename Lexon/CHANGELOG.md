@@ -2,6 +2,11 @@
 
 All notable changes to Lexon will be documented in this file.
 
+## [1.3.0] - 2026-10-05
+
+### Settings UI
+- The `--ui-gallery` window has a General tab: the first real settings page in WPF, wired to the real profile. The classic Settings form is still the default.
+
 ## [1.2.0] - 2026-10-02
 
 ### Settings UI

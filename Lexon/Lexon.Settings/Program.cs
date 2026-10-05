@@ -6,6 +6,7 @@ using Lexon.Core;
 using Lexon.Core.Interfaces;
 using Lexon.Core.Models;
 using Lexon.Ui;
+using Lexon.SettingsModel;
 using Lexon.SettingsUi;
 using Velopack;
 
@@ -32,6 +33,7 @@ static class Program
     private static bool _restartedAfterCrash;
     private static bool _suppressQuickPause;
     private static bool _enableUiGallery;
+    private static GallerySettingsServices? _galleryServices;
 
     /// <summary>
     ///  The main entry point for the application.
@@ -389,7 +391,7 @@ static class Program
             {
                 try
                 {
-                    SettingsUiHost.ShowGallery(_composition.ThemeManager);
+                    SettingsUiHost.ShowGallery(_composition.ThemeManager, CreateGalleryServices());
                 }
                 catch (Exception ex)
                 {
@@ -420,11 +422,38 @@ static class Program
 
         if (_enableUiGallery && _composition != null)
         {
-            SettingsUiHost.ShowGallery(_composition.ThemeManager);
+            SettingsUiHost.ShowGallery(_composition.ThemeManager, CreateGalleryServices());
             return;
         }
 
         EnsureSettingsForm();
+    }
+
+    private static GallerySettingsServices CreateGalleryServices()
+    {
+        if (_galleryServices != null)
+        {
+            return _galleryServices;
+        }
+
+        var profile = _composition!.Profile;
+        var settings = new AppSettings();
+        settings.Read(profile);
+        var persist = new PersistScheduler(() =>
+        {
+            settings.Write(profile);
+            _ = profile.SaveAsync();
+        });
+        _galleryServices = new GallerySettingsServices(
+            settings,
+            new WindowsStartupRegistration(),
+            persist,
+            persist.Flush)
+        {
+            Reload = () => settings.Read(profile),
+            Push = () => settings.Write(profile)
+        };
+        return _galleryServices;
     }
 
     private static void EnsureSettingsForm()
