@@ -19,6 +19,7 @@ public sealed class PrivacySettingsViewModel : INotifyPropertyChanged, IOwnedSet
     private readonly Action? _refresh;
     private bool _localOnly;
     private string _blockedAppsText = string.Empty;
+    private bool _isDirty;
 
     public PrivacySettingsViewModel(
         AppSettings settings,
@@ -37,6 +38,8 @@ public sealed class PrivacySettingsViewModel : INotifyPropertyChanged, IOwnedSet
     }
 
     public IReadOnlyList<string> OwnedKeys => OwnedKeyList;
+
+    public bool IsDirty => _isDirty;
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -59,7 +62,7 @@ public sealed class PrivacySettingsViewModel : INotifyPropertyChanged, IOwnedSet
 
             _settings.LocalMode = value;
             PublishPolicy();
-            _persist.Schedule(DateTime.UtcNow);
+            MarkDirtyAndSchedule();
         }
     }
 
@@ -81,7 +84,7 @@ public sealed class PrivacySettingsViewModel : INotifyPropertyChanged, IOwnedSet
             }
 
             _settings.BlockedApplications = BlockedAppList.Parse(_blockedAppsText);
-            _persist.Schedule(DateTime.UtcNow);
+            MarkDirtyAndSchedule();
         }
     }
 
@@ -92,7 +95,16 @@ public sealed class PrivacySettingsViewModel : INotifyPropertyChanged, IOwnedSet
         {
             _refresh?.Invoke();
             _localOnly = _settings.LocalMode;
-            _blockedAppsText = BlockedAppList.FormatCsv(_settings.BlockedApplications);
+            // Keep the typed text when its parsed list matches the profile so
+            // an activate-reload does not reformat trailing commas or casing.
+            var fromProfile = _settings.BlockedApplications ?? [];
+            var currentParsed = BlockedAppList.Parse(_blockedAppsText);
+            if (!ListEquals(currentParsed, fromProfile))
+            {
+                _blockedAppsText = BlockedAppList.FormatCsv(fromProfile);
+            }
+
+            _isDirty = false;
             OnPropertyChanged(nameof(LocalOnly));
             OnPropertyChanged(nameof(BlockedAppsText));
         }
@@ -107,6 +119,8 @@ public sealed class PrivacySettingsViewModel : INotifyPropertyChanged, IOwnedSet
         target.LocalMode = _localOnly;
         target.BlockedApplications = BlockedAppList.Parse(_blockedAppsText);
     }
+
+    public void MarkClean() => _isDirty = false;
 
     public void AddRunningApp()
     {
@@ -127,13 +141,19 @@ public sealed class PrivacySettingsViewModel : INotifyPropertyChanged, IOwnedSet
         OnPropertyChanged(nameof(BlockedAppsText));
         if (!_persist.IsLoading)
         {
-            _persist.Schedule(DateTime.UtcNow);
+            MarkDirtyAndSchedule();
         }
     }
 
     public void ShowActivityLog()
     {
         _activity.Show();
+    }
+
+    private void MarkDirtyAndSchedule()
+    {
+        _isDirty = true;
+        _persist.Schedule(DateTime.UtcNow);
     }
 
     private void PublishPolicy()
@@ -148,6 +168,24 @@ public sealed class PrivacySettingsViewModel : INotifyPropertyChanged, IOwnedSet
             _settings.AiSuggestionsWhileTyping,
             _settings.AiRewriteOnRequest,
             _settings.AiPrefetchOnSelection);
+    }
+
+    private static bool ListEquals(IReadOnlyList<string> a, IReadOnlyList<string> b)
+    {
+        if (a.Count != b.Count)
+        {
+            return false;
+        }
+
+        for (var i = 0; i < a.Count; i++)
+        {
+            if (!string.Equals(a[i], b[i], StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private void OnPropertyChanged([CallerMemberName] string? name = null)

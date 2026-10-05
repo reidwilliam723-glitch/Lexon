@@ -35,6 +35,7 @@ public sealed class GeneralSettingsViewModel : INotifyPropertyChanged, IOwnedSet
     private bool _openSettingsFullScreen;
     private int _quickPauseIndex = 3;
     private string _statusMessage = string.Empty;
+    private bool _isDirty;
 
     public GeneralSettingsViewModel(AppSettings settings, IStartupRegistration startup, PersistScheduler persist)
     {
@@ -44,6 +45,8 @@ public sealed class GeneralSettingsViewModel : INotifyPropertyChanged, IOwnedSet
     }
 
     public IReadOnlyList<string> OwnedKeys => OwnedKeyList;
+
+    public bool IsDirty => _isDirty;
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -76,7 +79,7 @@ public sealed class GeneralSettingsViewModel : INotifyPropertyChanged, IOwnedSet
             _startWithWindows = value;
             OnPropertyChanged();
             StatusMessage = string.Empty;
-            _persist.Schedule(DateTime.UtcNow);
+            MarkDirtyAndSchedule();
         }
     }
 
@@ -98,7 +101,7 @@ public sealed class GeneralSettingsViewModel : INotifyPropertyChanged, IOwnedSet
             // Gallery already hides instead of closing. Real close-to-tray
             // is wired when the standalone settings window exists.
             _settings.MinimizeToTray = value;
-            _persist.Schedule(DateTime.UtcNow);
+            MarkDirtyAndSchedule();
         }
     }
 
@@ -118,7 +121,7 @@ public sealed class GeneralSettingsViewModel : INotifyPropertyChanged, IOwnedSet
             }
 
             _settings.EnableAutoUpdates = value;
-            _persist.Schedule(DateTime.UtcNow);
+            MarkDirtyAndSchedule();
         }
     }
 
@@ -138,7 +141,7 @@ public sealed class GeneralSettingsViewModel : INotifyPropertyChanged, IOwnedSet
             }
 
             _settings.OpenSettingsFullScreen = value;
-            _persist.Schedule(DateTime.UtcNow);
+            MarkDirtyAndSchedule();
             OpenFullScreenChanged?.Invoke(value);
         }
     }
@@ -167,7 +170,7 @@ public sealed class GeneralSettingsViewModel : INotifyPropertyChanged, IOwnedSet
             }
 
             _settings.QuickPauseMinutes = QuickPauseOptions.MinutesFromIndex(index);
-            _persist.Schedule(DateTime.UtcNow);
+            MarkDirtyAndSchedule();
         }
     }
 
@@ -197,6 +200,7 @@ public sealed class GeneralSettingsViewModel : INotifyPropertyChanged, IOwnedSet
             _openSettingsFullScreen = _settings.OpenSettingsFullScreen;
             _quickPauseIndex = QuickPauseOptions.IndexFromMinutes(_settings.QuickPauseMinutes);
             _statusMessage = string.Empty;
+            _isDirty = false;
             OnPropertyChanged(nameof(StartWithWindows));
             OnPropertyChanged(nameof(MinimizeToTray));
             OnPropertyChanged(nameof(CheckForUpdates));
@@ -216,6 +220,14 @@ public sealed class GeneralSettingsViewModel : INotifyPropertyChanged, IOwnedSet
         target.EnableAutoUpdates = _checkForUpdates;
         target.OpenSettingsFullScreen = _openSettingsFullScreen;
         target.QuickPauseMinutes = QuickPauseOptions.MinutesFromIndex(_quickPauseIndex);
+    }
+
+    public void MarkClean() => _isDirty = false;
+
+    private void MarkDirtyAndSchedule()
+    {
+        _isDirty = true;
+        _persist.Schedule(DateTime.UtcNow);
     }
 
     private bool SetField(ref bool field, bool value, [CallerMemberName] string? name = null)

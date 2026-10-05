@@ -446,7 +446,7 @@ static class Program
         persist = new PersistScheduler(() =>
         {
             OwnedSettingsWriter.Flush(profile, services.Pages.ToArray());
-            ApplyGalleryLiveEffects(profile);
+            ApplyGalleryLiveEffects(OwnedSettingsWriter.BuildLiveSnapshot(profile, services.Pages));
             _ = profile.SaveAsync();
         });
         services = new GallerySettingsServices(
@@ -458,7 +458,7 @@ static class Program
             Profile = profile,
             Reload = () => settings.Read(profile),
             Push = () => OwnedSettingsWriter.Flush(profile, services.Pages.ToArray()),
-            ApplyLive = () => ApplyGalleryLiveEffects(profile),
+            ApplyLive = () => ApplyGalleryLiveEffects(OwnedSettingsWriter.BuildLiveSnapshot(profile, services.Pages)),
             ThemeSwitcher = new ThemeManagerSwitcher(_composition.ThemeManager),
             AiPolicy = new AiPolicyPublisher(_composition.AiAccessPolicy, _composition.SuggestionPipeline),
             ProcessPicker = picker,
@@ -474,15 +474,13 @@ static class Program
         return services;
     }
 
-    private static void ApplyGalleryLiveEffects(Profile profile)
+    private static void ApplyGalleryLiveEffects(AppSettings snapshot)
     {
         if (_composition == null)
         {
             return;
         }
 
-        var snapshot = new AppSettings();
-        snapshot.Read(profile);
         _composition.PrivacyGuard.ReplaceBlockedApplications(snapshot.BlockedApplications);
         _composition.SuggestionPipeline?.SetSortMode(snapshot.SuggestionSortMode);
         _composition.SuggestionOverlay?.SetPlacement(snapshot.SuggestionPlacement);

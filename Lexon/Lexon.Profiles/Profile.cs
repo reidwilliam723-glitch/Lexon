@@ -114,7 +114,7 @@ public class Profile : IProfile
         return defaultValue;
     }
 
-    public void SetSetting<T>(string key, T value)
+    public virtual void SetSetting<T>(string key, T value)
     {
         Settings[key] = value!;
     }

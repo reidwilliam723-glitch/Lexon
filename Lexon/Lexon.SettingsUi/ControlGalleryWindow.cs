@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Linq;
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
@@ -46,6 +47,8 @@ public sealed class ControlGalleryWindow : Window
         PreviewKeyDown += OnPreviewKeyDown;
         Loaded += OnLoaded;
         IsVisibleChanged += OnIsVisibleChanged;
+        Activated += OnActivated;
+        Deactivated += OnDeactivated;
         Closed += (_, _) =>
         {
             FlushPendingSaves();
@@ -155,7 +158,7 @@ public sealed class ControlGalleryWindow : Window
 
     internal void NotifyShown()
     {
-        ReloadVisibleSettings();
+        ReloadCleanPages();
         if (IsVisible)
         {
             _persistTimer?.Start();
@@ -167,6 +170,20 @@ public sealed class ControlGalleryWindow : Window
         _persistTimer?.Stop();
         _services?.Save();
     }
+
+    /// <summary>
+    /// Test seam for activate: reload clean pages from the profile.
+    /// </summary>
+    internal void NotifyActivated() => ReloadCleanPages();
+
+    /// <summary>
+    /// Test seam for deactivate: flush pending dirty pages immediately.
+    /// </summary>
+    internal void NotifyDeactivated() => FlushPendingSaves();
+
+    private void OnActivated(object? sender, EventArgs e) => NotifyActivated();
+
+    private void OnDeactivated(object? sender, EventArgs e) => NotifyDeactivated();
 
     private void OnPreviewKeyDown(object sender, KeyEventArgs e)
     {
@@ -427,7 +444,7 @@ public sealed class ControlGalleryWindow : Window
     {
         if (IsVisible)
         {
-            ReloadVisibleSettings();
+            ReloadCleanPages();
             _persistTimer?.Start();
             return;
         }
@@ -473,7 +490,7 @@ public sealed class ControlGalleryWindow : Window
         ReloadPage(_privacyVm);
     }
 
-    private void ReloadVisibleSettings()
+    private void ReloadCleanPages()
     {
         if (_services == null)
         {
@@ -481,14 +498,36 @@ public sealed class ControlGalleryWindow : Window
         }
 
         _services.Reload();
-        _generalVm?.Load();
-        _appearanceVm?.Load();
-        _privacyVm?.Load();
+        if (_generalVm is { IsDirty: false })
+        {
+            _generalVm.Load();
+        }
+
+        if (_appearanceVm is { IsDirty: false })
+        {
+            _appearanceVm.Load();
+        }
+
+        if (_privacyVm is { IsDirty: false })
+        {
+            _privacyVm.Load();
+        }
+
+        // Dirty pages only exist if a prior flush failed; keep values and retry.
+        if (_services.Pages.Any(static p => p.IsDirty))
+        {
+            FlushPendingSaves();
+        }
     }
 
     private void ReloadPage(IOwnedSettingsPage? page)
     {
         if (_services == null || page == null)
+        {
+            return;
+        }
+
+        if (page.IsDirty)
         {
             return;
         }
@@ -525,7 +564,7 @@ public sealed class ControlGalleryWindow : Window
             return;
         }
 
-        _services.Push();
+        // Live effects from a dirty snapshot before the debounced disk write.
         _services.ApplyLive?.Invoke();
         if (IsVisible)
         {

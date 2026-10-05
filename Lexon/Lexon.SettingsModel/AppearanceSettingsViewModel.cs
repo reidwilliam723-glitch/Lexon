@@ -28,6 +28,7 @@ public sealed class AppearanceSettingsViewModel : INotifyPropertyChanged, IOwned
     private int _placementIndex;
     private bool _previewRewrites = true;
     private bool _applyingTheme;
+    private bool _isDirty;
 
     public AppearanceSettingsViewModel(AppSettings settings, PersistScheduler persist, IThemeSwitcher themes)
     {
@@ -38,6 +39,8 @@ public sealed class AppearanceSettingsViewModel : INotifyPropertyChanged, IOwned
     }
 
     public IReadOnlyList<string> OwnedKeys => OwnedKeyList;
+
+    public bool IsDirty => _isDirty;
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -76,7 +79,7 @@ public sealed class AppearanceSettingsViewModel : INotifyPropertyChanged, IOwned
                 _applyingTheme = false;
             }
 
-            _persist.Schedule(DateTime.UtcNow);
+            MarkDirtyAndSchedule();
         }
     }
 
@@ -97,7 +100,7 @@ public sealed class AppearanceSettingsViewModel : INotifyPropertyChanged, IOwned
             }
 
             _settings.SuggestionSortMode = index == 1 ? "Used" : "Relevant";
-            _persist.Schedule(DateTime.UtcNow);
+            MarkDirtyAndSchedule();
         }
     }
 
@@ -118,7 +121,7 @@ public sealed class AppearanceSettingsViewModel : INotifyPropertyChanged, IOwned
             }
 
             _settings.SuggestionPlacement = index == 1 ? "Above" : "Below";
-            _persist.Schedule(DateTime.UtcNow);
+            MarkDirtyAndSchedule();
         }
     }
 
@@ -140,7 +143,7 @@ public sealed class AppearanceSettingsViewModel : INotifyPropertyChanged, IOwned
             }
 
             _settings.RequireConfirmationForEdits = value;
-            _persist.Schedule(DateTime.UtcNow);
+            MarkDirtyAndSchedule();
         }
     }
 
@@ -158,6 +161,7 @@ public sealed class AppearanceSettingsViewModel : INotifyPropertyChanged, IOwned
             _sortIndex = string.Equals(_settings.SuggestionSortMode, "Used", StringComparison.OrdinalIgnoreCase) ? 1 : 0;
             _placementIndex = string.Equals(_settings.SuggestionPlacement, "Above", StringComparison.OrdinalIgnoreCase) ? 1 : 0;
             _previewRewrites = _settings.RequireConfirmationForEdits;
+            _isDirty = false;
             OnPropertyChanged(nameof(ThemeIndex));
             OnPropertyChanged(nameof(SortIndex));
             OnPropertyChanged(nameof(PlacementIndex));
@@ -177,6 +181,14 @@ public sealed class AppearanceSettingsViewModel : INotifyPropertyChanged, IOwned
         target.RequireConfirmationForEdits = _previewRewrites;
     }
 
+    public void MarkClean() => _isDirty = false;
+
+    private void MarkDirtyAndSchedule()
+    {
+        _isDirty = true;
+        _persist.Schedule(DateTime.UtcNow);
+    }
+
     private void OnExternalThemeChanged(object? sender, ThemeChangedEventArgs e)
     {
         if (_applyingTheme || _persist.IsLoading)
@@ -184,6 +196,11 @@ public sealed class AppearanceSettingsViewModel : INotifyPropertyChanged, IOwned
             return;
         }
 
+        // Startup reads ThemeManager's theme_config storage, not AppSettings.Theme.
+        // ThemeManager.SetTheme already persisted theme_config; gallery buttons go
+        // through ThemeIndex (dirty + schedule) so the profile Theme key stays in
+        // sync for the classic combo. External changes only update the in-memory
+        // selection — writing Theme here would be vestigial for live UI.
         var index = IndexOfTheme(e.NewTheme.Name);
         _settings.Theme = ThemeLabels[index];
         if (_themeIndex == index)
