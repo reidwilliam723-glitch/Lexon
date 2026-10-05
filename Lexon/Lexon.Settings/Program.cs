@@ -439,21 +439,57 @@ static class Program
         var profile = _composition!.Profile;
         var settings = new AppSettings();
         settings.Read(profile);
-        var persist = new PersistScheduler(() =>
+        var picker = new ProcessPickerAdapter();
+        var viewer = new CloudAiActivityViewer(_composition.CloudAiLog);
+        PersistScheduler persist = null!;
+        GallerySettingsServices services = null!;
+        persist = new PersistScheduler(() =>
         {
-            settings.Write(profile);
+            OwnedSettingsWriter.Flush(profile, services.Pages.ToArray());
+            ApplyGalleryLiveEffects(profile);
             _ = profile.SaveAsync();
         });
-        _galleryServices = new GallerySettingsServices(
+        services = new GallerySettingsServices(
             settings,
             new WindowsStartupRegistration(),
             persist,
             persist.Flush)
         {
+            Profile = profile,
             Reload = () => settings.Read(profile),
-            Push = () => settings.Write(profile)
+            Push = () => OwnedSettingsWriter.Flush(profile, services.Pages.ToArray()),
+            ApplyLive = () => ApplyGalleryLiveEffects(profile),
+            ThemeSwitcher = new ThemeManagerSwitcher(_composition.ThemeManager),
+            AiPolicy = new AiPolicyPublisher(_composition.AiAccessPolicy, _composition.SuggestionPipeline),
+            ProcessPicker = picker,
+            ActivityViewer = viewer,
+            AttachOwner = window =>
+            {
+                var owner = WpfDialogOwner.From(window);
+                picker.Owner = () => owner;
+                viewer.Owner = () => owner;
+            }
         };
-        return _galleryServices;
+        _galleryServices = services;
+        return services;
+    }
+
+    private static void ApplyGalleryLiveEffects(Profile profile)
+    {
+        if (_composition == null)
+        {
+            return;
+        }
+
+        var snapshot = new AppSettings();
+        snapshot.Read(profile);
+        _composition.PrivacyGuard.ReplaceBlockedApplications(snapshot.BlockedApplications);
+        _composition.SuggestionPipeline?.SetSortMode(snapshot.SuggestionSortMode);
+        _composition.SuggestionOverlay?.SetPlacement(snapshot.SuggestionPlacement);
+        if (_composition.EditConfirmation != null)
+        {
+            _composition.EditConfirmation.RequireConfirmation = snapshot.RequireConfirmationForEdits;
+        }
     }
 
     private static void EnsureSettingsForm()

@@ -173,8 +173,9 @@ public class GeneralSettingsViewModelTests
         var profile = new Profile();
         var settings = new AppSettings();
         settings.Read(profile);
-        var persist = new PersistScheduler(() => settings.Write(profile));
-        var vm = new GeneralSettingsViewModel(settings, new FakeStartup(), persist);
+        GeneralSettingsViewModel vm = null!;
+        var persist = new PersistScheduler(() => OwnedSettingsWriter.Flush(profile, vm));
+        vm = new GeneralSettingsViewModel(settings, new FakeStartup(), persist);
         vm.Load();
 
         vm.MinimizeToTray = false;

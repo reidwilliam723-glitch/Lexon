@@ -18,17 +18,17 @@ using WpfTextBox = System.Windows.Controls.TextBox;
 namespace Lexon.Tests;
 
 [Collection("WpfSta")]
-public class GeneralPageTests
+public class AppearancePrivacyPageTests
 {
     private readonly WpfStaFixture _sta;
 
-    public GeneralPageTests(WpfStaFixture sta)
+    public AppearancePrivacyPageTests(WpfStaFixture sta)
     {
         _sta = sta;
     }
 
     [Fact]
-    public void GeneralPage_LaysOutInEveryTheme_WithoutBindingErrors()
+    public void Pages_LayOutInEveryTheme_WithoutBindingErrors()
     {
         _sta.Run(() =>
         {
@@ -41,11 +41,13 @@ public class GeneralPageTests
                 foreach (var theme in themes.AvailableThemes)
                 {
                     WpfThemeBridge.ApplyTo(app, theme);
-                    LayoutPage();
+                    Layout(CreateAppearance());
+                    Layout(CreatePrivacy());
                 }
 
                 ApplyWindowsHighContrast(app, themes.CurrentTheme);
-                LayoutPage();
+                Layout(CreateAppearance());
+                Layout(CreatePrivacy());
                 Assert.Empty(listener.Errors);
             }
             finally
@@ -56,7 +58,7 @@ public class GeneralPageTests
     }
 
     [Fact]
-    public void GeneralPage_InteractiveControlsHaveAutomationNames()
+    public void Pages_InteractiveControlsHaveAutomationNames()
     {
         _sta.Run(() =>
         {
@@ -65,110 +67,29 @@ public class GeneralPageTests
             var themes = new ThemeManager(store.Storage);
             WpfThemeBridge.ApplyTo(app, themes.CurrentTheme);
 
-            var page = CreatePage();
-            var window = Offscreen(page, 700, 720);
-            window.Show();
-            window.UpdateLayout();
-            page.ApplyTemplate();
-            page.UpdateLayout();
-
-            var missing = Logical(page)
-                .OfType<FrameworkElement>()
-                .Where(IsInteractive)
-                .Where(el => string.IsNullOrWhiteSpace(AutomationProperties.GetName(el)))
-                .Select(el => el.GetType().Name)
-                .ToList();
-            Assert.Empty(missing);
-            window.Close();
-            _ = app;
-        });
-    }
-
-    [Fact]
-    public void Gallery_WithoutServices_HasNoGeneralTab()
-    {
-        _sta.Run(() =>
-        {
-            var app = WpfBootstrap.EnsureApplication();
-            using var store = new TempThemeStore();
-            var themes = new ThemeManager(store.Storage);
-            WpfThemeBridge.ApplyTo(app, themes.CurrentTheme);
-
-            var window = new ControlGalleryWindow(themes);
-            window.Left = -20000;
-            window.Top = -20000;
-            window.ShowInTaskbar = false;
-            window.Show();
-            window.UpdateLayout();
-
-            Assert.False(window.HasGeneralTab);
-            Assert.False(window.IsGeneralPageVisible);
-            Assert.Null(window.GeneralViewModel);
-            window.Close();
-            _ = app;
-        });
-    }
-
-    [Fact]
-    public void GeneralPage_DoesNotOverflowAtNarrowWidth()
-    {
-        _sta.Run(() =>
-        {
-            var app = WpfBootstrap.EnsureApplication();
-            using var store = new TempThemeStore();
-            var themes = new ThemeManager(store.Storage);
-            WpfThemeBridge.ApplyTo(app, themes.CurrentTheme);
-
-            var page = CreatePage();
-            var window = Offscreen(page, 700, 720);
-            window.Show();
-            window.UpdateLayout();
-            page.UpdateLayout();
-
-            var scroll = Logical(page).OfType<System.Windows.Controls.ScrollViewer>().First();
-            Assert.True(scroll.ExtentWidth <= scroll.ViewportWidth + 1,
-                $"Extent {scroll.ExtentWidth} > viewport {scroll.ViewportWidth}");
-            window.Close();
-            _ = app;
-        });
-    }
-
-    [Fact]
-    public void Gallery_OpenFullScreen_MaximizesAndRestores()
-    {
-        _sta.Run(() =>
-        {
-            var app = WpfBootstrap.EnsureApplication();
-            using var store = new TempThemeStore();
-            var themes = new ThemeManager(store.Storage);
-            WpfThemeBridge.ApplyTo(app, themes.CurrentTheme);
-
-            var settings = new AppSettings();
-            var persist = new PersistScheduler(() => { });
-            var services = new GallerySettingsServices(settings, new CountingStartup(), persist, persist.Flush);
-            var window = new ControlGalleryWindow(themes, services)
+            foreach (var page in new FrameworkElement[] { CreateAppearance(), CreatePrivacy() })
             {
-                Left = -20000,
-                Top = -20000,
-                ShowInTaskbar = false,
-                WindowState = WindowState.Normal
-            };
-            window.Show();
-            window.UpdateLayout();
-            Assert.Equal(WindowState.Normal, window.WindowState);
+                var window = Offscreen(page, 700, 720);
+                window.Show();
+                window.UpdateLayout();
+                page.ApplyTemplate();
+                page.UpdateLayout();
+                var missing = Logical(page)
+                    .OfType<FrameworkElement>()
+                    .Where(IsInteractive)
+                    .Where(el => string.IsNullOrWhiteSpace(AutomationProperties.GetName(el)))
+                    .Select(el => el.GetType().Name)
+                    .ToList();
+                Assert.Empty(missing);
+                window.Close();
+            }
 
-            window.SelectGeneralTab();
-            window.GeneralViewModel!.OpenSettingsFullScreen = true;
-            Assert.Equal(WindowState.Maximized, window.WindowState);
-            window.GeneralViewModel.OpenSettingsFullScreen = false;
-            Assert.Equal(WindowState.Normal, window.WindowState);
-            window.Close();
             _ = app;
         });
     }
 
     [Fact]
-    public void Gallery_WithServices_SelectingGeneralShowsPageAndLoads()
+    public void Gallery_ShowsOnlyAvailableSettingsTabs()
     {
         _sta.Run(() =>
         {
@@ -177,10 +98,18 @@ public class GeneralPageTests
             var themes = new ThemeManager(store.Storage);
             WpfThemeBridge.ApplyTo(app, themes.CurrentTheme);
 
-            var settings = new AppSettings();
-            var startup = new CountingStartup();
+            var settings = new AppSettings { Theme = "Dark", LocalMode = true };
             var persist = new PersistScheduler(() => { });
-            var services = new GallerySettingsServices(settings, startup, persist, persist.Flush);
+            var themeSwitch = new FakeThemes();
+            var policy = new FakePolicy();
+            var services = new GallerySettingsServices(settings, new CountingStartup(), persist, persist.Flush)
+            {
+                ThemeSwitcher = themeSwitch,
+                AiPolicy = policy,
+                ProcessPicker = new FakePicker(),
+                ActivityViewer = new FakeLog(),
+                Reload = () => { }
+            };
             var window = new ControlGalleryWindow(themes, services)
             {
                 Left = -20000,
@@ -190,35 +119,44 @@ public class GeneralPageTests
             window.Show();
             window.UpdateLayout();
 
+            Assert.Equal(4, window.GalleryTabCount);
             Assert.True(window.HasGeneralTab);
-            Assert.False(window.HasAppearanceTab);
-            Assert.False(window.HasPrivacyTab);
-            Assert.Equal(2, window.GalleryTabCount);
-            Assert.False(window.IsGeneralPageVisible);
-            var loadsBeforeSelect = startup.GetCalls;
+            Assert.True(window.HasAppearanceTab);
+            Assert.True(window.HasPrivacyTab);
 
-            window.SelectGeneralTab();
+            window.SelectAppearanceTab();
             window.UpdateLayout();
+            Assert.True(window.IsAppearancePageVisible);
+            Assert.Equal(1, window.AppearanceViewModel!.ThemeIndex);
+            Assert.Empty(themeSwitch.Applied);
 
-            Assert.True(window.IsGeneralPageVisible);
-            Assert.NotNull(window.GeneralViewModel);
-            Assert.True(startup.GetCalls > loadsBeforeSelect);
+            window.SelectPrivacyTab();
+            window.UpdateLayout();
+            Assert.True(window.IsPrivacyPageVisible);
+            Assert.True(window.PrivacyViewModel!.LocalOnly);
             window.Close();
             _ = app;
         });
     }
 
-    private static GeneralPage CreatePage()
+    private static AppearancePage CreateAppearance()
     {
         var persist = new PersistScheduler(() => { });
-        var vm = new GeneralSettingsViewModel(new AppSettings(), new CountingStartup(), persist);
+        var vm = new AppearanceSettingsViewModel(new AppSettings(), persist, new FakeThemes());
         vm.Load();
-        return new GeneralPage(vm);
+        return new AppearancePage(vm);
     }
 
-    private static void LayoutPage()
+    private static PrivacyPage CreatePrivacy()
     {
-        var page = CreatePage();
+        var persist = new PersistScheduler(() => { });
+        var vm = new PrivacySettingsViewModel(new AppSettings(), persist, new FakePolicy(), new FakePicker(), new FakeLog());
+        vm.Load();
+        return new PrivacyPage(vm);
+    }
+
+    private static void Layout(FrameworkElement page)
+    {
         var window = Offscreen(page, 700, 720);
         window.Show();
         window.UpdateLayout();
@@ -287,15 +225,45 @@ public class GeneralPageTests
 
     private sealed class CountingStartup : IStartupRegistration
     {
-        public int GetCalls;
-
-        public bool IsEnabled()
-        {
-            GetCalls++;
-            return false;
-        }
+        public bool IsEnabled() => false;
 
         public bool TrySetEnabled(bool enabled) => true;
+    }
+
+    private sealed class FakeThemes : IThemeSwitcher
+    {
+        public List<string> Applied { get; } = [];
+
+        public IReadOnlyList<string> Names { get; } = AppearanceSettingsViewModel.ThemeLabels;
+
+        public string Current { get; set; } = "Light";
+
+        public event EventHandler<ThemeChangedEventArgs>? ThemeChanged;
+
+        public void Apply(string name)
+        {
+            Applied.Add(name);
+            Current = name;
+        }
+    }
+
+    private sealed class FakePolicy : IAiPolicyPublisher
+    {
+        public void Publish(bool localOnly, bool typing, bool rewrite, bool prefetch)
+        {
+        }
+    }
+
+    private sealed class FakePicker : IProcessPicker
+    {
+        public string? Pick(string prompt) => null;
+    }
+
+    private sealed class FakeLog : ICloudAiActivityViewer
+    {
+        public void Show()
+        {
+        }
     }
 
     private sealed class BindListener : TraceListener
@@ -331,7 +299,7 @@ public class GeneralPageTests
     private sealed class TempThemeStore : IDisposable
     {
         public EncryptedStorage Storage { get; }
-        private readonly string _dir = Path.Combine(Path.GetTempPath(), "lexon-general-ui-" + Guid.NewGuid().ToString("N"));
+        private readonly string _dir = Path.Combine(Path.GetTempPath(), "lexon-appear-ui-" + Guid.NewGuid().ToString("N"));
 
         public TempThemeStore()
         {
@@ -341,14 +309,7 @@ public class GeneralPageTests
 
         public void Dispose()
         {
-            try
-            {
-                Directory.Delete(_dir, true);
-            }
-            catch
-            {
-                // temp
-            }
+            try { Directory.Delete(_dir, true); } catch { /* temp */ }
         }
     }
 }

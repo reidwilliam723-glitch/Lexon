@@ -94,30 +94,123 @@ public sealed class AppSettings
 
     public void Write(Profile profile)
     {
-        profile.SetSetting(MinimizeToTrayKey, MinimizeToTray);
-        profile.SetSetting(EnableAutoUpdatesKey, EnableAutoUpdates);
-        profile.SetSetting(OpenSettingsFullScreenKey, OpenSettingsFullScreen);
-        profile.SetSetting(QuickPauseMinutesKey, QuickPauseMinutes);
-        profile.SetSetting(AIProviderKey, AIProvider);
-        profile.SetSetting(APIKeyKey, APIKey);
-        profile.SetSetting(AIKeyValidatedKey, AIKeyValidated);
-        profile.SetSetting(AIModelKey, AIModel);
-        profile.SetSetting(LocalModeKey, LocalMode);
-        profile.SetSetting(AiSuggestionsWhileTypingKey, AiSuggestionsWhileTyping);
-        profile.SetSetting(AiRewriteOnRequestKey, AiRewriteOnRequest);
-        profile.SetSetting(AiPrefetchOnSelectionKey, AiPrefetchOnSelection);
-        profile.SetSetting(BlockedApplicationsKey, BlockedApplications);
-        profile.SetSetting(ThemeKey, Theme);
-        profile.SetSetting(SuggestionSortModeKey, SuggestionSortMode);
-        profile.SetSetting(SuggestionPlacementKey, SuggestionPlacement);
-        profile.SetSetting(RequireConfirmationForEditsKey, RequireConfirmationForEdits);
-        profile.SetSetting(GrammarSensitivityKey, GrammarSensitivity);
-        profile.SetSetting(MuteGrammarForCasualAppsKey, MuteGrammarForCasualApps);
-        profile.SetSetting(EnableRewriteHotkeyKey, EnableRewriteHotkey);
-        profile.SetSetting(GrammarCheckingKey, GrammarChecking);
-        profile.SetSetting(AutoCorrectTyposKey, AutoCorrectTypos);
-        profile.SetSetting(EnableGrammarHotkeyKey, EnableGrammarHotkey);
-        profile.SetSetting(GrammarMutedAppsKey, GrammarMutedApps);
-        profile.SetSetting(AppCategoryOverridesKey, AppCategoryOverrides);
+        WriteKeys(
+            profile,
+            MinimizeToTrayKey,
+            EnableAutoUpdatesKey,
+            OpenSettingsFullScreenKey,
+            QuickPauseMinutesKey,
+            AIProviderKey,
+            APIKeyKey,
+            AIKeyValidatedKey,
+            AIModelKey,
+            LocalModeKey,
+            AiSuggestionsWhileTypingKey,
+            AiRewriteOnRequestKey,
+            AiPrefetchOnSelectionKey,
+            BlockedApplicationsKey,
+            ThemeKey,
+            SuggestionSortModeKey,
+            SuggestionPlacementKey,
+            RequireConfirmationForEditsKey,
+            GrammarSensitivityKey,
+            MuteGrammarForCasualAppsKey,
+            EnableRewriteHotkeyKey,
+            GrammarCheckingKey,
+            AutoCorrectTyposKey,
+            EnableGrammarHotkeyKey,
+            GrammarMutedAppsKey,
+            AppCategoryOverridesKey);
+    }
+
+    /// <summary>
+    /// Writes only the named keys. Gallery pages use this so a stale in-memory
+    /// copy cannot overwrite keys another surface (the classic form) just changed.
+    /// </summary>
+    public void WriteKeys(Profile profile, params string[] keys)
+    {
+        foreach (var key in keys)
+        {
+            switch (key)
+            {
+                case MinimizeToTrayKey:
+                    profile.SetSetting(key, MinimizeToTray);
+                    break;
+                case EnableAutoUpdatesKey:
+                    profile.SetSetting(key, EnableAutoUpdates);
+                    break;
+                case OpenSettingsFullScreenKey:
+                    profile.SetSetting(key, OpenSettingsFullScreen);
+                    break;
+                case QuickPauseMinutesKey:
+                    profile.SetSetting(key, QuickPauseMinutes);
+                    break;
+                case AIProviderKey:
+                    profile.SetSetting(key, AIProvider);
+                    break;
+                case APIKeyKey:
+                    profile.SetSetting(key, APIKey);
+                    break;
+                case AIKeyValidatedKey:
+                    profile.SetSetting(key, AIKeyValidated);
+                    break;
+                case AIModelKey:
+                    profile.SetSetting(key, AIModel);
+                    break;
+                case LocalModeKey:
+                    profile.SetSetting(key, LocalMode);
+                    break;
+                case AiSuggestionsWhileTypingKey:
+                    profile.SetSetting(key, AiSuggestionsWhileTyping);
+                    break;
+                case AiRewriteOnRequestKey:
+                    profile.SetSetting(key, AiRewriteOnRequest);
+                    break;
+                case AiPrefetchOnSelectionKey:
+                    profile.SetSetting(key, AiPrefetchOnSelection);
+                    break;
+                case BlockedApplicationsKey:
+                    profile.SetSetting(key, BlockedApplications);
+                    break;
+                case ThemeKey:
+                    profile.SetSetting(key, Theme);
+                    break;
+                case SuggestionSortModeKey:
+                    profile.SetSetting(key, SuggestionSortMode);
+                    break;
+                case SuggestionPlacementKey:
+                    profile.SetSetting(key, SuggestionPlacement);
+                    break;
+                case RequireConfirmationForEditsKey:
+                    profile.SetSetting(key, RequireConfirmationForEdits);
+                    break;
+                case GrammarSensitivityKey:
+                    profile.SetSetting(key, GrammarSensitivity);
+                    break;
+                case MuteGrammarForCasualAppsKey:
+                    profile.SetSetting(key, MuteGrammarForCasualApps);
+                    break;
+                case EnableRewriteHotkeyKey:
+                    profile.SetSetting(key, EnableRewriteHotkey);
+                    break;
+                case GrammarCheckingKey:
+                    profile.SetSetting(key, GrammarChecking);
+                    break;
+                case AutoCorrectTyposKey:
+                    profile.SetSetting(key, AutoCorrectTypos);
+                    break;
+                case EnableGrammarHotkeyKey:
+                    profile.SetSetting(key, EnableGrammarHotkey);
+                    break;
+                case GrammarMutedAppsKey:
+                    profile.SetSetting(key, GrammarMutedApps);
+                    break;
+                case AppCategoryOverridesKey:
+                    profile.SetSetting(key, AppCategoryOverrides);
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(keys), key, "Unknown settings key.");
+            }
+        }
     }
 }

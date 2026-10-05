@@ -2,6 +2,11 @@
 
 All notable changes to Lexon will be documented in this file.
 
+## [1.4.0] - 2026-10-05
+
+### Settings UI
+- `--ui-gallery` gets Appearance and Privacy tabs (live, wired to the real profile). Fixed: the gallery could overwrite newer settings from the classic form; pages now write only their own keys. The process picker and activity log are still the classic dialogs. The classic Settings form is still the default.
+
 ## [1.3.0] - 2026-10-05
 
 ### Settings UI

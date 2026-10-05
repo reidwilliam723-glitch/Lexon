@@ -3,9 +3,17 @@ using System.Runtime.CompilerServices;
 
 namespace Lexon.SettingsModel;
 
-public sealed class GeneralSettingsViewModel : INotifyPropertyChanged
+public sealed class GeneralSettingsViewModel : INotifyPropertyChanged, IOwnedSettingsPage
 {
     public const string StartupFailedMessage = "Couldn't change the Windows startup setting.";
+
+    public static readonly string[] OwnedKeyList =
+    [
+        AppSettings.MinimizeToTrayKey,
+        AppSettings.EnableAutoUpdatesKey,
+        AppSettings.OpenSettingsFullScreenKey,
+        AppSettings.QuickPauseMinutesKey
+    ];
 
     public static IReadOnlyList<string> QuickPauseLabels { get; } =
     [
@@ -34,6 +42,8 @@ public sealed class GeneralSettingsViewModel : INotifyPropertyChanged
         _startup = startup ?? throw new ArgumentNullException(nameof(startup));
         _persist = persist ?? throw new ArgumentNullException(nameof(persist));
     }
+
+    public IReadOnlyList<string> OwnedKeys => OwnedKeyList;
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -198,6 +208,14 @@ public sealed class GeneralSettingsViewModel : INotifyPropertyChanged
         {
             _persist.IsLoading = false;
         }
+    }
+
+    public void CopyOwnedTo(AppSettings target)
+    {
+        target.MinimizeToTray = _minimizeToTray;
+        target.EnableAutoUpdates = _checkForUpdates;
+        target.OpenSettingsFullScreen = _openSettingsFullScreen;
+        target.QuickPauseMinutes = QuickPauseOptions.MinutesFromIndex(_quickPauseIndex);
     }
 
     private bool SetField(ref bool field, bool value, [CallerMemberName] string? name = null)

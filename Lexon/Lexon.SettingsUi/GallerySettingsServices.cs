@@ -1,10 +1,13 @@
+using System.Windows;
+using Lexon.Profiles;
 using Lexon.SettingsModel;
 
 namespace Lexon.SettingsUi;
 
 /// <summary>
-/// Live settings for the gallery General tab. Null on <c>ControlGalleryWindow</c>
-/// hides that tab and keeps the 1.2.0 gallery.
+/// Live settings for gallery tabs. Null on <c>ControlGalleryWindow</c>
+/// hides every settings tab and keeps the 1.2.0 gallery. Optional members
+/// hide only the tabs that need them.
 /// </summary>
 public sealed class GallerySettingsServices
 {
@@ -28,15 +31,23 @@ public sealed class GallerySettingsServices
 
     public Action Save { get; }
 
-    /// <summary>
-    /// Re-read <see cref="Settings"/> from the profile. The host supplies this
-    /// because the view model does not take a <c>Profile</c>.
-    /// </summary>
     public Action Reload { get; init; } = static () => { };
 
-    /// <summary>
-    /// Write current <see cref="Settings"/> into the in-memory profile so the
-    /// classic form sees changes before the debounced disk save.
-    /// </summary>
     public Action Push { get; init; } = static () => { };
+
+    public Action? ApplyLive { get; init; }
+
+    public Profile? Profile { get; init; }
+
+    public IThemeSwitcher? ThemeSwitcher { get; init; }
+
+    public IAiPolicyPublisher? AiPolicy { get; init; }
+
+    public IProcessPicker? ProcessPicker { get; init; }
+
+    public ICloudAiActivityViewer? ActivityViewer { get; init; }
+
+    public Action<Window>? AttachOwner { get; init; }
+
+    public IList<IOwnedSettingsPage> Pages { get; } = [];
 }

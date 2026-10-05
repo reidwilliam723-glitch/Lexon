@@ -1,0 +1,68 @@
+<UserControl x:Class="Lexon.SettingsUi.PrivacyPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:Lexon.SettingsUi">
+  <ScrollViewer HorizontalScrollBarVisibility="Disabled"
+                VerticalScrollBarVisibility="Auto"
+                Focusable="False">
+    <StackPanel Margin="16" HorizontalAlignment="Stretch">
+      <local:SectionHeader Title="Privacy" Margin="0,0,0,12" IsTabStop="False"/>
+
+      <local:InlineBanner Margin="0,0,0,12" IsTabStop="False"
+                          AutomationProperties.Name="Live settings. Changes here are saved.">
+        <TextBlock Text="Live settings. Changes here are saved." TextWrapping="Wrap"
+                   Foreground="{DynamicResource TextBrush}"
+                   FontFamily="{DynamicResource LexonFontFamily}"
+                   FontSize="{DynamicResource BodyFontSize}"/>
+      </local:InlineBanner>
+
+      <local:Card IsTabStop="False">
+        <StackPanel>
+          <CheckBox Content="Local-only mode (no cloud)"
+                    IsChecked="{Binding LocalOnly}"
+                    AutomationProperties.Name="Local-only mode (no cloud)"
+                    AutomationProperties.HelpText="Turns off every AI provider immediately, including Ollama. Saved keys stay so you can turn it back on."/>
+          <TextBlock Text="Turns off every AI provider immediately, including Ollama. Saved keys stay so you can turn it back on."
+                     TextWrapping="Wrap" Margin="0,4,0,12"
+                     Foreground="{DynamicResource TextSecondaryBrush}"
+                     FontFamily="{DynamicResource LexonFontFamily}"
+                     FontSize="{DynamicResource CaptionFontSize}"/>
+
+          <TextBlock Text="Blocked apps" TextWrapping="Wrap" Margin="0,0,0,4"
+                     Foreground="{DynamicResource TextBrush}"
+                     FontFamily="{DynamicResource LexonFontFamily}"
+                     FontSize="{DynamicResource BodyFontSize}"/>
+          <TextBox Text="{Binding BlockedAppsText, UpdateSourceTrigger=PropertyChanged}"
+                   HorizontalAlignment="Stretch" MinWidth="0"
+                   Margin="0,0,0,8"
+                   AutomationProperties.Name="Blocked apps"
+                   AutomationProperties.HelpText="Password fields are always skipped. Add comma-separated process names, for example outlook.exe, or pick a running app."/>
+          <Button Content="Add running app…"
+                  HorizontalAlignment="Left"
+                  Margin="0,0,0,4"
+                  Click="OnAddRunningApp"
+                  Style="{DynamicResource SecondaryButton}"
+                  AutomationProperties.Name="Add running app…"
+                  AutomationProperties.HelpText="Password fields are always skipped. Add comma-separated process names, for example outlook.exe, or pick a running app."/>
+          <TextBlock Text="Password fields are always skipped. Add comma-separated process names, for example outlook.exe, or pick a running app."
+                     TextWrapping="Wrap" Margin="0,0,0,12"
+                     Foreground="{DynamicResource TextSecondaryBrush}"
+                     FontFamily="{DynamicResource LexonFontFamily}"
+                     FontSize="{DynamicResource CaptionFontSize}"/>
+
+          <Button Content="View cloud AI activity log…"
+                  HorizontalAlignment="Left"
+                  Click="OnShowActivityLog"
+                  Style="{DynamicResource SecondaryButton}"
+                  AutomationProperties.Name="View cloud AI activity log…"
+                  AutomationProperties.HelpText="Shows recent cloud AI requests from this PC."/>
+          <TextBlock Text="Shows recent cloud AI requests from this PC."
+                     TextWrapping="Wrap" Margin="0,4,0,0"
+                     Foreground="{DynamicResource TextSecondaryBrush}"
+                     FontFamily="{DynamicResource LexonFontFamily}"
+                     FontSize="{DynamicResource CaptionFontSize}"/>
+        </StackPanel>
+      </local:Card>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

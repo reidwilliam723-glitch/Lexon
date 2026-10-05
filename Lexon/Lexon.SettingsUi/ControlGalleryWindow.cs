@@ -20,8 +20,14 @@ public sealed class ControlGalleryWindow : Window
     private ContentControl? _contentHost;
     private NavItem? _controlsTab;
     private NavItem? _generalTab;
+    private NavItem? _appearanceTab;
+    private NavItem? _privacyTab;
     private GeneralPage? _generalPage;
+    private AppearancePage? _appearancePage;
+    private PrivacyPage? _privacyPage;
     private GeneralSettingsViewModel? _generalVm;
+    private AppearanceSettingsViewModel? _appearanceVm;
+    private PrivacySettingsViewModel? _privacyVm;
     private DispatcherTimer? _persistTimer;
 
     public ControlGalleryWindow(ThemeManager? themes = null, GallerySettingsServices? services = null)
@@ -50,8 +56,33 @@ public sealed class ControlGalleryWindow : Window
         {
             _generalVm = new GeneralSettingsViewModel(services.Settings, services.Startup, services.Persist);
             _generalVm.OpenFullScreenChanged += OnOpenFullScreenChanged;
-            _generalVm.PropertyChanged += OnGeneralPropertyChanged;
+            _generalVm.PropertyChanged += OnSettingsPropertyChanged;
             _generalPage = new GeneralPage(_generalVm);
+            services.Pages.Add(_generalVm);
+
+            if (services.ThemeSwitcher != null)
+            {
+                _appearanceVm = new AppearanceSettingsViewModel(services.Settings, services.Persist, services.ThemeSwitcher);
+                _appearanceVm.PropertyChanged += OnSettingsPropertyChanged;
+                _appearancePage = new AppearancePage(_appearanceVm);
+                services.Pages.Add(_appearanceVm);
+            }
+
+            if (services.AiPolicy != null && services.ProcessPicker != null && services.ActivityViewer != null)
+            {
+                _privacyVm = new PrivacySettingsViewModel(
+                    services.Settings,
+                    services.Persist,
+                    services.AiPolicy,
+                    services.ProcessPicker,
+                    services.ActivityViewer,
+                    services.Reload);
+                _privacyVm.PropertyChanged += OnSettingsPropertyChanged;
+                _privacyPage = new PrivacyPage(_privacyVm);
+                services.Pages.Add(_privacyVm);
+            }
+
+            services.AttachOwner?.Invoke(this);
             _persistTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(100) };
             _persistTimer.Tick += (_, _) =>
             {
@@ -68,9 +99,27 @@ public sealed class ControlGalleryWindow : Window
 
     internal bool HasGeneralTab => _generalTab != null;
 
+    internal bool HasAppearanceTab => _appearanceTab != null;
+
+    internal bool HasPrivacyTab => _privacyTab != null;
+
+    internal int GalleryTabCount
+        => (_controlsTab != null ? 1 : 0)
+           + (_generalTab != null ? 1 : 0)
+           + (_appearanceTab != null ? 1 : 0)
+           + (_privacyTab != null ? 1 : 0);
+
     internal bool IsGeneralPageVisible => _generalPage != null && _contentHost?.Content == _generalPage;
 
+    internal bool IsAppearancePageVisible => _appearancePage != null && _contentHost?.Content == _appearancePage;
+
+    internal bool IsPrivacyPageVisible => _privacyPage != null && _contentHost?.Content == _privacyPage;
+
     internal GeneralSettingsViewModel? GeneralViewModel => _generalVm;
+
+    internal AppearanceSettingsViewModel? AppearanceViewModel => _appearanceVm;
+
+    internal PrivacySettingsViewModel? PrivacyViewModel => _privacyVm;
 
     internal void SelectGeneralTab()
     {
@@ -88,9 +137,25 @@ public sealed class ControlGalleryWindow : Window
         }
     }
 
+    internal void SelectAppearanceTab()
+    {
+        if (_appearanceTab != null)
+        {
+            _appearanceTab.IsChecked = true;
+        }
+    }
+
+    internal void SelectPrivacyTab()
+    {
+        if (_privacyTab != null)
+        {
+            _privacyTab.IsChecked = true;
+        }
+    }
+
     internal void NotifyShown()
     {
-        ReloadGeneral();
+        ReloadVisibleSettings();
         if (IsVisible)
         {
             _persistTimer?.Start();
@@ -182,6 +247,22 @@ public sealed class ControlGalleryWindow : Window
 
         tabs.Children.Add(_controlsTab);
         tabs.Children.Add(_generalTab);
+
+        if (_appearancePage != null)
+        {
+            _appearanceTab = new NavItem { Content = "Appearance", GroupName = "galleryTabs", Margin = new Thickness(8, 0, 0, 0) };
+            AutomationProperties.SetName(_appearanceTab, "Appearance");
+            _appearanceTab.Checked += (_, _) => ShowAppearanceContent();
+            tabs.Children.Add(_appearanceTab);
+        }
+
+        if (_privacyPage != null)
+        {
+            _privacyTab = new NavItem { Content = "Privacy", GroupName = "galleryTabs", Margin = new Thickness(8, 0, 0, 0) };
+            AutomationProperties.SetName(_privacyTab, "Privacy");
+            _privacyTab.Checked += (_, _) => ShowPrivacyContent();
+            tabs.Children.Add(_privacyTab);
+        }
         DockPanel.SetDock(tabs, Dock.Top);
         root.Children.Add(tabs);
 
@@ -324,7 +405,16 @@ public sealed class ControlGalleryWindow : Window
             button.SetResourceReference(StyleProperty, "SecondaryButton");
         }
 
-        button.Click += (_, _) => _themes?.SetTheme(name);
+        button.Click += (_, _) =>
+        {
+            if (_appearanceVm != null)
+            {
+                _appearanceVm.SelectThemeByName(name);
+                return;
+            }
+
+            _themes?.SetTheme(name);
+        };
         return button;
     }
 
@@ -337,7 +427,7 @@ public sealed class ControlGalleryWindow : Window
     {
         if (IsVisible)
         {
-            ReloadGeneral();
+            ReloadVisibleSettings();
             _persistTimer?.Start();
             return;
         }
@@ -360,18 +450,62 @@ public sealed class ControlGalleryWindow : Window
             _contentHost.Content = _generalPage;
         }
 
-        ReloadGeneral();
+        ReloadPage(_generalVm);
     }
 
-    private void ReloadGeneral()
+    private void ShowAppearanceContent()
     {
-        if (_services == null || _generalVm == null)
+        if (_contentHost != null)
+        {
+            _contentHost.Content = _appearancePage;
+        }
+
+        ReloadPage(_appearanceVm);
+    }
+
+    private void ShowPrivacyContent()
+    {
+        if (_contentHost != null)
+        {
+            _contentHost.Content = _privacyPage;
+        }
+
+        ReloadPage(_privacyVm);
+    }
+
+    private void ReloadVisibleSettings()
+    {
+        if (_services == null)
         {
             return;
         }
 
         _services.Reload();
-        _generalVm.Load();
+        _generalVm?.Load();
+        _appearanceVm?.Load();
+        _privacyVm?.Load();
+    }
+
+    private void ReloadPage(IOwnedSettingsPage? page)
+    {
+        if (_services == null || page == null)
+        {
+            return;
+        }
+
+        _services.Reload();
+        switch (page)
+        {
+            case GeneralSettingsViewModel general:
+                general.Load();
+                break;
+            case AppearanceSettingsViewModel appearance:
+                appearance.Load();
+                break;
+            case PrivacySettingsViewModel privacy:
+                privacy.Load();
+                break;
+        }
     }
 
     private void OnOpenFullScreenChanged(bool open)
@@ -379,7 +513,7 @@ public sealed class ControlGalleryWindow : Window
         WindowState = open ? WindowState.Maximized : WindowState.Normal;
     }
 
-    private void OnGeneralPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    private void OnSettingsPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (_services == null || _services.Persist.IsLoading)
         {
@@ -392,6 +526,7 @@ public sealed class ControlGalleryWindow : Window
         }
 
         _services.Push();
+        _services.ApplyLive?.Invoke();
         if (IsVisible)
         {
             _persistTimer?.Start();
