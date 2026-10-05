@@ -119,10 +119,11 @@ public class AppearancePrivacyPageTests
             window.Show();
             window.UpdateLayout();
 
-            Assert.Equal(4, window.GalleryTabCount);
+            Assert.Equal(5, window.GalleryTabCount);
             Assert.True(window.HasGeneralTab);
             Assert.True(window.HasAppearanceTab);
             Assert.True(window.HasPrivacyTab);
+            Assert.True(window.HasAppToneTab);
 
             window.SelectAppearanceTab();
             window.UpdateLayout();

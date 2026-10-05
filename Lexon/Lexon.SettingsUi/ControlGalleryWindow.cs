@@ -23,12 +23,15 @@ public sealed class ControlGalleryWindow : Window
     private NavItem? _generalTab;
     private NavItem? _appearanceTab;
     private NavItem? _privacyTab;
+    private NavItem? _appToneTab;
     private GeneralPage? _generalPage;
     private AppearancePage? _appearancePage;
     private PrivacyPage? _privacyPage;
+    private AppTonePage? _appTonePage;
     private GeneralSettingsViewModel? _generalVm;
     private AppearanceSettingsViewModel? _appearanceVm;
     private PrivacySettingsViewModel? _privacyVm;
+    private AppToneViewModel? _appToneVm;
     private DispatcherTimer? _persistTimer;
 
     public ControlGalleryWindow(ThemeManager? themes = null, GallerySettingsServices? services = null)
@@ -85,6 +88,14 @@ public sealed class ControlGalleryWindow : Window
                 services.Pages.Add(_privacyVm);
             }
 
+            if (services.ProcessPicker != null)
+            {
+                _appToneVm = new AppToneViewModel(services.Settings, services.Persist, services.ProcessPicker);
+                _appToneVm.PropertyChanged += OnSettingsPropertyChanged;
+                _appTonePage = new AppTonePage(_appToneVm);
+                services.Pages.Add(_appToneVm);
+            }
+
             services.AttachOwner?.Invoke(this);
             _persistTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(100) };
             _persistTimer.Tick += (_, _) =>
@@ -106,11 +117,14 @@ public sealed class ControlGalleryWindow : Window
 
     internal bool HasPrivacyTab => _privacyTab != null;
 
+    internal bool HasAppToneTab => _appToneTab != null;
+
     internal int GalleryTabCount
         => (_controlsTab != null ? 1 : 0)
            + (_generalTab != null ? 1 : 0)
            + (_appearanceTab != null ? 1 : 0)
-           + (_privacyTab != null ? 1 : 0);
+           + (_privacyTab != null ? 1 : 0)
+           + (_appToneTab != null ? 1 : 0);
 
     internal bool IsGeneralPageVisible => _generalPage != null && _contentHost?.Content == _generalPage;
 
@@ -118,11 +132,15 @@ public sealed class ControlGalleryWindow : Window
 
     internal bool IsPrivacyPageVisible => _privacyPage != null && _contentHost?.Content == _privacyPage;
 
+    internal bool IsAppTonePageVisible => _appTonePage != null && _contentHost?.Content == _appTonePage;
+
     internal GeneralSettingsViewModel? GeneralViewModel => _generalVm;
 
     internal AppearanceSettingsViewModel? AppearanceViewModel => _appearanceVm;
 
     internal PrivacySettingsViewModel? PrivacyViewModel => _privacyVm;
+
+    internal AppToneViewModel? AppToneViewModel => _appToneVm;
 
     internal void SelectGeneralTab()
     {
@@ -153,6 +171,14 @@ public sealed class ControlGalleryWindow : Window
         if (_privacyTab != null)
         {
             _privacyTab.IsChecked = true;
+        }
+    }
+
+    internal void SelectAppToneTab()
+    {
+        if (_appToneTab != null)
+        {
+            _appToneTab.IsChecked = true;
         }
     }
 
@@ -239,7 +265,7 @@ public sealed class ControlGalleryWindow : Window
             return root;
         }
 
-        var tabs = new StackPanel
+        var tabs = new WrapPanel
         {
             Orientation = Orientation.Horizontal,
             Margin = new Thickness(16, 0, 16, 8)
@@ -253,12 +279,12 @@ public sealed class ControlGalleryWindow : Window
             Content = "Controls",
             IsChecked = true,
             GroupName = "galleryTabs",
-            Margin = new Thickness(0, 0, 8, 0)
+            Margin = new Thickness(0, 0, 8, 4)
         };
         AutomationProperties.SetName(_controlsTab, "Controls");
         _controlsTab.Checked += (_, _) => ShowControlsContent();
 
-        _generalTab = new NavItem { Content = "General", GroupName = "galleryTabs" };
+        _generalTab = new NavItem { Content = "General", GroupName = "galleryTabs", Margin = new Thickness(0, 0, 8, 4) };
         AutomationProperties.SetName(_generalTab, "General");
         _generalTab.Checked += (_, _) => ShowGeneralContent();
 
@@ -267,7 +293,7 @@ public sealed class ControlGalleryWindow : Window
 
         if (_appearancePage != null)
         {
-            _appearanceTab = new NavItem { Content = "Appearance", GroupName = "galleryTabs", Margin = new Thickness(8, 0, 0, 0) };
+            _appearanceTab = new NavItem { Content = "Appearance", GroupName = "galleryTabs", Margin = new Thickness(0, 0, 8, 4) };
             AutomationProperties.SetName(_appearanceTab, "Appearance");
             _appearanceTab.Checked += (_, _) => ShowAppearanceContent();
             tabs.Children.Add(_appearanceTab);
@@ -275,11 +301,20 @@ public sealed class ControlGalleryWindow : Window
 
         if (_privacyPage != null)
         {
-            _privacyTab = new NavItem { Content = "Privacy", GroupName = "galleryTabs", Margin = new Thickness(8, 0, 0, 0) };
+            _privacyTab = new NavItem { Content = "Privacy", GroupName = "galleryTabs", Margin = new Thickness(0, 0, 8, 4) };
             AutomationProperties.SetName(_privacyTab, "Privacy");
             _privacyTab.Checked += (_, _) => ShowPrivacyContent();
             tabs.Children.Add(_privacyTab);
         }
+
+        if (_appTonePage != null)
+        {
+            _appToneTab = new NavItem { Content = "App tone", GroupName = "galleryTabs", Margin = new Thickness(0, 0, 8, 4) };
+            AutomationProperties.SetName(_appToneTab, "App tone");
+            _appToneTab.Checked += (_, _) => ShowAppToneContent();
+            tabs.Children.Add(_appToneTab);
+        }
+
         DockPanel.SetDock(tabs, Dock.Top);
         root.Children.Add(tabs);
 
@@ -490,6 +525,16 @@ public sealed class ControlGalleryWindow : Window
         ReloadPage(_privacyVm);
     }
 
+    private void ShowAppToneContent()
+    {
+        if (_contentHost != null)
+        {
+            _contentHost.Content = _appTonePage;
+        }
+
+        ReloadPage(_appToneVm);
+    }
+
     private void ReloadCleanPages()
     {
         if (_services == null)
@@ -511,6 +556,11 @@ public sealed class ControlGalleryWindow : Window
         if (_privacyVm is { IsDirty: false })
         {
             _privacyVm.Load();
+        }
+
+        if (_appToneVm is { IsDirty: false })
+        {
+            _appToneVm.Load();
         }
 
         // Dirty pages only exist if a prior flush failed; keep values and retry.
@@ -543,6 +593,9 @@ public sealed class ControlGalleryWindow : Window
                 break;
             case PrivacySettingsViewModel privacy:
                 privacy.Load();
+                break;
+            case AppToneViewModel appTone:
+                appTone.Load();
                 break;
         }
     }

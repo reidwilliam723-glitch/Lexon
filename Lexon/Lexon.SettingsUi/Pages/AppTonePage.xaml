@@ -1,0 +1,72 @@
+<UserControl x:Class="Lexon.SettingsUi.AppTonePage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:Lexon.SettingsUi"
+             xmlns:model="clr-namespace:Lexon.SettingsModel;assembly=Lexon.SettingsModel">
+  <ScrollViewer HorizontalScrollBarVisibility="Disabled"
+                VerticalScrollBarVisibility="Auto"
+                Focusable="False">
+    <StackPanel Margin="16" HorizontalAlignment="Stretch">
+      <local:SectionHeader Title="App tone" Margin="0,0,0,12" IsTabStop="False"/>
+
+      <local:InlineBanner Margin="0,0,0,12" IsTabStop="False"
+                          AutomationProperties.Name="Live settings. Changes here are saved.">
+        <TextBlock Text="Live settings. Changes here are saved." TextWrapping="Wrap"
+                   Foreground="{DynamicResource TextBrush}"
+                   FontFamily="{DynamicResource LexonFontFamily}"
+                   FontSize="{DynamicResource BodyFontSize}"/>
+      </local:InlineBanner>
+
+      <local:Card IsTabStop="False">
+        <StackPanel>
+          <ListBox ItemsSource="{Binding Rows}"
+                   SelectedIndex="{Binding SelectedRowIndex}"
+                   Height="110"
+                   Margin="0,0,0,4"
+                   HorizontalAlignment="Stretch"
+                   MinWidth="0"
+                   AutomationProperties.Name="App tone overrides"
+                   AutomationProperties.HelpText="Defaults cover Slack, Teams, Outlook, Word, and editors. Add a row only to override."/>
+          <TextBlock Text="Defaults cover Slack, Teams, Outlook, Word, and editors. Add a row only to override."
+                     TextWrapping="Wrap" Margin="0,0,0,12"
+                     Foreground="{DynamicResource TextSecondaryBrush}"
+                     FontFamily="{DynamicResource LexonFontFamily}"
+                     FontSize="{DynamicResource CaptionFontSize}"/>
+
+          <TextBlock Text="Tone" TextWrapping="Wrap" Margin="0,0,0,4"
+                     Foreground="{DynamicResource TextBrush}"
+                     FontFamily="{DynamicResource LexonFontFamily}"
+                     FontSize="{DynamicResource BodyFontSize}"/>
+          <ComboBox ItemsSource="{x:Static model:AppToneViewModel.ToneLabels}"
+                    SelectedIndex="{Binding SelectedToneIndex}"
+                    HorizontalAlignment="Stretch" MinWidth="0"
+                    Margin="0,0,0,8"
+                    AutomationProperties.Name="Tone"
+                    AutomationProperties.HelpText="Pick a tone, then choose a running app. Remove uses the selected row."/>
+
+          <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+            <Button Content="Add running app…"
+                    HorizontalAlignment="Left"
+                    Margin="0,0,8,0"
+                    Click="OnAddRunningApp"
+                    Style="{DynamicResource SecondaryButton}"
+                    AutomationProperties.Name="Add running app…"
+                    AutomationProperties.HelpText="Pick a tone, then choose a running app. Remove uses the selected row."/>
+            <Button Content="Remove"
+                    HorizontalAlignment="Left"
+                    Click="OnRemove"
+                    IsEnabled="{Binding CanRemove}"
+                    Style="{DynamicResource SecondaryButton}"
+                    AutomationProperties.Name="Remove"
+                    AutomationProperties.HelpText="Pick a tone, then choose a running app. Remove uses the selected row."/>
+          </StackPanel>
+          <TextBlock Text="Pick a tone, then choose a running app. Remove uses the selected row."
+                     TextWrapping="Wrap" Margin="0,0,0,0"
+                     Foreground="{DynamicResource TextSecondaryBrush}"
+                     FontFamily="{DynamicResource LexonFontFamily}"
+                     FontSize="{DynamicResource CaptionFontSize}"/>
+        </StackPanel>
+      </local:Card>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>
