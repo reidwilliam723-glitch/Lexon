@@ -149,6 +149,7 @@ static class Program
             _trayManager.UndoRequested += OnUndoRequested;
             _trayManager.PauseFifteenRequested += OnPauseFifteenRequested;
             _trayManager.PauseThisAppRequested += OnPauseThisAppRequested;
+            _composition.Service.BlockApplicationRequested += (_, app) => BlockApplication(app);
             _trayManager.ResumeRequested += OnResumeRequested;
             if (_enableUiGallery)
             {
@@ -718,6 +719,16 @@ static class Program
         if (string.IsNullOrWhiteSpace(app))
         {
             _trayManager?.ShowStatusToast("No app in focus", false);
+            return;
+        }
+
+        BlockApplication(app);
+    }
+
+    private static void BlockApplication(string app)
+    {
+        if (_composition == null || string.IsNullOrWhiteSpace(app))
+        {
             return;
         }
 

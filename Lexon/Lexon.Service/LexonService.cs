@@ -35,6 +35,12 @@ public class LexonService
     private bool _isOverlayVisible = false;
     private long _suggestionGeneration = 0;
 
+    /// <summary>
+    /// Raised when the user marks a suggestion "Not for this app".
+    /// Argument is the process name to add to blocked applications.
+    /// </summary>
+    public event EventHandler<string>? BlockApplicationRequested;
+
     // Win32 API declarations for proper virtual-key to character conversion
     [DllImport("user32.dll")]
     private static extern int GetKeyboardState(byte[] lpKeyState);
@@ -104,10 +110,12 @@ public class LexonService
         _suggestionOverlay.SuggestionSelected += OnSuggestionSelected;
         _suggestionOverlay.SuggestionDismissed += OnSuggestionDismissed;
         _suggestionOverlay.CorrectionUndoRequested += OnCorrectionUndoRequested;
+        _suggestionOverlay.SuggestionFeedbackRequested += OnSuggestionFeedbackRequested;
         if (_grammarOverlay != null)
         {
             _grammarOverlay.SuggestionSelected += OnSuggestionSelected;
             _grammarOverlay.SuggestionDismissed += OnSuggestionDismissed;
+            _grammarOverlay.SuggestionFeedbackRequested += OnSuggestionFeedbackRequested;
         }
         _textExpansionManager.ExpansionTriggered += OnExpansionTriggered;
     }
@@ -1417,6 +1425,26 @@ public class LexonService
         foreach (var suggestion in e.DismissedSuggestions)
         {
             _suggestionPipeline.RecordInteraction(suggestion, _currentContext, InteractionType.Ignored);
+        }
+    }
+
+    private void OnSuggestionFeedbackRequested(object? sender, SuggestionFeedbackEventArgs e)
+    {
+        if (e.Suggestion == null)
+        {
+            return;
+        }
+
+        _suggestionPipeline.RecordInteraction(
+            e.Suggestion,
+            _currentContext,
+            InteractionType.Rejected,
+            e.Reason);
+
+        if (string.Equals(e.Reason, SuggestionFeedbackEventArgs.ReasonNotForApp, StringComparison.Ordinal)
+            && !string.IsNullOrWhiteSpace(_currentContext.ApplicationName))
+        {
+            BlockApplicationRequested?.Invoke(this, _currentContext.ApplicationName);
         }
     }
 

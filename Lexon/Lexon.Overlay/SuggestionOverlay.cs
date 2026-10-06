@@ -59,6 +59,7 @@ public class SuggestionOverlay : ISuggestionOverlay
     public event EventHandler<SuggestionSelectedEventArgs>? SuggestionSelected;
     public event EventHandler<SuggestionDismissedEventArgs>? SuggestionDismissed;
     public event EventHandler? CorrectionUndoRequested;
+    public event EventHandler<SuggestionFeedbackEventArgs>? SuggestionFeedbackRequested;
 
     // Win32 API declarations
     [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
@@ -142,6 +143,21 @@ public class SuggestionOverlay : ISuggestionOverlay
     [DllImport("user32.dll")]
     private static extern IntPtr SetThreadDpiAwarenessContext(IntPtr dpiContext);
 
+    [DllImport("user32.dll")]
+    private static extern IntPtr CreatePopupMenu();
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    private static extern bool AppendMenu(IntPtr hMenu, uint uFlags, UIntPtr uIDNewItem, string lpNewItem);
+
+    [DllImport("user32.dll")]
+    private static extern bool DestroyMenu(IntPtr hMenu);
+
+    [DllImport("user32.dll")]
+    private static extern bool GetCursorPos(out POINT lpPoint);
+
+    [DllImport("user32.dll")]
+    private static extern UIntPtr TrackPopupMenu(IntPtr hMenu, uint uFlags, int x, int y, int nReserved, IntPtr hWnd, IntPtr prcRect);
+
     private const int SM_CXSCREEN = 0;
     private const int SM_CYSCREEN = 1;
     private const uint MONITOR_DEFAULTTONEAREST = 2;
@@ -178,6 +194,10 @@ public class SuggestionOverlay : ISuggestionOverlay
     private const uint WM_SYSKEYDOWN = 0x0104;
     private const uint WM_SYSKEYUP = 0x0105;
     private const uint WM_LBUTTONDOWN = 0x0201;
+    private const uint WM_RBUTTONDOWN = 0x0204;
+    private const uint MF_STRING = 0x0000;
+    private const uint TPM_RETURNCMD = 0x0100;
+    private const uint TPM_RIGHTBUTTON = 0x0002;
     private const uint WM_APP = 0x8000;
     private const uint WM_LEXON_SHOW = WM_APP + 1;
     private const uint WM_LEXON_HIDE = WM_APP + 2;
@@ -499,6 +519,10 @@ public class SuggestionOverlay : ISuggestionOverlay
                 OnMouseClick(lParam);
                 return IntPtr.Zero;
 
+            case WM_RBUTTONDOWN:
+                OnRightClick(lParam);
+                return IntPtr.Zero;
+
             case WM_MOUSEMOVE:
                 OnMouseMove(lParam);
                 return IntPtr.Zero;
@@ -708,6 +732,73 @@ public class SuggestionOverlay : ISuggestionOverlay
         }
         
         ConfirmSelection();
+    }
+
+    private void OnRightClick(IntPtr lParam)
+    {
+        var index = HitTestSuggestionIndex(lParam);
+        Suggestion? suggestion = null;
+        lock (_suggestionsLock)
+        {
+            if (index < 0 || index >= _currentSuggestions.Count)
+            {
+                return;
+            }
+
+            _selectedIndex = index;
+            suggestion = _currentSuggestions[index];
+        }
+
+        if (suggestion == null || _windowHandle == IntPtr.Zero)
+        {
+            return;
+        }
+
+        if (_windowHandle != IntPtr.Zero)
+        {
+            InvalidateRect(_windowHandle, IntPtr.Zero, true);
+        }
+
+        var menu = CreatePopupMenu();
+        if (menu == IntPtr.Zero)
+        {
+            return;
+        }
+
+        try
+        {
+            AppendMenu(menu, MF_STRING, (UIntPtr)1, "Wrong");
+            AppendMenu(menu, MF_STRING, (UIntPtr)2, "Not for this app");
+            GetCursorPos(out var pt);
+            var cmd = (int)TrackPopupMenu(
+                menu,
+                TPM_RETURNCMD | TPM_RIGHTBUTTON,
+                pt.x,
+                pt.y,
+                0,
+                _windowHandle,
+                IntPtr.Zero);
+            if (cmd == 1)
+            {
+                RaiseSuggestionFeedback(suggestion, SuggestionFeedbackEventArgs.ReasonWrong);
+            }
+            else if (cmd == 2)
+            {
+                RaiseSuggestionFeedback(suggestion, SuggestionFeedbackEventArgs.ReasonNotForApp);
+            }
+        }
+        finally
+        {
+            DestroyMenu(menu);
+        }
+    }
+
+    private void RaiseSuggestionFeedback(Suggestion suggestion, string reason)
+    {
+        SuggestionFeedbackRequested?.Invoke(
+            this,
+            new SuggestionFeedbackEventArgs { Suggestion = suggestion, Reason = reason });
+        Hide(reportDismissed: false);
     }
 
     private void OnPaint(IntPtr hWnd)
@@ -1339,12 +1430,14 @@ public class SuggestionOverlay : ISuggestionOverlay
             RDW_INVALIDATE | RDW_ERASE | RDW_UPDATENOW | RDW_ALLCHILDREN);
     }
 
-    public void Hide()
+    public void Hide() => Hide(reportDismissed: true);
+
+    private void Hide(bool reportDismissed)
     {
         List<Suggestion>? dismissed = null;
         lock (_suggestionsLock)
         {
-            if (_isShowing)
+            if (reportDismissed && _isShowing && _currentSuggestions.Count > 0)
             {
                 dismissed = new List<Suggestion>(_currentSuggestions);
             }

@@ -221,9 +221,13 @@ public class SuggestionPipeline : ISuggestionPipeline
     /// <summary>
     /// Record suggestion interaction for learning
     /// </summary>
-    public void RecordInteraction(Suggestion suggestion, TextContext context, InteractionType interactionType)
+    public void RecordInteraction(
+        Suggestion suggestion,
+        TextContext context,
+        InteractionType interactionType,
+        string? reason = null)
     {
-        _personalizationManager?.RecordInteraction(suggestion, context, interactionType);
+        _personalizationManager?.RecordInteraction(suggestion, context, interactionType, reason);
     }
 
     /// <summary>

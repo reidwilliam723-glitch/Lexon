@@ -36,6 +36,12 @@ public interface ISuggestionOverlay : IDisposable
     /// automatic typo correction.
     /// </summary>
     event EventHandler? CorrectionUndoRequested;
+
+    /// <summary>
+    /// Raised when the user marks a suggestion Wrong or Not for this app
+    /// (right-click menu on a suggestion row).
+    /// </summary>
+    event EventHandler<SuggestionFeedbackEventArgs>? SuggestionFeedbackRequested;
 }
 
 public class SuggestionSelectedEventArgs : EventArgs
@@ -46,4 +52,14 @@ public class SuggestionSelectedEventArgs : EventArgs
 public class SuggestionDismissedEventArgs : EventArgs
 {
     public IReadOnlyList<Suggestion> DismissedSuggestions { get; set; } = Array.Empty<Suggestion>();
+}
+
+public class SuggestionFeedbackEventArgs : EventArgs
+{
+    public const string ReasonWrong = "wrong";
+    public const string ReasonNotForApp = "not_for_app";
+
+    public Suggestion Suggestion { get; set; } = null!;
+
+    public string Reason { get; set; } = ReasonWrong;
 }

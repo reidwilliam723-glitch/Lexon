@@ -21,7 +21,7 @@ public interface ISuggestionPipeline
     /// modified, ignored) so personalization can learn from it. Safe to call
     /// even when no personalization manager is configured — becomes a no-op.
     /// </summary>
-    void RecordInteraction(Models.Suggestion suggestion, Models.TextContext context, InteractionType interactionType);
+    void RecordInteraction(Models.Suggestion suggestion, Models.TextContext context, InteractionType interactionType, string? reason = null);
 
     /// <summary>
     /// Feed free-typed text back into personalization so it can learn the

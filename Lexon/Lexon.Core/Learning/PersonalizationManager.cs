@@ -62,7 +62,11 @@ public class PersonalizationManager
     /// <summary>
     /// Record a suggestion interaction for learning
     /// </summary>
-    public void RecordInteraction(Suggestion suggestion, TextContext context, InteractionType interactionType)
+    public void RecordInteraction(
+        Suggestion suggestion,
+        TextContext context,
+        InteractionType interactionType,
+        string? reason = null)
     {
         if (!IsEnabled) return;
 
@@ -109,7 +113,7 @@ public class PersonalizationManager
             _ => FeedbackType.Ignored
         };
         
-        _feedbackCollector.RecordFeedback(suggestion.Text, context.CurrentWord, feedbackType);
+        _feedbackCollector.RecordFeedback(suggestion.Text, context.CurrentWord, feedbackType, reason);
         
         // Persist changes periodically
         if (ShouldPersist())
