@@ -6,6 +6,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Threading;
 using Lexon.Core.Theming;
+using Lexon.Profiles;
 using Lexon.SettingsModel;
 
 namespace Lexon.SettingsUi;
@@ -21,18 +22,21 @@ public sealed class ControlGalleryWindow : Window
     private ContentControl? _contentHost;
     private NavItem? _controlsTab;
     private NavItem? _generalTab;
-    private NavItem? _appearanceTab;
+    private NavItem? _aiTab;
     private NavItem? _privacyTab;
+    private NavItem? _appearanceTab;
     private NavItem? _appToneTab;
     private NavItem? _writingTab;
     private GeneralPage? _generalPage;
-    private AppearancePage? _appearancePage;
+    private AiPage? _aiPage;
     private PrivacyPage? _privacyPage;
+    private AppearancePage? _appearancePage;
     private AppTonePage? _appTonePage;
     private WritingPage? _writingPage;
     private GeneralSettingsViewModel? _generalVm;
-    private AppearanceSettingsViewModel? _appearanceVm;
+    private AiSettingsViewModel? _aiVm;
     private PrivacySettingsViewModel? _privacyVm;
+    private AppearanceSettingsViewModel? _appearanceVm;
     private AppToneViewModel? _appToneVm;
     private WritingViewModel? _writingVm;
     private DispatcherTimer? _persistTimer;
@@ -58,23 +62,41 @@ public sealed class ControlGalleryWindow : Window
         Closed += (_, _) =>
         {
             FlushPendingSaves();
+            _aiVm?.Dispose();
             _clipboard.Dispose();
         };
 
         if (services != null)
         {
+            Func<AppSettings> liveSnapshot = services.LiveSnapshot
+                ?? (() => OwnedSettingsWriter.BuildLiveSnapshot(services.Profile ?? new Profile(), services.Pages));
+
             _generalVm = new GeneralSettingsViewModel(services.Settings, services.Startup, services.Persist);
             _generalVm.OpenFullScreenChanged += OnOpenFullScreenChanged;
             _generalVm.PropertyChanged += OnSettingsPropertyChanged;
             _generalPage = new GeneralPage(_generalVm);
             services.Pages.Add(_generalVm);
 
-            if (services.ThemeSwitcher != null)
+            if (services.AiPolicy != null
+                && services.AiSession != null
+                && services.UrlLauncher != null
+                && services.DelayScheduler != null)
             {
-                _appearanceVm = new AppearanceSettingsViewModel(services.Settings, services.Persist, services.ThemeSwitcher);
-                _appearanceVm.PropertyChanged += OnSettingsPropertyChanged;
-                _appearancePage = new AppearancePage(_appearanceVm);
-                services.Pages.Add(_appearanceVm);
+                var clipboardWatch = services.ClipboardWatch ?? new GalleryClipboardWatch(_clipboard);
+                _aiVm = new AiSettingsViewModel(
+                    services.Settings,
+                    services.Persist,
+                    services.AiSession,
+                    services.AiPolicy,
+                    clipboardWatch,
+                    services.UrlLauncher,
+                    services.DelayScheduler,
+                    () => liveSnapshot().LocalMode,
+                    liveSnapshot,
+                    action => Dispatcher.BeginInvoke(action));
+                _aiVm.PropertyChanged += OnSettingsPropertyChanged;
+                _aiPage = new AiPage(_aiVm);
+                services.Pages.Add(_aiVm);
             }
 
             if (services.AiPolicy != null && services.ProcessPicker != null && services.ActivityViewer != null)
@@ -85,10 +107,24 @@ public sealed class ControlGalleryWindow : Window
                     services.AiPolicy,
                     services.ProcessPicker,
                     services.ActivityViewer,
-                    services.Reload);
+                    services.Reload,
+                    liveSnapshot);
                 _privacyVm.PropertyChanged += OnSettingsPropertyChanged;
+                if (_aiVm != null)
+                {
+                    _privacyVm.LocalOnlyChanged += local => _aiVm.OnLocalOnlyChanged(local);
+                }
+
                 _privacyPage = new PrivacyPage(_privacyVm);
                 services.Pages.Add(_privacyVm);
+            }
+
+            if (services.ThemeSwitcher != null)
+            {
+                _appearanceVm = new AppearanceSettingsViewModel(services.Settings, services.Persist, services.ThemeSwitcher);
+                _appearanceVm.PropertyChanged += OnSettingsPropertyChanged;
+                _appearancePage = new AppearancePage(_appearanceVm);
+                services.Pages.Add(_appearanceVm);
             }
 
             if (services.ProcessPicker != null)
@@ -130,6 +166,8 @@ public sealed class ControlGalleryWindow : Window
 
     internal bool HasGeneralTab => _generalTab != null;
 
+    internal bool HasAiTab => _aiTab != null;
+
     internal bool HasAppearanceTab => _appearanceTab != null;
 
     internal bool HasPrivacyTab => _privacyTab != null;
@@ -141,12 +179,15 @@ public sealed class ControlGalleryWindow : Window
     internal int GalleryTabCount
         => (_controlsTab != null ? 1 : 0)
            + (_generalTab != null ? 1 : 0)
-           + (_appearanceTab != null ? 1 : 0)
+           + (_aiTab != null ? 1 : 0)
            + (_privacyTab != null ? 1 : 0)
+           + (_appearanceTab != null ? 1 : 0)
            + (_appToneTab != null ? 1 : 0)
            + (_writingTab != null ? 1 : 0);
 
     internal bool IsGeneralPageVisible => _generalPage != null && _contentHost?.Content == _generalPage;
+
+    internal bool IsAiPageVisible => _aiPage != null && _contentHost?.Content == _aiPage;
 
     internal bool IsAppearancePageVisible => _appearancePage != null && _contentHost?.Content == _appearancePage;
 
@@ -157,6 +198,8 @@ public sealed class ControlGalleryWindow : Window
     internal bool IsWritingPageVisible => _writingPage != null && _contentHost?.Content == _writingPage;
 
     internal GeneralSettingsViewModel? GeneralViewModel => _generalVm;
+
+    internal AiSettingsViewModel? AiViewModel => _aiVm;
 
     internal AppearanceSettingsViewModel? AppearanceViewModel => _appearanceVm;
 
@@ -179,6 +222,14 @@ public sealed class ControlGalleryWindow : Window
         if (_controlsTab != null)
         {
             _controlsTab.IsChecked = true;
+        }
+    }
+
+    internal void SelectAiTab()
+    {
+        if (_aiTab != null)
+        {
+            _aiTab.IsChecked = true;
         }
     }
 
@@ -323,12 +374,13 @@ public sealed class ControlGalleryWindow : Window
         tabs.Children.Add(_controlsTab);
         tabs.Children.Add(_generalTab);
 
-        if (_appearancePage != null)
+        if (_aiPage != null)
         {
-            _appearanceTab = new NavItem { Content = "Appearance", GroupName = "galleryTabs", Margin = new Thickness(0, 0, 8, 4) };
-            AutomationProperties.SetName(_appearanceTab, "Appearance");
-            _appearanceTab.Checked += (_, _) => ShowAppearanceContent();
-            tabs.Children.Add(_appearanceTab);
+            _aiTab = new NavItem { Content = "AI", GroupName = "galleryTabs", Margin = new Thickness(0, 0, 8, 4) };
+            AutomationProperties.SetName(_aiTab, "AI");
+            _aiTab.Checked += (_, _) => ShowAiContent();
+            _aiTab.Unchecked += (_, _) => _aiVm?.OnTabLeft();
+            tabs.Children.Add(_aiTab);
         }
 
         if (_privacyPage != null)
@@ -337,6 +389,14 @@ public sealed class ControlGalleryWindow : Window
             AutomationProperties.SetName(_privacyTab, "Privacy");
             _privacyTab.Checked += (_, _) => ShowPrivacyContent();
             tabs.Children.Add(_privacyTab);
+        }
+
+        if (_appearancePage != null)
+        {
+            _appearanceTab = new NavItem { Content = "Appearance", GroupName = "galleryTabs", Margin = new Thickness(0, 0, 8, 4) };
+            AutomationProperties.SetName(_appearanceTab, "Appearance");
+            _appearanceTab.Checked += (_, _) => ShowAppearanceContent();
+            tabs.Children.Add(_appearanceTab);
         }
 
         if (_appTonePage != null)
@@ -524,6 +584,7 @@ public sealed class ControlGalleryWindow : Window
             return;
         }
 
+        _aiVm?.OnTabLeft();
         FlushPendingSaves();
     }
 
@@ -543,6 +604,17 @@ public sealed class ControlGalleryWindow : Window
         }
 
         ReloadPage(_generalVm);
+    }
+
+    private void ShowAiContent()
+    {
+        if (_contentHost != null)
+        {
+            _contentHost.Content = _aiPage;
+        }
+
+        _services?.Reload();
+        _aiVm?.OnTabSelected();
     }
 
     private void ShowAppearanceContent()
@@ -599,14 +671,20 @@ public sealed class ControlGalleryWindow : Window
             _generalVm.Load();
         }
 
-        if (_appearanceVm is { IsDirty: false })
+        if (_aiVm is { IsDirty: false })
         {
-            _appearanceVm.Load();
+            // Activate reload: Load only (probes only when stored values changed).
+            _aiVm.Load();
         }
 
         if (_privacyVm is { IsDirty: false })
         {
             _privacyVm.Load();
+        }
+
+        if (_appearanceVm is { IsDirty: false })
+        {
+            _appearanceVm.Load();
         }
 
         if (_appToneVm is { IsDirty: false })
@@ -648,6 +726,9 @@ public sealed class ControlGalleryWindow : Window
             case GeneralSettingsViewModel general:
                 general.Load();
                 break;
+            case AiSettingsViewModel ai:
+                ai.Load();
+                break;
             case AppearanceSettingsViewModel appearance:
                 appearance.Load();
                 break;
@@ -678,13 +759,29 @@ public sealed class ControlGalleryWindow : Window
         if (e.PropertyName == nameof(GeneralSettingsViewModel.StatusMessage)
             || e.PropertyName == nameof(WritingViewModel.StyleSummary)
             || e.PropertyName == nameof(WritingViewModel.SelectedAdaptationIndex)
-            || e.PropertyName == nameof(WritingViewModel.CanUndoAdaptation))
+            || e.PropertyName == nameof(WritingViewModel.CanUndoAdaptation)
+            || e.PropertyName == nameof(AiSettingsViewModel.StatusActiveLine)
+            || e.PropertyName == nameof(AiSettingsViewModel.StatusDetail)
+            || e.PropertyName == nameof(AiSettingsViewModel.StatusKind)
+            || e.PropertyName == nameof(AiSettingsViewModel.IsWaitingForClipboard)
+            || e.PropertyName == nameof(AiSettingsViewModel.Heading)
+            || e.PropertyName == nameof(AiSettingsViewModel.ShowKeyBox)
+            || e.PropertyName == nameof(AiSettingsViewModel.ShowGetKeyButton)
+            || e.PropertyName == nameof(AiSettingsViewModel.ShowModel)
+            || e.PropertyName == nameof(AiSettingsViewModel.AiFlagsEnabled)
+            || e.PropertyName == nameof(AiSettingsViewModel.ShowProviderCombo)
+            || e.PropertyName == nameof(AiSettingsViewModel.ShowMoreProvidersLink)
+            || e.PropertyName == nameof(AiSettingsViewModel.AdvancedVisible))
         {
             return;
         }
 
-        // Live effects from a dirty snapshot before the debounced disk write.
-        _services.ApplyLive?.Invoke();
+        // AI page publishes policy itself; still schedule persist for dirty pages.
+        if (sender is not AiSettingsViewModel)
+        {
+            _services.ApplyLive?.Invoke();
+        }
+
         if (IsVisible)
         {
             _persistTimer?.Start();

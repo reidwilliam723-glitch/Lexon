@@ -25,6 +25,9 @@ public sealed class ClipboardHwndListener : IDisposable
         _listening = AddClipboardFormatListener(_source.Handle);
     }
 
+    /// <summary>True when a clipboard format listener is registered on the window.</summary>
+    public bool IsListening => _listening;
+
     public void Detach()
     {
         if (_source != null)

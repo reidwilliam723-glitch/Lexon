@@ -55,6 +55,16 @@ public sealed class GallerySettingsServices
 
     public IMessageService? Messages { get; init; }
 
+    public AiProbeSession? AiSession { get; init; }
+
+    public IClipboardWatch? ClipboardWatch { get; init; }
+
+    public IUrlLauncher? UrlLauncher { get; init; }
+
+    public IDelayScheduler? DelayScheduler { get; init; }
+
+    public Func<AppSettings>? LiveSnapshot { get; init; }
+
     public Action<Window>? AttachOwner { get; init; }
 
     public IList<IOwnedSettingsPage> Pages { get; } = [];

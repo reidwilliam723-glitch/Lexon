@@ -125,6 +125,7 @@ public class AppearancePrivacyPageTests
             Assert.True(window.HasPrivacyTab);
             Assert.True(window.HasAppToneTab);
             Assert.False(window.HasWritingTab);
+            Assert.False(window.HasAiTab);
 
             window.SelectAppearanceTab();
             window.UpdateLayout();

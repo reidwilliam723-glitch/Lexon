@@ -42,11 +42,13 @@ public class WritingAppTonePageTests
                     WpfThemeBridge.ApplyTo(app, theme);
                     Layout(CreateAppTone());
                     Layout(CreateWriting());
+                    Layout(CreateAi());
                 }
 
                 ApplyWindowsHighContrast(app, themes.CurrentTheme);
                 Layout(CreateAppTone());
                 Layout(CreateWriting());
+                Layout(CreateAi());
                 Assert.Empty(listener.Errors);
             }
             finally
@@ -66,7 +68,7 @@ public class WritingAppTonePageTests
             var themes = new ThemeManager(store.Storage);
             WpfThemeBridge.ApplyTo(app, themes.CurrentTheme);
 
-            foreach (var page in new FrameworkElement[] { CreateAppTone(), CreateWriting() })
+            foreach (var page in new FrameworkElement[] { CreateAppTone(), CreateWriting(), CreateAi() })
             {
                 var window = Offscreen(page, 700, 720);
                 window.Show();
@@ -88,7 +90,7 @@ public class WritingAppTonePageTests
     }
 
     [Fact]
-    public void Gallery_ShowsSixTabsWithAllServices_NoOverflowAt700()
+    public void Gallery_ShowsSevenTabsWithAllServices_NoOverflowAt700()
     {
         _sta.Run(() =>
         {
@@ -109,6 +111,10 @@ public class WritingAppTonePageTests
                 WritingDialogs = new FakeWritingDialogs(),
                 FileDialogs = new FakeFiles(),
                 Messages = new FakeMessages(),
+                AiSession = new AiProbeSession(),
+                UrlLauncher = new FakeUrls(),
+                DelayScheduler = new FakeDelays(),
+                ClipboardWatch = new FakeClipboard(),
                 Reload = () => { }
             };
             var window = new ControlGalleryWindow(themes, services)
@@ -121,14 +127,15 @@ public class WritingAppTonePageTests
             window.Show();
             window.UpdateLayout();
 
-            Assert.Equal(6, window.GalleryTabCount);
+            Assert.Equal(7, window.GalleryTabCount);
+            Assert.True(window.HasAiTab);
             Assert.True(window.HasWritingTab);
             Assert.True(window.HasAppToneTab);
             Assert.True(window.ActualWidth <= 700 + 1 || window.Width <= 700 + 1);
 
-            window.SelectWritingTab();
+            window.SelectAiTab();
             window.UpdateLayout();
-            Assert.True(window.IsWritingPageVisible);
+            Assert.True(window.IsAiPageVisible);
             window.Close();
             _ = app;
         });
@@ -154,6 +161,25 @@ public class WritingAppTonePageTests
             new FakeMessages());
         vm.Load();
         return new WritingPage(vm);
+    }
+
+    private static AiPage CreateAi()
+    {
+        var persist = new PersistScheduler(() => { });
+        var settings = new AppSettings();
+        var session = new AiProbeSession();
+        var vm = new AiSettingsViewModel(
+            settings,
+            persist,
+            session,
+            new FakePolicy(),
+            new FakeClipboard(),
+            new FakeUrls(),
+            new FakeDelays(),
+            () => false,
+            () => settings);
+        vm.Load();
+        return new AiPage(vm);
     }
 
     private static void Layout(FrameworkElement page)
@@ -350,5 +376,35 @@ public class WritingAppTonePageTests
         }
 
         public bool Confirm(string text, string caption) => false;
+    }
+
+    private sealed class FakeUrls : IUrlLauncher
+    {
+        public bool TryOpen(string url) => true;
+    }
+
+    private sealed class FakeDelays : IDelayScheduler
+    {
+        public IDisposable Schedule(TimeSpan delay, Action action) => new Nop();
+
+        private sealed class Nop : IDisposable
+        {
+            public void Dispose()
+            {
+            }
+        }
+    }
+
+    private sealed class FakeClipboard : IClipboardWatch
+    {
+        public event EventHandler? Updated;
+
+        public bool Start() => true;
+
+        public void Stop()
+        {
+        }
+
+        public string? ReadText() => null;
     }
 }

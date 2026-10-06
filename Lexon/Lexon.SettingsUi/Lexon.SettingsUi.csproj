@@ -18,6 +18,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Lexon.Core\Lexon.Core.csproj" />
+    <ProjectReference Include="..\Lexon.Profiles\Lexon.Profiles.csproj" />
     <ProjectReference Include="..\Lexon.SettingsModel\Lexon.SettingsModel.csproj" />
   </ItemGroup>
 </Project>

@@ -17,6 +17,7 @@ public sealed class PrivacySettingsViewModel : INotifyPropertyChanged, IOwnedSet
     private readonly IProcessPicker _picker;
     private readonly ICloudAiActivityViewer _activity;
     private readonly Action? _refresh;
+    private readonly Func<AppSettings>? _liveSnapshot;
     private bool _localOnly;
     private string _blockedAppsText = string.Empty;
     private bool _isDirty;
@@ -27,7 +28,8 @@ public sealed class PrivacySettingsViewModel : INotifyPropertyChanged, IOwnedSet
         IAiPolicyPublisher policy,
         IProcessPicker picker,
         ICloudAiActivityViewer activity,
-        Action? refresh = null)
+        Action? refresh = null,
+        Func<AppSettings>? liveSnapshot = null)
     {
         _settings = settings ?? throw new ArgumentNullException(nameof(settings));
         _persist = persist ?? throw new ArgumentNullException(nameof(persist));
@@ -35,6 +37,7 @@ public sealed class PrivacySettingsViewModel : INotifyPropertyChanged, IOwnedSet
         _picker = picker ?? throw new ArgumentNullException(nameof(picker));
         _activity = activity ?? throw new ArgumentNullException(nameof(activity));
         _refresh = refresh;
+        _liveSnapshot = liveSnapshot;
     }
 
     public IReadOnlyList<string> OwnedKeys => OwnedKeyList;
@@ -42,6 +45,8 @@ public sealed class PrivacySettingsViewModel : INotifyPropertyChanged, IOwnedSet
     public bool IsDirty => _isDirty;
 
     public event PropertyChangedEventHandler? PropertyChanged;
+
+    public event Action<bool>? LocalOnlyChanged;
 
     public bool LocalOnly
     {
@@ -54,15 +59,18 @@ public sealed class PrivacySettingsViewModel : INotifyPropertyChanged, IOwnedSet
             }
 
             _localOnly = value;
-            OnPropertyChanged();
             if (_persist.IsLoading)
             {
+                OnPropertyChanged();
                 return;
             }
 
             _settings.LocalMode = value;
-            PublishPolicy();
+            // Dirty before PropertyChanged so live snapshots see the new LocalMode.
             MarkDirtyAndSchedule();
+            PublishPolicy();
+            LocalOnlyChanged?.Invoke(_localOnly);
+            OnPropertyChanged();
         }
     }
 
@@ -77,14 +85,15 @@ public sealed class PrivacySettingsViewModel : INotifyPropertyChanged, IOwnedSet
             }
 
             _blockedAppsText = value ?? string.Empty;
-            OnPropertyChanged();
             if (_persist.IsLoading)
             {
+                OnPropertyChanged();
                 return;
             }
 
             _settings.BlockedApplications = BlockedAppList.Parse(_blockedAppsText);
             MarkDirtyAndSchedule();
+            OnPropertyChanged();
         }
     }
 
@@ -138,11 +147,12 @@ public sealed class PrivacySettingsViewModel : INotifyPropertyChanged, IOwnedSet
 
         _blockedAppsText = BlockedAppList.FormatCsv(current);
         _settings.BlockedApplications = current;
-        OnPropertyChanged(nameof(BlockedAppsText));
         if (!_persist.IsLoading)
         {
             MarkDirtyAndSchedule();
         }
+
+        OnPropertyChanged(nameof(BlockedAppsText));
     }
 
     public void ShowActivityLog()
@@ -160,14 +170,12 @@ public sealed class PrivacySettingsViewModel : INotifyPropertyChanged, IOwnedSet
     {
         _refresh?.Invoke();
         _settings.LocalMode = _localOnly;
-        // AiProbeSession lives on the classic form. That form already syncs
-        // LocalMode on load (SyncAiConnectionFromLoad / EnterLocalOnly), so the
-        // gallery only publishes the shared access policy and saves LocalMode.
+        var snap = _liveSnapshot?.Invoke() ?? _settings;
         _policy.Publish(
-            _localOnly,
-            _settings.AiSuggestionsWhileTyping,
-            _settings.AiRewriteOnRequest,
-            _settings.AiPrefetchOnSelection);
+            snap.LocalMode,
+            snap.AiSuggestionsWhileTyping,
+            snap.AiRewriteOnRequest,
+            snap.AiPrefetchOnSelection);
     }
 
     private static bool ListEquals(IReadOnlyList<string> a, IReadOnlyList<string> b)

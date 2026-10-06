@@ -71,7 +71,8 @@ public static class WpfThemeBridge
             ["OnPrimaryHover"] = ToMedia(c.OnPrimary),
             ["Success"] = ToMedia(c.Success),
             ["Warning"] = ToMedia(c.Warning),
-            ["Error"] = ToMedia(c.Error)
+            ["Error"] = ToMedia(c.Error),
+            ["Info"] = ToMedia(c.Primary)
         };
     }
 
@@ -93,7 +94,8 @@ public static class WpfThemeBridge
             ["OnPrimaryHover"] = SystemColors.HighlightColor,
             ["Success"] = SystemColors.WindowTextColor,
             ["Warning"] = SystemColors.GrayTextColor,
-            ["Error"] = SystemColors.WindowTextColor
+            ["Error"] = SystemColors.WindowTextColor,
+            ["Info"] = SystemColors.HighlightColor
         };
 
     private static MediaColor ToMedia(string hex)

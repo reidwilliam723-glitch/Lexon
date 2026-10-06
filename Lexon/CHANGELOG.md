@@ -2,6 +2,11 @@
 
 All notable changes to Lexon will be documented in this file.
 
+## [1.6.0] - 2026-10-06
+
+### Settings UI
+- `--ui-gallery` gets an AI tab (provider, API key with automatic validation, clipboard key capture, model, and the three AI toggles). Turning on Local-only in the gallery now also unloads the running AI provider, and the AI policy is published from the current values of both pages. The classic Settings form is still the default.
+
 ## [1.5.0] - 2026-10-05
 
 ### Settings UI

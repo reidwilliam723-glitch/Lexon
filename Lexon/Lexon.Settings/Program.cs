@@ -448,6 +448,17 @@ static class Program
             _composition.ThemeManager);
         var fileDialogs = new WpfFileDialogService();
         var messages = new WpfMessageService();
+        var urlLauncher = new ProcessUrlLauncher();
+        var delayScheduler = new DispatcherDelayScheduler();
+        var aiSession = new AiProbeSession
+        {
+            InstalledProviderName = () =>
+            {
+                var name = _composition.AIProvider?.Name;
+                return string.IsNullOrWhiteSpace(name) ? null : name;
+            },
+            ApplyProvider = provider => LexonServiceComposer.ApplyAiProvider(_composition, provider)
+        };
         PersistScheduler persist = null!;
         GallerySettingsServices services = null!;
         persist = new PersistScheduler(() =>
@@ -466,8 +477,12 @@ static class Program
             Reload = () => settings.Read(profile),
             Push = () => OwnedSettingsWriter.Flush(profile, services.Pages.ToArray()),
             ApplyLive = () => ApplyGalleryLiveEffects(OwnedSettingsWriter.BuildLiveSnapshot(profile, services.Pages)),
+            LiveSnapshot = () => OwnedSettingsWriter.BuildLiveSnapshot(profile, services.Pages),
             ThemeSwitcher = new ThemeManagerSwitcher(_composition.ThemeManager),
             AiPolicy = new AiPolicyPublisher(_composition.AiAccessPolicy, _composition.SuggestionPipeline),
+            AiSession = aiSession,
+            UrlLauncher = urlLauncher,
+            DelayScheduler = delayScheduler,
             ProcessPicker = picker,
             ActivityViewer = viewer,
             Personalization = _composition.PersonalizationManager != null
@@ -484,6 +499,17 @@ static class Program
                 writingDialogs.Owner = () => owner;
                 fileDialogs.Owner = window;
                 messages.Owner = window;
+                aiSession.IsAlive = () =>
+                {
+                    try
+                    {
+                        return window.IsLoaded;
+                    }
+                    catch
+                    {
+                        return false;
+                    }
+                };
             }
         };
         _galleryServices = services;
