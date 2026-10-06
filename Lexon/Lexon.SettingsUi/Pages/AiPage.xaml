@@ -75,7 +75,7 @@
           <local:RevealPasswordBox Password="{Binding ApiKeyText, UpdateSourceTrigger=PropertyChanged}"
                                    Margin="0,0,0,8"
                                    Visibility="{Binding ShowKeyBox, Converter={StaticResource BoolToVis}}"
-                                   LostFocus="OnKeyLostFocus"
+                                   IsKeyboardFocusWithinChanged="OnKeyFocusWithinChanged"
                                    AutomationProperties.Name="API key"
                                    AutomationProperties.HelpText="Paste an API key to connect."/>
 

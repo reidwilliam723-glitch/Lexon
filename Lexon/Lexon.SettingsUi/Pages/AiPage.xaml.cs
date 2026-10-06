@@ -29,8 +29,14 @@ public partial class AiPage : UserControl
     private void OnCancelWait(object sender, RoutedEventArgs e)
         => (DataContext as AiSettingsViewModel)?.CancelWait();
 
-    private void OnKeyLostFocus(object sender, RoutedEventArgs e)
-        => (DataContext as AiSettingsViewModel)?.OnKeyLostFocus();
+    private void OnKeyFocusWithinChanged(object sender, DependencyPropertyChangedEventArgs e)
+    {
+        // Only probe when focus leaves the whole key control (not Show/Hide).
+        if (e.NewValue is false)
+        {
+            (DataContext as AiSettingsViewModel)?.OnKeyLostFocus();
+        }
+    }
 }
 
 public sealed class AiStatusBrushConverter : IValueConverter

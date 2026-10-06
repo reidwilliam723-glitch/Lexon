@@ -72,6 +72,10 @@ public sealed class AiSettingsViewModel : INotifyPropertyChanged, IOwnedSettings
     private bool _probeAfterSeed;
     private string _lastSeededModel = string.Empty;
     private string? _waitingProvider;
+    private string? _lastProbeProvider;
+    private string? _lastProbeKey;
+    private string? _lastProbeModel;
+    private bool _lastProbeLocalOnly;
     private IDisposable? _probeDelay;
     private IDisposable? _clipboardTimeout;
     private bool _disposed;
@@ -190,6 +194,7 @@ public sealed class AiSettingsViewModel : INotifyPropertyChanged, IOwnedSettings
 
             MarkDirtyAndSchedule();
             OnPropertyChanged();
+            ScheduleProbe();
         }
     }
 
@@ -627,6 +632,23 @@ public sealed class AiSettingsViewModel : INotifyPropertyChanged, IOwnedSettings
     private bool IsProbePendingOrRunning()
         => _probeDelay != null || _session.Connection.State == AiConnectionState.Checking;
 
+    private bool ShouldSkipDuplicateProbe(string provider, string key, string model)
+    {
+        if (_lastProbeProvider == null
+            || !string.Equals(_lastProbeProvider, provider, StringComparison.OrdinalIgnoreCase)
+            || _lastProbeKey != key
+            || !string.Equals(_lastProbeModel, model, StringComparison.Ordinal)
+            || _lastProbeLocalOnly != _localOnly)
+        {
+            return false;
+        }
+
+        // Retry after Failed (or other non-success states); skip while still
+        // Connected or Checking for the same inputs.
+        var state = _session.Connection.State;
+        return state is AiConnectionState.Connected or AiConnectionState.Checking;
+    }
+
     private async Task ProbeNowAsync()
     {
         if (_disposed || _persist.IsLoading)
@@ -635,11 +657,23 @@ public sealed class AiSettingsViewModel : INotifyPropertyChanged, IOwnedSettings
         }
 
         var provider = SelectedUiProvider();
+        var key = _apiKeyText.Trim();
+        var model = ResolveSelectedModel();
+        if (ShouldSkipDuplicateProbe(provider, key, model))
+        {
+            return;
+        }
+
+        _lastProbeProvider = provider;
+        _lastProbeKey = key;
+        _lastProbeModel = model;
+        _lastProbeLocalOnly = _localOnly;
+
         await _session.ProbeAsyncCore(
             _localOnly,
             provider,
-            _apiKeyText.Trim(),
-            ResolveSelectedModel(),
+            key,
+            model,
             _isWaitingForClipboard);
     }
 

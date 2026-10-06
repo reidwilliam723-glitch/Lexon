@@ -78,6 +78,79 @@ public class GalleryClipboardTests
     }
 
     [Fact]
+    public void AiPage_ShowHide_DoesNotProbe()
+    {
+        _sta.Run(() =>
+        {
+            var app = WpfBootstrap.EnsureApplication();
+            using var store = new TempThemeStore();
+            var themes = new ThemeManager(store.Storage);
+            WpfThemeBridge.ApplyTo(app, themes.CurrentTheme);
+
+            var probeCalls = 0;
+            var settings = new AppSettings();
+            var persist = new PersistScheduler(() => { });
+            var session = new AiProbeSession
+            {
+                ProbeAsync = (_, _, _, _) =>
+                {
+                    probeCalls++;
+                    return Task.FromResult(AiProbeResult.Ok("ok"));
+                }
+            };
+            var delays = new ControllableDelays();
+            var services = new GallerySettingsServices(settings, new CountingStartup(), persist, persist.Flush)
+            {
+                AiPolicy = new FakePolicy(),
+                AiSession = session,
+                UrlLauncher = new FakeUrls(),
+                DelayScheduler = delays,
+                Reload = () => { }
+            };
+            var window = new ControlGalleryWindow(themes, services)
+            {
+                Left = -20000,
+                Top = -20000,
+                ShowInTaskbar = false
+            };
+            window.Show();
+            window.UpdateLayout();
+            window.SelectAiTab();
+            window.UpdateLayout();
+
+            var vm = window.AiViewModel!;
+            probeCalls = 0;
+            vm.ApiKeyText = "sk-test-show-hide-key";
+            delays.RunProbeDelay();
+            Pump();
+            Assert.Equal(1, probeCalls);
+
+            var keyBox = FindVisual<RevealPasswordBox>(window)!;
+            keyBox.ApplyTemplate();
+            var password = keyBox.Template.FindName("PART_Password", keyBox) as System.Windows.Controls.PasswordBox;
+            var reveal = keyBox.Template.FindName("PART_Reveal", keyBox) as System.Windows.Controls.Primitives.ToggleButton;
+            Assert.NotNull(password);
+            Assert.NotNull(reveal);
+
+            password!.Focus();
+            Pump();
+            reveal!.Focus();
+            reveal.IsChecked = true;
+            Pump();
+            Assert.Equal(1, probeCalls);
+
+            // Leaving the whole control still probes at most once more if needed;
+            // after Connected with the same key it must stay at 1.
+            window.SelectGeneralTab();
+            Pump();
+            Assert.Equal(1, probeCalls);
+
+            window.Close();
+            _ = app;
+        });
+    }
+
+    [Fact]
     public void Gallery_ClipboardMessages_OnlyWhileListening()
     {
         _sta.Run(() =>
@@ -145,6 +218,26 @@ public class GalleryClipboardTests
         System.Windows.Threading.Dispatcher.PushFrame(frame);
     }
 
+    private static T? FindVisual<T>(DependencyObject root) where T : DependencyObject
+    {
+        if (root is T match)
+        {
+            return match;
+        }
+
+        for (var i = 0; i < System.Windows.Media.VisualTreeHelper.GetChildrenCount(root); i++)
+        {
+            var child = System.Windows.Media.VisualTreeHelper.GetChild(root, i);
+            var found = FindVisual<T>(child);
+            if (found != null)
+            {
+                return found;
+            }
+        }
+
+        return null;
+    }
+
     private sealed class CountingStartup : IStartupRegistration
     {
         public bool IsEnabled() => false;
@@ -173,6 +266,41 @@ public class GalleryClipboardTests
             public void Dispose()
             {
             }
+        }
+    }
+
+    private sealed class ControllableDelays : IDelayScheduler
+    {
+        private readonly List<(TimeSpan Delay, Action Action)> _pending = [];
+
+        public IDisposable Schedule(TimeSpan delay, Action action)
+        {
+            _pending.Add((delay, action));
+            return new Handle(this, action);
+        }
+
+        public void RunProbeDelay()
+        {
+            var hit = _pending.Where(p => p.Delay == AiSettingsViewModel.KeyProbeDelay).ToList();
+            _pending.RemoveAll(p => p.Delay == AiSettingsViewModel.KeyProbeDelay);
+            foreach (var item in hit)
+            {
+                item.Action();
+            }
+        }
+
+        private sealed class Handle : IDisposable
+        {
+            private readonly ControllableDelays _owner;
+            private readonly Action _action;
+
+            public Handle(ControllableDelays owner, Action action)
+            {
+                _owner = owner;
+                _action = action;
+            }
+
+            public void Dispose() => _owner._pending.RemoveAll(p => p.Action == _action);
         }
     }
 

@@ -175,6 +175,59 @@ public class AiSettingsViewModelTests
     }
 
     [Fact]
+    public async Task DuplicateProbe_SameKeyAfterSuccess_IsSkipped()
+    {
+        var env = Create(new AppSettings());
+        env.Vm.OnTabSelected();
+        env.ProbeCalls = 0;
+        env.Vm.ApiKeyText = FakeKey;
+        await env.FlushProbeAsync();
+        Assert.Equal(1, env.ProbeCalls);
+        Assert.Equal(AiConnectionState.Connected, env.Session.Connection.State);
+
+        env.Vm.OnKeyLostFocus();
+        Assert.Equal(1, env.ProbeCalls);
+    }
+
+    [Fact]
+    public async Task DuplicateProbe_SameKeyAfterFailure_Retries()
+    {
+        var env = Create(new AppSettings());
+        env.Vm.OnTabSelected();
+        env.ProbeCalls = 0;
+        env.ProbeResult = AiProbeResult.Error("network");
+        env.Vm.ApiKeyText = FakeKey;
+        await env.FlushProbeAsync();
+        Assert.Equal(1, env.ProbeCalls);
+        Assert.Equal(AiConnectionState.Failed, env.Session.Connection.State);
+
+        env.Vm.OnKeyLostFocus();
+        await Task.Delay(20);
+        Assert.Equal(2, env.ProbeCalls);
+    }
+
+    [Fact]
+    public async Task DuplicateProbe_ModelOrProviderChange_ProbesAgain()
+    {
+        var env = Create(new AppSettings());
+        env.Vm.OnTabSelected();
+        env.ProbeCalls = 0;
+        env.Vm.ApiKeyText = FakeKey;
+        await env.FlushProbeAsync();
+        Assert.Equal(1, env.ProbeCalls);
+
+        env.Vm.SelectedModel = "gpt-4o";
+        await env.FlushProbeAsync();
+        Assert.Equal(2, env.ProbeCalls);
+
+        env.Vm.ShowMoreProviders();
+        env.Vm.ProviderIndex = IndexOf("Gemini");
+        env.Vm.ApiKeyText = "AIza" + new string('z', 35);
+        await env.FlushProbeAsync();
+        Assert.Equal(3, env.ProbeCalls);
+    }
+
+    [Fact]
     public void ReloadUnchanged_DoesNotProbe_ChangedSeedsAndProbes()
     {
         var settings = new AppSettings
