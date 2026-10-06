@@ -34,6 +34,14 @@ public class TypoAutoCorrectTests
     }
 
     [Fact]
+    public void CodeSwitching_SkipsNonAsciiWord()
+    {
+        Assert.False(TypoAutoCorrect.TryGetCorrection("café", enabled: true, learnedWords: [], out _, allowCodeSwitching: true));
+        Assert.True(TypoAutoCorrect.TryGetCorrection("teh", enabled: true, learnedWords: [], out var correction, allowCodeSwitching: true));
+        Assert.Equal("the", correction);
+    }
+
+    [Fact]
     public void GetEdit_ReplacesWordAndKeepsSeparator()
     {
         var (deleteCount, insertText) = TypoAutoCorrect.GetEdit("teh", "the", ' ');

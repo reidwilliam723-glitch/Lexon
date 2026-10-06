@@ -14,7 +14,9 @@ public sealed class TypoSuggestionProvider : ISuggestionProvider
     public Task<IEnumerable<Suggestion>> GetSuggestionsAsync(TextContext context, CancellationToken cancellationToken = default)
     {
         var word = context.CurrentWord ?? string.Empty;
-        if (word.Length < 2 || !CommonMisspellings.TryCorrect(word, out var correction))
+        if (word.Length < 2
+            || ScriptLanguageGuard.ShouldSkipSpelling(word, context.FullText)
+            || !CommonMisspellings.TryCorrect(word, out var correction))
         {
             return Task.FromResult(Enumerable.Empty<Suggestion>());
         }

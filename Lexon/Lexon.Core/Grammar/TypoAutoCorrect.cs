@@ -10,10 +10,16 @@ public static class TypoAutoCorrect
         string? completedWord,
         bool enabled,
         IEnumerable<string>? learnedWords,
-        out string correction)
+        out string correction,
+        bool allowCodeSwitching = true)
     {
         correction = string.Empty;
         if (!enabled || string.IsNullOrWhiteSpace(completedWord))
+        {
+            return false;
+        }
+
+        if (allowCodeSwitching && ScriptLanguageGuard.ShouldSkipSpelling(completedWord))
         {
             return false;
         }

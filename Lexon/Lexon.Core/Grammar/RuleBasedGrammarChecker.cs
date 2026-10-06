@@ -73,7 +73,10 @@ public static class RuleBasedGrammarChecker
         (Rx(@"\bwheres\b"), "where's")
     ];
 
-    public static IReadOnlyList<GrammarMatch> Find(string? text, string sensitivity = "Medium")
+    public static IReadOnlyList<GrammarMatch> Find(
+        string? text,
+        string sensitivity = "Medium",
+        Func<string, bool>? skipSpellingWord = null)
     {
         if (string.IsNullOrWhiteSpace(text))
         {
@@ -85,7 +88,15 @@ public static class RuleBasedGrammarChecker
 
         foreach (var pair in CommonMisspellings.All)
         {
-            AddAll(matches, text, Rx(@"\b" + Regex.Escape(pair.Key) + @"\b"), pair.Value, "Spelling", GrammarRuleCategory.Typo, allowed);
+            AddAll(
+                matches,
+                text,
+                Rx(@"\b" + Regex.Escape(pair.Key) + @"\b"),
+                pair.Value,
+                "Spelling",
+                GrammarRuleCategory.Typo,
+                allowed,
+                skipSpellingWord);
         }
 
         foreach (var (pattern, replacement) in Contractions)
@@ -168,7 +179,8 @@ public static class RuleBasedGrammarChecker
         string replacement,
         string message,
         GrammarRuleCategory category,
-        HashSet<GrammarRuleCategory> allowed)
+        HashSet<GrammarRuleCategory> allowed,
+        Func<string, bool>? skipWord = null)
     {
         if (!allowed.Contains(category))
         {
@@ -177,6 +189,11 @@ public static class RuleBasedGrammarChecker
 
         foreach (Match match in pattern.Matches(text))
         {
+            if (skipWord?.Invoke(match.Value) == true)
+            {
+                continue;
+            }
+
             TryAdd(matches, new GrammarMatch(
                 match.Index,
                 match.Length,

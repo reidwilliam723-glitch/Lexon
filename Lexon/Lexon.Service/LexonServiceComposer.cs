@@ -254,7 +254,8 @@ public static class LexonServiceComposer
             undoManager,
             grammarOverlay,
             () => profile.GetSetting("AutoCorrectTypos", true),
-            personalizationManager
+            personalizationManager,
+            () => profile.GetSetting("AllowCodeSwitching", true)
         );
 
         lexonService.AttachWritingEnhancement(selectionRewrite, grammarCheck, mouseListener);
