@@ -30,6 +30,12 @@ public interface ISuggestionOverlay : IDisposable
     /// case is already covered by <see cref="SuggestionSelected"/>.
     /// </summary>
     event EventHandler<SuggestionDismissedEventArgs>? SuggestionDismissed;
+
+    /// <summary>
+    /// Raised when the user clicks the brief Undo chip shown after an
+    /// automatic typo correction.
+    /// </summary>
+    event EventHandler? CorrectionUndoRequested;
 }
 
 public class SuggestionSelectedEventArgs : EventArgs

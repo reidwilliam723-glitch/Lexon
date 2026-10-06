@@ -15,8 +15,10 @@ public class SuggestionOverlay : ISuggestionOverlay
     private List<Suggestion> _currentSuggestions = new();
     private List<string> _predictions = new();
     private readonly List<Rectangle> _chipRects = new();
+    private Rectangle? _flashUndoRect;
     private string? _flashText;
     private long _flashGeneration;
+    public static readonly TimeSpan FlashCorrectionDuration = TimeSpan.FromSeconds(2);
     private int _selectedIndex = 0;
     private int _scrollOffset = 0;
     public const string WordClassName = "LexonSuggestionOverlay";
@@ -56,6 +58,7 @@ public class SuggestionOverlay : ISuggestionOverlay
 
     public event EventHandler<SuggestionSelectedEventArgs>? SuggestionSelected;
     public event EventHandler<SuggestionDismissedEventArgs>? SuggestionDismissed;
+    public event EventHandler? CorrectionUndoRequested;
 
     // Win32 API declarations
     [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
@@ -558,6 +561,39 @@ public class SuggestionOverlay : ISuggestionOverlay
         return -1;
     }
 
+    private bool HitTestFlashUndo(IntPtr lParam)
+    {
+        int x = (short)(lParam.ToInt64() & 0xFFFF);
+        int y = (short)((lParam.ToInt64() >> 16) & 0xFFFF);
+        lock (_suggestionsLock)
+        {
+            return _flashUndoRect is { } rect && rect.Contains(x, y);
+        }
+    }
+
+    private void ClearFlash()
+    {
+        Interlocked.Increment(ref _flashGeneration);
+        lock (_suggestionsLock)
+        {
+            _flashText = null;
+            _flashUndoRect = null;
+            if (_predictions.Count == 0 && _currentSuggestions.Count == 0)
+            {
+                _isShowing = false;
+            }
+        }
+
+        if (!IsVisible)
+        {
+            ForceHideWindow();
+        }
+        else if (_windowHandle != IntPtr.Zero)
+        {
+            PostMessage(_windowHandle, WM_LEXON_REPAINT, IntPtr.Zero, IntPtr.Zero);
+        }
+    }
+
     private int MaxScrollOffset(int count) => Math.Max(0, count - VisibleRowCount);
 
     private void EnsureSelectionVisible()
@@ -640,6 +676,13 @@ public class SuggestionOverlay : ISuggestionOverlay
 
     private void OnMouseClick(IntPtr lParam)
     {
+        if (HitTestFlashUndo(lParam))
+        {
+            ClearFlash();
+            CorrectionUndoRequested?.Invoke(this, EventArgs.Empty);
+            return;
+        }
+
         var chipIndex = HitTestChipIndex(lParam);
         if (chipIndex >= 0)
         {
@@ -856,6 +899,7 @@ public class SuggestionOverlay : ISuggestionOverlay
         var x = ListPadding;
         var rects = new List<Rectangle>();
 
+        Rectangle? undoRect = null;
         for (var i = 0; i < chips.Count; i++)
         {
             var (labelText, isFlash) = chips[i];
@@ -867,13 +911,31 @@ public class SuggestionOverlay : ISuggestionOverlay
             using var path = OverlayChrome.Rounded(rect, 4);
             using var fill = new SolidBrush(isFlash ? chrome.GrammarHighlight : chrome.SelectedBackground);
             graphics.FillPath(fill, path);
-            graphics.DrawString(label, font, isFlash ? textBrush : textBrush, rect.X + 8, rect.Y + (ChipHeight - size.Height) / 2);
+            graphics.DrawString(label, font, textBrush, rect.X + 8, rect.Y + (ChipHeight - size.Height) / 2);
             if (!isFlash)
             {
                 rects.Add(rect);
             }
 
             x += chipWidth + ChipGap;
+            if (isFlash)
+            {
+                const string undoLabel = "Undo";
+                var undoSize = graphics.MeasureString(undoLabel, font);
+                var undoWidth = Math.Max(36, (int)Math.Ceiling(undoSize.Width) + 16);
+                undoRect = new Rectangle(x, y, undoWidth, ChipHeight);
+                using var undoPath = OverlayChrome.Rounded(undoRect.Value, 4);
+                using var undoFill = new SolidBrush(chrome.SelectedBackground);
+                graphics.FillPath(undoFill, undoPath);
+                graphics.DrawString(
+                    undoLabel,
+                    font,
+                    textBrush,
+                    undoRect.Value.X + 8,
+                    undoRect.Value.Y + (ChipHeight - undoSize.Height) / 2);
+                x += undoWidth + ChipGap;
+            }
+
             if (x > width - ListPadding)
             {
                 break;
@@ -884,6 +946,7 @@ public class SuggestionOverlay : ISuggestionOverlay
         {
             _chipRects.Clear();
             _chipRects.AddRange(rects);
+            _flashUndoRect = undoRect;
         }
     }
 
@@ -920,6 +983,7 @@ public class SuggestionOverlay : ISuggestionOverlay
             _currentSuggestions = suggestions.ToList();
             _predictions = new List<string>();
             _flashText = null;
+            _flashUndoRect = null;
             _statusText = null;
             _selectedIndex = 0;
             _scrollOffset = 0;
@@ -1006,6 +1070,7 @@ public class SuggestionOverlay : ISuggestionOverlay
             _currentSuggestions = new List<Suggestion>();
             _predictions = new List<string>();
             _flashText = null;
+            _flashUndoRect = null;
             _isShowing = !string.IsNullOrWhiteSpace(message);
         }
 
@@ -1029,13 +1094,14 @@ public class SuggestionOverlay : ISuggestionOverlay
         lock (_suggestionsLock)
         {
             _flashText = text;
+            _flashUndoRect = null;
             _isShowing = true;
         }
 
         PresentAt(x, y, lineHeight);
         ThreadPool.QueueUserWorkItem(_ =>
         {
-            Thread.Sleep(400);
+            Thread.Sleep((int)FlashCorrectionDuration.TotalMilliseconds);
             if (Interlocked.Read(ref _flashGeneration) != generation)
             {
                 return;
@@ -1049,6 +1115,7 @@ public class SuggestionOverlay : ISuggestionOverlay
                 }
 
                 _flashText = null;
+                _flashUndoRect = null;
                 if (_predictions.Count == 0 && _currentSuggestions.Count == 0)
                 {
                     _isShowing = false;
@@ -1104,6 +1171,7 @@ public class SuggestionOverlay : ISuggestionOverlay
             _currentSuggestions = suggestions.ToList();
             _predictions = new List<string>();
             _flashText = null;
+            _flashUndoRect = null;
             _selectedIndex = Math.Clamp(_selectedIndex, 0, Math.Max(0, _currentSuggestions.Count - 1));
             _scrollOffset = 0;
             if (_currentSuggestions.Count == 0)
@@ -1286,6 +1354,7 @@ public class SuggestionOverlay : ISuggestionOverlay
             _predictions = new List<string>();
             _statusText = null;
             _flashText = null;
+            _flashUndoRect = null;
             _lockedBelow = null;
         }
 

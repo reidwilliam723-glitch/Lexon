@@ -32,6 +32,40 @@ public class NextWordAndAutoCorrectTests
     }
 
     [Fact]
+    public void SpaceAfterKnownTypo_RecordsUndo_AndRestoresOnUndo()
+    {
+        var harness = WordHarness.WithBuffer("teh", autoCorrect: true);
+        harness.Privacy.Setup(p => p.ShouldBlockAssistance(It.IsAny<TextContext>())).Returns(false);
+        harness.Pipeline.Setup(p => p.GetLearnedWords()).Returns(Array.Empty<string>());
+
+        harness.TypeSpace();
+        harness.WaitForIdle();
+
+        Assert.True(harness.Undo.CanUndo);
+        harness.Undo.Undo();
+
+        // Autocorrect deleted "teh " (4) and inserted "the "; undo deletes "the " and re-inserts "teh ".
+        harness.Injector.Verify(i => i.DeleteBackward(4), Times.Exactly(2));
+        harness.Injector.Verify(i => i.InjectText("teh "), Times.Once);
+    }
+
+    [Fact]
+    public void CorrectionUndoChip_TriggersUndoManager()
+    {
+        var harness = WordHarness.WithBuffer("teh", autoCorrect: true);
+        harness.Privacy.Setup(p => p.ShouldBlockAssistance(It.IsAny<TextContext>())).Returns(false);
+        harness.Pipeline.Setup(p => p.GetLearnedWords()).Returns(Array.Empty<string>());
+
+        harness.TypeSpace();
+        harness.WaitForIdle();
+        Assert.True(harness.Undo.CanUndo);
+
+        harness.Overlay.Raise(o => o.CorrectionUndoRequested += null, EventArgs.Empty);
+        harness.Injector.Verify(i => i.InjectText("teh "), Times.Once);
+        Assert.False(harness.Undo.CanUndo);
+    }
+
+    [Fact]
     public void SpaceAfterKnownTypo_WhenDisabled_DoesNotInject()
     {
         var harness = WordHarness.WithBuffer("teh", autoCorrect: false);
@@ -146,6 +180,7 @@ public class NextWordAndAutoCorrectTests
         public Mock<IPrivacyGuard> Privacy { get; } = new();
         public Mock<ISuggestionPipeline> Pipeline { get; } = new();
         public Mock<IKeyboardListener> Keyboard { get; } = new();
+        public UndoManager Undo { get; }
         public KeyboardEventArgs LastKey { get; private set; } = new();
 
         private readonly StringBuilder _buffer;
@@ -153,6 +188,7 @@ public class NextWordAndAutoCorrectTests
         private WordHarness(string typed, bool autoCorrect)
         {
             _buffer = new StringBuilder(typed);
+            Undo = new UndoManager(Injector.Object);
             var focus = new Mock<IFocusTracker>();
             focus.Setup(f => f.GetTypedBufferText()).Returns(() => _buffer.ToString());
             focus.Setup(f => f.GetCurrentContext()).Returns(() => new TextContext
@@ -197,7 +233,7 @@ public class NextWordAndAutoCorrectTests
                 Injector.Object,
                 new TextExpansionManager(storage.Object),
                 new KeyboardShortcutManager(),
-                new UndoManager(Injector.Object),
+                Undo,
                 autoCorrectEnabled: () => autoCorrect,
                 personalization: personalization);
         }

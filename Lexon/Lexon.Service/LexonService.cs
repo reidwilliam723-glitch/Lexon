@@ -103,6 +103,7 @@ public class LexonService
         _focusTracker.ContextChanged += OnContextChanged;
         _suggestionOverlay.SuggestionSelected += OnSuggestionSelected;
         _suggestionOverlay.SuggestionDismissed += OnSuggestionDismissed;
+        _suggestionOverlay.CorrectionUndoRequested += OnCorrectionUndoRequested;
         if (_grammarOverlay != null)
         {
             _grammarOverlay.SuggestionSelected += OnSuggestionSelected;
@@ -596,12 +597,21 @@ public class LexonService
             _focusTracker.AddTypedCharacter(ch);
         }
 
+        _undoManager.RecordOperation(word + separator, insertText);
         _textInjector.DeleteBackward(deleteCount);
         _textInjector.InjectText(insertText);
 
         var (x, y) = GetWordAnchorPosition();
         _suggestionOverlay.FlashCorrection(correction, x, y, OverlayLineHeight());
         return true;
+    }
+
+    private void OnCorrectionUndoRequested(object? sender, EventArgs e)
+    {
+        if (_undoManager.CanUndo)
+        {
+            _undoManager.Undo();
+        }
     }
 
     private void ShowNextWordPredictions(string typed, TextContext context)
