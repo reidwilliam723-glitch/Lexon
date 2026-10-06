@@ -584,7 +584,7 @@ public sealed class ControlGalleryWindow : Window
             return;
         }
 
-        _aiVm?.OnTabLeft();
+        _aiVm?.OnWindowHidden();
         FlushPendingSaves();
     }
 

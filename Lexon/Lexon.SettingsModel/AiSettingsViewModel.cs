@@ -70,6 +70,7 @@ public sealed class AiSettingsViewModel : INotifyPropertyChanged, IOwnedSettings
     private bool _isDirty;
     private bool _firstTabProbeDone;
     private bool _probeAfterSeed;
+    private string _lastSeededModel = string.Empty;
     private string? _waitingProvider;
     private IDisposable? _probeDelay;
     private IDisposable? _clipboardTimeout;
@@ -268,6 +269,14 @@ public sealed class AiSettingsViewModel : INotifyPropertyChanged, IOwnedSettings
 
     public bool ShowMoreProvidersLink => !_advancedVisible;
 
+    /// <summary>
+    /// True when the combo or key box differs from the last validated session
+    /// values. Not the same as <see cref="IsDirty"/> (flags/model only).
+    /// </summary>
+    public bool HasUnsavedUiState
+        => !string.Equals(SelectedUiProvider(), _session.ActiveProvider, StringComparison.OrdinalIgnoreCase)
+            || _apiKeyText != _session.ActiveApiKey;
+
     public void Load()
     {
         _persist.IsLoading = true;
@@ -276,23 +285,24 @@ public sealed class AiSettingsViewModel : INotifyPropertyChanged, IOwnedSettings
             _localOnly = _readLocalOnly();
             _settings.LocalMode = _localOnly;
 
-            var previousModel = _selectedModel;
             var storedProvider = _settings.AIProvider;
             var storedKey = _settings.APIKey;
             var storedModel = _settings.AIModel;
             var storedValidated = _settings.AIKeyValidated;
 
-            var unchanged =
-                string.Equals(_session.ActiveProvider, storedProvider, StringComparison.OrdinalIgnoreCase)
-                && _session.ActiveApiKey == storedKey
-                && _session.AiValidated == storedValidated
-                && string.Equals(previousModel ?? storedModel, storedModel, StringComparison.Ordinal);
+            var needsReseed =
+                !string.Equals(_session.ActiveProvider, storedProvider, StringComparison.OrdinalIgnoreCase)
+                || _session.ActiveApiKey != storedKey
+                || _session.AiValidated != storedValidated
+                || !string.Equals(_lastSeededModel, storedModel, StringComparison.Ordinal);
 
-            if (!unchanged)
+            if (needsReseed)
             {
+                StopClipboardWatch();
                 _session.ActiveProvider = storedProvider;
                 _session.ActiveApiKey = storedKey;
                 _session.AiValidated = storedValidated;
+                _lastSeededModel = storedModel ?? string.Empty;
                 if (!_localOnly)
                 {
                     var keyPresent = storedValidated
@@ -306,33 +316,49 @@ public sealed class AiSettingsViewModel : INotifyPropertyChanged, IOwnedSettings
 
                 _probeAfterSeed = !_localOnly
                     && !storedProvider.Equals("None", StringComparison.OrdinalIgnoreCase);
-            }
 
-            if (AiProviderCatalog.ShowAdvancedByDefault(storedProvider))
+                if (AiProviderCatalog.ShowAdvancedByDefault(storedProvider))
+                {
+                    _advancedVisible = true;
+                }
+
+                _providerIndex = ResolveStoredProviderIndex(storedProvider);
+                _apiKeyText = _session.ActiveApiKey;
+                _aiTyping = _settings.AiSuggestionsWhileTyping;
+                _aiRewrite = _settings.AiRewriteOnRequest;
+                _aiPrefetch = _settings.AiPrefetchOnSelection;
+                _isDirty = false;
+
+                UpdateEntryMode(fillModels: true, preferredModel: storedModel);
+                PaintFromSession();
+
+                OnPropertyChanged(nameof(AdvancedVisible));
+                OnPropertyChanged(nameof(ShowProviderCombo));
+                OnPropertyChanged(nameof(ShowMoreProvidersLink));
+                OnPropertyChanged(nameof(ProviderIndex));
+                OnPropertyChanged(nameof(ApiKeyText));
+                OnPropertyChanged(nameof(AiSuggestionsWhileTyping));
+                OnPropertyChanged(nameof(AiRewriteOnRequest));
+                OnPropertyChanged(nameof(AiPrefetchOnSelection));
+                OnPropertyChanged(nameof(SelectedModel));
+            }
+            else
             {
-                _advancedVisible = true;
+                // Keep in-progress provider/key/advanced/clipboard; refresh live pieces.
+                if (!_isDirty)
+                {
+                    _aiTyping = _settings.AiSuggestionsWhileTyping;
+                    _aiRewrite = _settings.AiRewriteOnRequest;
+                    _aiPrefetch = _settings.AiPrefetchOnSelection;
+                    OnPropertyChanged(nameof(AiSuggestionsWhileTyping));
+                    OnPropertyChanged(nameof(AiRewriteOnRequest));
+                    OnPropertyChanged(nameof(AiPrefetchOnSelection));
+                }
+
+                UpdateEntryMode(fillModels: true, preferredModel: _selectedModel);
+                PaintFromSession();
+                OnPropertyChanged(nameof(SelectedModel));
             }
-
-            var uiProvider = ResolveStoredProviderIndex(storedProvider);
-            _providerIndex = uiProvider;
-            _apiKeyText = _session.ActiveApiKey;
-            _aiTyping = _settings.AiSuggestionsWhileTyping;
-            _aiRewrite = _settings.AiRewriteOnRequest;
-            _aiPrefetch = _settings.AiPrefetchOnSelection;
-            _isDirty = false;
-
-            UpdateEntryMode(fillModels: true, preferredModel: storedModel);
-            PaintFromSession();
-
-            OnPropertyChanged(nameof(AdvancedVisible));
-            OnPropertyChanged(nameof(ShowProviderCombo));
-            OnPropertyChanged(nameof(ShowMoreProvidersLink));
-            OnPropertyChanged(nameof(ProviderIndex));
-            OnPropertyChanged(nameof(ApiKeyText));
-            OnPropertyChanged(nameof(AiSuggestionsWhileTyping));
-            OnPropertyChanged(nameof(AiRewriteOnRequest));
-            OnPropertyChanged(nameof(AiPrefetchOnSelection));
-            OnPropertyChanged(nameof(SelectedModel));
         }
         finally
         {
@@ -348,7 +374,8 @@ public sealed class AiSettingsViewModel : INotifyPropertyChanged, IOwnedSettings
 
     /// <summary>
     /// Called when the AI tab is shown. Performs Load and at most one probe
-    /// (first show, or after a seed from changed stored values).
+    /// (first show, after a seed from changed stored values, or when unsaved
+    /// inputs still need a check that was lost while the window was hidden).
     /// </summary>
     public void OnTabSelected()
     {
@@ -370,6 +397,15 @@ public sealed class AiSettingsViewModel : INotifyPropertyChanged, IOwnedSettings
         }
 
         // Load() already ran a changed-values probe when needed.
+        if (_probeAfterSeed)
+        {
+            return;
+        }
+
+        if (HasUnsavedUiState && !IsProbePendingOrRunning())
+        {
+            _ = ProbeNowAsync();
+        }
     }
 
     public void CopyOwnedTo(AppSettings target)
@@ -384,7 +420,11 @@ public sealed class AiSettingsViewModel : INotifyPropertyChanged, IOwnedSettings
         target.AiPrefetchOnSelection = _aiPrefetch;
     }
 
-    public void MarkClean() => _isDirty = false;
+    public void MarkClean()
+    {
+        _isDirty = false;
+        _lastSeededModel = ResolveSelectedModel();
+    }
 
     public void ShowMoreProviders()
     {
@@ -459,8 +499,18 @@ public sealed class AiSettingsViewModel : INotifyPropertyChanged, IOwnedSettings
 
     public void OnTabLeft()
     {
+        // Leaving the tab must not cancel a pending key probe — only the watch.
+        StopClipboardWatch();
+    }
+
+    /// <summary>
+    /// Gallery window hidden or closed: cancel pending probes and the watch.
+    /// </summary>
+    public void OnWindowHidden()
+    {
         StopClipboardWatch();
         CancelProbeDelay();
+        _session.Gate.Invalidate();
     }
 
     public void Dispose()
@@ -471,8 +521,7 @@ public sealed class AiSettingsViewModel : INotifyPropertyChanged, IOwnedSettings
         }
 
         _disposed = true;
-        StopClipboardWatch();
-        CancelProbeDelay();
+        OnWindowHidden();
         _clipboardTimeout?.Dispose();
         _clipboardTimeout = null;
         if (_clipboardHandler != null)
@@ -481,7 +530,6 @@ public sealed class AiSettingsViewModel : INotifyPropertyChanged, IOwnedSettings
             _clipboardHandler = null;
         }
 
-        _session.Gate.Invalidate();
         _session.Persist = static () => { };
         _session.OnStatusChanged = null;
     }
@@ -533,6 +581,7 @@ public sealed class AiSettingsViewModel : INotifyPropertyChanged, IOwnedSettings
         _settings.APIKey = _session.ActiveApiKey;
         _settings.AIKeyValidated = _session.AiValidated;
         _settings.AIModel = ResolveSelectedModel();
+        _lastSeededModel = _settings.AIModel;
         MarkDirtyAndSchedule();
     }
 
@@ -574,6 +623,9 @@ public sealed class AiSettingsViewModel : INotifyPropertyChanged, IOwnedSettings
         _probeDelay?.Dispose();
         _probeDelay = null;
     }
+
+    private bool IsProbePendingOrRunning()
+        => _probeDelay != null || _session.Connection.State == AiConnectionState.Checking;
 
     private async Task ProbeNowAsync()
     {

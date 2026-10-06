@@ -380,6 +380,145 @@ public class AiSettingsViewModelTests
         Assert.DoesNotContain(FakeKey, env.Session.Connection.Detail, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void Load_Unchanged_KeepsUnsavedProviderAndKey()
+    {
+        var settings = new AppSettings { AIProvider = "OpenAI", APIKey = string.Empty, AIKeyValidated = false };
+        var env = Create(settings);
+        env.Vm.OnTabSelected();
+        env.ProbeCalls = 0;
+        env.Vm.ShowMoreProviders();
+        env.Vm.ProviderIndex = IndexOf("Gemini");
+        env.Vm.ApiKeyText = "AIza" + new string('x', 35);
+        Assert.True(env.Vm.HasUnsavedUiState);
+        Assert.True(env.Vm.AdvancedVisible);
+
+        env.Vm.Load();
+        env.Vm.OnTabSelected();
+
+        Assert.Equal(IndexOf("Gemini"), env.Vm.ProviderIndex);
+        Assert.Equal("AIza" + new string('x', 35), env.Vm.ApiKeyText);
+        Assert.True(env.Vm.AdvancedVisible);
+        Assert.True(env.Vm.HasUnsavedUiState);
+    }
+
+    [Fact]
+    public async Task Load_Unchanged_KeepsProviderWhileProbeInFlight()
+    {
+        var settings = new AppSettings { AIProvider = "OpenAI", APIKey = string.Empty };
+        var env = Create(settings);
+        env.Vm.OnTabSelected();
+        env.Vm.ShowMoreProviders();
+        env.Vm.ProviderIndex = IndexOf("Gemini");
+        env.ProbeResult = AiProbeResult.Ok("ok");
+        env.Vm.ApiKeyText = "AIza" + new string('y', 35);
+        // Start probe without completing yet.
+        var tcs = new TaskCompletionSource<AiProbeResult>();
+        env.Session.ProbeAsync = async (provider, key, token, model) =>
+        {
+            env.ProbeCalls++;
+            Assert.Equal("Gemini", provider);
+            return await tcs.Task;
+        };
+        env.Vm.OnKeyLostFocus();
+        Assert.Equal(1, env.ProbeCalls);
+        Assert.Equal(AiConnectionState.Checking, env.Session.Connection.State);
+
+        env.Vm.Load();
+        Assert.Equal(IndexOf("Gemini"), env.Vm.ProviderIndex);
+
+        tcs.SetResult(AiProbeResult.Ok("ok"));
+        await Task.Delay(30);
+        Assert.Equal("Gemini", env.Session.ActiveProvider);
+        Assert.Equal(IndexOf("Gemini"), env.Vm.ProviderIndex);
+    }
+
+    [Fact]
+    public void Load_ProfileChanged_DiscardsUnsavedUi_AndReseeds()
+    {
+        var settings = new AppSettings
+        {
+            AIProvider = "OpenAI",
+            APIKey = FakeKey,
+            AIKeyValidated = true,
+            AIModel = "gpt-4o-mini"
+        };
+        var env = Create(settings);
+        env.Session.ActiveProvider = "OpenAI";
+        env.Session.ActiveApiKey = FakeKey;
+        env.Session.AiValidated = true;
+        env.Vm.OnTabSelected();
+        env.Vm.ShowMoreProviders();
+        env.Vm.ProviderIndex = IndexOf("Gemini");
+        env.Vm.ApiKeyText = "AIza-unsaved";
+        env.Clipboard.StartResult = true;
+        env.Vm.GetApiKey();
+        Assert.True(env.Vm.IsWaitingForClipboard);
+
+        settings.AIProvider = "DeepSeek";
+        settings.APIKey = "sk-" + new string('d', 32);
+        settings.AIKeyValidated = true;
+        settings.AIModel = "deepseek-chat";
+        var probesBefore = env.ProbeCalls;
+        env.Vm.Load();
+
+        Assert.Equal(IndexOf("DeepSeek"), env.Vm.ProviderIndex);
+        Assert.Equal(settings.APIKey, env.Vm.ApiKeyText);
+        Assert.Equal("DeepSeek", env.Session.ActiveProvider);
+        Assert.False(env.Vm.IsWaitingForClipboard);
+        Assert.False(env.Clipboard.Watching);
+        Assert.True(env.ProbeCalls > probesBefore);
+    }
+
+    [Fact]
+    public void OnTabLeft_DoesNotCancelPendingProbe_WindowHiddenDoes()
+    {
+        var env = Create(new AppSettings());
+        env.Vm.OnTabSelected();
+        env.Vm.ApiKeyText = FakeKey;
+        Assert.Single(env.Delays.Pending.Where(p => p.Delay == AiSettingsViewModel.KeyProbeDelay));
+
+        env.Vm.OnTabLeft();
+        Assert.Single(env.Delays.Pending.Where(p => p.Delay == AiSettingsViewModel.KeyProbeDelay));
+
+        env.ProbeCalls = 0;
+        env.Delays.RunMatching(AiSettingsViewModel.KeyProbeDelay);
+        Assert.Equal(1, env.ProbeCalls);
+
+        env.Vm.ApiKeyText = FakeKey + "2";
+        Assert.Single(env.Delays.Pending.Where(p => p.Delay == AiSettingsViewModel.KeyProbeDelay));
+        env.Clipboard.StartResult = true;
+        env.Vm.GetApiKey();
+        Assert.True(env.Vm.IsWaitingForClipboard);
+        env.Vm.OnWindowHidden();
+        Assert.Empty(env.Delays.Pending.Where(p => p.Delay == AiSettingsViewModel.KeyProbeDelay));
+        Assert.False(env.Vm.IsWaitingForClipboard);
+        Assert.False(env.Clipboard.Watching);
+    }
+
+    [Fact]
+    public void ClipboardWatch_SurvivesUnchangedLoad_StopsOnReseed()
+    {
+        var settings = new AppSettings { AIProvider = "OpenAI", APIKey = FakeKey, AIKeyValidated = true };
+        var env = Create(settings);
+        env.Session.ActiveProvider = "OpenAI";
+        env.Session.ActiveApiKey = FakeKey;
+        env.Session.AiValidated = true;
+        env.Vm.OnTabSelected();
+        env.Clipboard.StartResult = true;
+        env.Vm.GetApiKey();
+        Assert.True(env.Vm.IsWaitingForClipboard);
+
+        env.Vm.Load();
+        Assert.True(env.Vm.IsWaitingForClipboard);
+        Assert.True(env.Clipboard.Watching);
+
+        settings.APIKey = "sk-classic-changed";
+        env.Vm.Load();
+        Assert.False(env.Vm.IsWaitingForClipboard);
+        Assert.False(env.Clipboard.Watching);
+    }
+
     private static int IndexOf(string name)
         => Array.FindIndex(AiProviderCatalog.AllProviders, p => p.Equals(name, StringComparison.OrdinalIgnoreCase));
 
