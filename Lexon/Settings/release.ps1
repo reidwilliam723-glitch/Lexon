@@ -95,8 +95,17 @@ function Publish-FeedToPreviousRelease {
         "User-Agent" = "Lexon-release"
     }
 
-    $releases = @(Invoke-RestMethod -Headers $headers -Uri "https://api.github.com/repos/$slug/releases?per_page=10")
-    $previous = $releases | Where-Object { $_.tag_name -ne "v$Version" -and -not $_.prerelease -and -not $_.draft } | Select-Object -First 1
+    # Flatten so a single REST page is always a list of release objects.
+    # Piping the raw array into Where-Object can collapse property access and
+    # make tag_name look like every tag at once, so no "previous" matches.
+    $releases = @(Invoke-RestMethod -Headers $headers -Uri "https://api.github.com/repos/$slug/releases?per_page=10" | ForEach-Object { $_ })
+    $previous = $null
+    foreach ($release in $releases) {
+        if ($release.tag_name -ne "v$Version" -and -not $release.prerelease -and -not $release.draft) {
+            $previous = $release
+            break
+        }
+    }
     if (-not $previous) {
         Write-Host "No previous GitHub release to backfill with the $Version feed."
         return
