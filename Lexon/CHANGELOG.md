@@ -2,6 +2,14 @@
 
 All notable changes to Lexon will be documented in this file.
 
+## [1.8.0] - 2026-10-06
+
+### Writing
+- Flags inconsistent spelling of the same term (casing, hyphens, regional variants) in the current text.
+- Treats other languages mid-sentence as intentional when Allow other languages mid-sentence is on (default).
+- Custom terminology lists (global and per-app) protect names and product terms from autocorrect and spelling fixes.
+- Rewrite menu adds Plain language; Writing settings pick a default mode. Modes still preview before you apply.
+
 ## [1.7.0] - 2026-10-06
 
 ### Typing
