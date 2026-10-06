@@ -2,6 +2,18 @@
 
 All notable changes to Lexon will be documented in this file.
 
+## [1.7.0] - 2026-10-06
+
+### Typing
+- After an automatic typo correction, a brief Undo chip appears; Ctrl+Shift+Z and tray Undo also reverse that change.
+
+### Suggestions
+- Right-click a suggestion to mark it Wrong (rejected for learning) or Not for this app (rejected and added to blocked apps). Esc still counts as ignored.
+
+### Settings
+- General (classic and gallery): export/import settings and app rules without learning data or API keys.
+- Privacy (classic and gallery): reopen the first-use “What Lexon can see…” disclosure. Onboarding privacy copy is tighter; the try-out coach notes Local-only and that cloud typing starts off.
+
 ## [1.6.1] - 2026-10-06
 
 ### Settings UI
