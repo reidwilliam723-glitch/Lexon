@@ -223,6 +223,21 @@
                      FontFamily="{DynamicResource LexonFontFamily}"
                      FontSize="{DynamicResource CaptionFontSize}"/>
 
+          <TextBlock Text="Default writing mode" TextWrapping="Wrap" Margin="0,0,0,4"
+                     Foreground="{DynamicResource TextBrush}"
+                     FontFamily="{DynamicResource LexonFontFamily}"
+                     FontSize="{DynamicResource BodyFontSize}"/>
+          <ComboBox ItemsSource="{x:Static model:WritingViewModel.WritingModeLabels}"
+                    SelectedIndex="{Binding WritingModeIndex}"
+                    HorizontalAlignment="Stretch" MinWidth="0"
+                    AutomationProperties.Name="Default writing mode"
+                    AutomationProperties.HelpText="Shown first in the rewrite menu. Modes preview the rewrite before you apply it."/>
+          <TextBlock Text="Shown first in the rewrite menu. Modes preview the rewrite before you apply it."
+                     TextWrapping="Wrap" Margin="0,4,0,12"
+                     Foreground="{DynamicResource TextSecondaryBrush}"
+                     FontFamily="{DynamicResource LexonFontFamily}"
+                     FontSize="{DynamicResource CaptionFontSize}"/>
+
           <CheckBox Content="Grammar shortcut (Ctrl+Alt+G)"
                     IsChecked="{Binding EnableGrammarHotkey}"
                     AutomationProperties.Name="Grammar shortcut (Ctrl+Alt+G)"

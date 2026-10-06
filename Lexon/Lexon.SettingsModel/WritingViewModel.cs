@@ -29,10 +29,20 @@ public sealed class WritingViewModel : INotifyPropertyChanged, IOwnedSettingsPag
         AppSettings.EnableRewriteHotkeyKey,
         AppSettings.EnableGrammarHotkeyKey,
         AppSettings.CustomTerminologyKey,
-        AppSettings.AppTerminologyOverridesKey
+        AppSettings.AppTerminologyOverridesKey,
+        AppSettings.DefaultWritingModeKey
     ];
 
     public static IReadOnlyList<string> SensitivityLabels { get; } = ["Low", "Medium", "High"];
+
+    public static IReadOnlyList<string> WritingModeLabels { get; } =
+    [
+        "Plain language",
+        "More formal",
+        "More concise",
+        "Expand",
+        "Fix grammar"
+    ];
 
     private readonly AppSettings _settings;
     private readonly PersistScheduler _persist;
@@ -50,6 +60,7 @@ public sealed class WritingViewModel : INotifyPropertyChanged, IOwnedSettingsPag
     private string _mutedAppsText = string.Empty;
     private bool _enableRewriteHotkey = true;
     private bool _enableGrammarHotkey = true;
+    private int _writingModeIndex;
     private string _styleSummary = UnavailableStyleSummary;
     private int _selectedAdaptationIndex = -1;
     private bool _isDirty;
@@ -174,6 +185,35 @@ public sealed class WritingViewModel : INotifyPropertyChanged, IOwnedSettingsPag
         set => SetBool(ref _enableGrammarHotkey, value, v => _settings.EnableGrammarHotkey = v);
     }
 
+    public int WritingModeIndex
+    {
+        get => _writingModeIndex;
+        set
+        {
+            var index = value >= 0 && value < WritingModeLabels.Count ? value : 0;
+            if (_writingModeIndex == index)
+            {
+                if (value != index)
+                {
+                    OnPropertyChanged();
+                }
+
+                return;
+            }
+
+            _writingModeIndex = index;
+            if (_persist.IsLoading)
+            {
+                OnPropertyChanged();
+                return;
+            }
+
+            _settings.DefaultWritingMode = WritingModeLabels[index];
+            MarkDirtyAndSchedule();
+            OnPropertyChanged();
+        }
+    }
+
     public string StyleSummary
     {
         get => _styleSummary;
@@ -239,6 +279,7 @@ public sealed class WritingViewModel : INotifyPropertyChanged, IOwnedSettingsPag
 
             _enableRewriteHotkey = _settings.EnableRewriteHotkey;
             _enableGrammarHotkey = _settings.EnableGrammarHotkey;
+            _writingModeIndex = IndexOfWritingMode(_settings.DefaultWritingMode);
             _isDirty = false;
             OnPropertyChanged(nameof(GrammarChecking));
             OnPropertyChanged(nameof(AutoCorrectTypos));
@@ -249,6 +290,7 @@ public sealed class WritingViewModel : INotifyPropertyChanged, IOwnedSettingsPag
             OnPropertyChanged(nameof(MutedAppsText));
             OnPropertyChanged(nameof(EnableRewriteHotkey));
             OnPropertyChanged(nameof(EnableGrammarHotkey));
+            OnPropertyChanged(nameof(WritingModeIndex));
             RefreshLearning();
         }
         finally
@@ -294,6 +336,7 @@ public sealed class WritingViewModel : INotifyPropertyChanged, IOwnedSettingsPag
         target.EnableGrammarHotkey = _enableGrammarHotkey;
         target.CustomTerminology = [.. _settings.CustomTerminology ?? []];
         target.AppTerminologyOverrides = [.. _settings.AppTerminologyOverrides ?? []];
+        target.DefaultWritingMode = WritingModeLabels[_writingModeIndex];
     }
 
     public void MarkClean() => _isDirty = false;
@@ -442,6 +485,19 @@ public sealed class WritingViewModel : INotifyPropertyChanged, IOwnedSettingsPag
         _isDirty = true;
         _persist.Schedule(DateTime.UtcNow);
         UserEdited?.Invoke();
+    }
+
+    private static int IndexOfWritingMode(string? value)
+    {
+        for (var i = 0; i < WritingModeLabels.Count; i++)
+        {
+            if (WritingModeLabels[i].Equals(value, StringComparison.OrdinalIgnoreCase))
+            {
+                return i;
+            }
+        }
+
+        return 0;
     }
 
     private static int IndexOfSensitivity(string? value)

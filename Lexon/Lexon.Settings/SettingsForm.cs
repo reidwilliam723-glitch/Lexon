@@ -53,6 +53,7 @@ public partial class SettingsForm : Form
     private CheckBox _chkAutoCorrectTypos = null!;
     private CheckBox _chkDocumentConsistency = null!;
     private CheckBox _chkAllowCodeSwitching = null!;
+    private ComboBox _cmbDefaultWritingMode = null!;
     private CheckBox _chkLocalMode = null!;
     private CheckBox _chkAiTyping = null!;
     private CheckBox _chkAiRewrite = null!;
@@ -598,6 +599,9 @@ public partial class SettingsForm : Form
         _chkDocumentConsistency = Check("Flag inconsistent spelling of the same term");
         _chkAllowCodeSwitching = Check("Allow other languages mid-sentence");
         _chkEnableGrammarHotkey = Check("Grammar shortcut (Ctrl+Alt+G)");
+        _cmbDefaultWritingMode = Combo(360);
+        _cmbDefaultWritingMode.Items.AddRange(WritingViewModel.WritingModeLabels.ToArray());
+        _cmbDefaultWritingMode.SelectedIndex = 0;
         _cmbGrammarSensitivity = Combo(360);
         _cmbGrammarSensitivity.Items.AddRange(new[] { "Low", "Medium", "High" });
         _cmbGrammarSensitivity.SelectedIndex = 1;
@@ -627,6 +631,8 @@ public partial class SettingsForm : Form
             Caption("Muted grammar apps"),
             Hint(_txtGrammarMutedApps, "Comma-separated process names."),
             Hint(_chkEnableRewriteHotkey, "You can also select text and click Aa."),
+            Caption("Default writing mode"),
+            Hint(_cmbDefaultWritingMode, "Shown first in the rewrite menu. Modes preview the rewrite before you apply it."),
             Hint(_chkEnableGrammarHotkey, "Run a grammar check immediately."));
 
         Controls.Add(_layoutHost);
@@ -1168,6 +1174,7 @@ public partial class SettingsForm : Form
             SetWidth(_cmbSuggestionPlacement, middle);
             SetWidth(_lstAdaptations, middle);
             SetWidth(_cmbGrammarSensitivity, middle);
+            SetWidth(_cmbDefaultWritingMode, middle);
             SetWidth(_txtGrammarMutedApps, middle);
             SetWidth(_lstAppTone, right);
             if (Math.Abs(_lstAppTone.Height - listHeight) >= 2)
@@ -1214,6 +1221,7 @@ public partial class SettingsForm : Form
             SetWidth(_cmbSuggestionPlacement, 360);
             SetWidth(_lstAdaptations, 360);
             SetWidth(_cmbGrammarSensitivity, 360);
+            SetWidth(_cmbDefaultWritingMode, 360);
             SetWidth(_txtGrammarMutedApps, 360);
             SetWidth(_lstAppTone, 360);
             if (_lstAppTone.Height != 110)
@@ -1546,6 +1554,7 @@ public partial class SettingsForm : Form
         _chkDocumentConsistency.CheckedChanged += (_, _) => ApplyNow();
         _chkAllowCodeSwitching.CheckedChanged += (_, _) => ApplyNow();
         _chkEnableGrammarHotkey.CheckedChanged += (_, _) => ApplyNow();
+        _cmbDefaultWritingMode.SelectedIndexChanged += (_, _) => ApplyNow();
         _cmbSuggestionSort.SelectedIndexChanged += (_, _) => ApplyNow();
         _cmbSuggestionPlacement.SelectedIndexChanged += (_, _) => ApplyNow();
         _chkRequireConfirmation.CheckedChanged += (_, _) => ApplyNow();
@@ -1613,6 +1622,8 @@ public partial class SettingsForm : Form
         _chkDocumentConsistency.Checked = _appSettings.DocumentConsistencyChecking;
         _chkAllowCodeSwitching.Checked = _appSettings.AllowCodeSwitching;
         _chkEnableGrammarHotkey.Checked = _appSettings.EnableGrammarHotkey;
+        var modeIndex = _cmbDefaultWritingMode.Items.IndexOf(_appSettings.DefaultWritingMode);
+        _cmbDefaultWritingMode.SelectedIndex = modeIndex >= 0 ? modeIndex : 0;
         _txtGrammarMutedApps.Text = BlockedAppList.FormatCsv(_appSettings.GrammarMutedApps);
         _lstAppTone.Items.Clear();
         foreach (var row in _appSettings.AppCategoryOverrides)
@@ -1700,6 +1711,8 @@ public partial class SettingsForm : Form
         _appSettings.DocumentConsistencyChecking = _chkDocumentConsistency.Checked;
         _appSettings.AllowCodeSwitching = _chkAllowCodeSwitching.Checked;
         _appSettings.EnableGrammarHotkey = _chkEnableGrammarHotkey.Checked;
+        _appSettings.DefaultWritingMode = _cmbDefaultWritingMode.SelectedItem?.ToString()
+            ?? WritingViewModel.WritingModeLabels[0];
         _appSettings.GrammarMutedApps = BlockedAppList.ParseMutedGrammar(_txtGrammarMutedApps.Text);
         _appSettings.AppCategoryOverrides = _lstAppTone.Items.Cast<object>().Select(i => i.ToString()!).Where(s => !string.IsNullOrWhiteSpace(s)).ToList();
         _appSettings.Write(_profile);

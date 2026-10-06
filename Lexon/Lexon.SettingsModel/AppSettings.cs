@@ -37,6 +37,7 @@ public sealed class AppSettings
     public const string AppCategoryOverridesKey = "AppCategoryOverrides";
     public const string CustomTerminologyKey = "CustomTerminology";
     public const string AppTerminologyOverridesKey = "AppTerminologyOverrides";
+    public const string DefaultWritingModeKey = "DefaultWritingMode";
 
     public bool MinimizeToTray { get; set; } = true;
     public bool EnableAutoUpdates { get; set; } = true;
@@ -67,6 +68,7 @@ public sealed class AppSettings
     public List<string> AppCategoryOverrides { get; set; } = [];
     public List<string> CustomTerminology { get; set; } = [];
     public List<string> AppTerminologyOverrides { get; set; } = [];
+    public string DefaultWritingMode { get; set; } = "Plain language";
 
     public void Read(Profile profile)
     {
@@ -102,6 +104,7 @@ public sealed class AppSettings
         AppCategoryOverrides = profile.GetSetting<List<string>>(AppCategoryOverridesKey, []) ?? [];
         CustomTerminology = profile.GetSetting<List<string>>(CustomTerminologyKey, []) ?? [];
         AppTerminologyOverrides = profile.GetSetting<List<string>>(AppTerminologyOverridesKey, []) ?? [];
+        DefaultWritingMode = profile.GetSetting(DefaultWritingModeKey, "Plain language");
     }
 
     public void Write(Profile profile)
@@ -136,7 +139,8 @@ public sealed class AppSettings
             GrammarMutedAppsKey,
             AppCategoryOverridesKey,
             CustomTerminologyKey,
-            AppTerminologyOverridesKey);
+            AppTerminologyOverridesKey,
+            DefaultWritingModeKey);
     }
 
     /// <summary>
@@ -235,6 +239,9 @@ public sealed class AppSettings
                     break;
                 case AppTerminologyOverridesKey:
                     profile.SetSetting(key, AppTerminologyOverrides);
+                    break;
+                case DefaultWritingModeKey:
+                    profile.SetSetting(key, DefaultWritingMode);
                     break;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(keys), key, "Unknown settings key.");

@@ -15,13 +15,34 @@ namespace Lexon.Service;
 public sealed class SelectionRewriteService
 {
     public const string CorrectToneItem = "Correct tone for this app…";
+    public const string PlainLanguageOption = "Plain language";
+    public const string FormalOption = "More formal";
+    public const string ConciseOption = "More concise";
+
+    /// <summary>
+    /// Focused writing modes shown in the rewrite menu. Each mode streams a
+    /// preview before apply (see <see cref="EditConfirmation.BeginLiveRewrite"/>).
+    /// </summary>
     public static readonly string[] Options =
     [
-        "More formal",
-        "More concise",
+        PlainLanguageOption,
+        FormalOption,
+        ConciseOption,
         "Expand",
         "Fix grammar",
         "Free instruction…"
+    ];
+
+    /// <summary>
+    /// Modes offered as a Settings default (excludes free-form instruction).
+    /// </summary>
+    public static readonly string[] DefaultModeChoices =
+    [
+        PlainLanguageOption,
+        FormalOption,
+        ConciseOption,
+        "Expand",
+        "Fix grammar"
     ];
 
     private volatile IAIProvider? _aiProvider;
@@ -314,24 +335,50 @@ public sealed class SelectionRewriteService
     private List<string> OrderedOptions()
     {
         var last = _profile.GetSetting("LastRewriteOption", string.Empty);
+        var preferred = !string.IsNullOrWhiteSpace(last)
+            ? last
+            : _profile.GetSetting("DefaultWritingMode", PlainLanguageOption);
         var items = Options.ToList();
-        if (!string.IsNullOrEmpty(last) && items.Remove(last))
+        if (!string.IsNullOrEmpty(preferred) && items.Remove(preferred))
         {
-            items.Insert(0, last);
+            items.Insert(0, preferred);
         }
 
         return items;
     }
 
-    internal static string InstructionFor(string option)
+    public static string InstructionFor(string option)
         => option switch
         {
-            "More formal" => "Make this more formal",
-            "More concise" => "Make this more concise without losing meaning",
+            PlainLanguageOption =>
+                "Rewrite in plain language for a general audience. Use short sentences and everyday words. Keep the meaning.",
+            FormalOption => "Make this more formal",
+            ConciseOption => "Make this more concise without losing meaning",
             "Expand" => "Expand this with a bit more detail, keeping the same meaning",
             "Fix grammar" => "Fix grammar and clarity only",
             _ => "Rewrite this to be clearer"
         };
+
+    /// <summary>
+    /// Resolves a stored default mode to a known menu option.
+    /// </summary>
+    public static string NormalizeDefaultMode(string? mode)
+    {
+        if (string.IsNullOrWhiteSpace(mode))
+        {
+            return PlainLanguageOption;
+        }
+
+        foreach (var choice in DefaultModeChoices)
+        {
+            if (choice.Equals(mode.Trim(), StringComparison.OrdinalIgnoreCase))
+            {
+                return choice;
+            }
+        }
+
+        return PlainLanguageOption;
+    }
 
     private static string ComposeInstruction(string instruction, TextContext context)
     {

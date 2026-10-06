@@ -36,10 +36,12 @@ public class WritingViewModelTests
                 AppSettings.EnableRewriteHotkeyKey,
                 AppSettings.EnableGrammarHotkeyKey,
                 AppSettings.CustomTerminologyKey,
-                AppSettings.AppTerminologyOverridesKey
+                AppSettings.AppTerminologyOverridesKey,
+                AppSettings.DefaultWritingModeKey
             },
             WritingViewModel.OwnedKeyList);
         Assert.True(vm.DocumentConsistencyChecking);
+        Assert.Equal(0, vm.WritingModeIndex);
         Assert.True(vm.AllowCodeSwitching);
     }
 
