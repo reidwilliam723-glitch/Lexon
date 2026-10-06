@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Media;
 using System.Windows.Threading;
+using Lexon.Core;
 using Lexon.Core.Theming;
 using Lexon.SettingsModel;
 using Lexon.SettingsUi;
@@ -84,6 +85,35 @@ public class AppearancePrivacyPageTests
                 window.Close();
             }
 
+            _ = app;
+        });
+    }
+
+    [Fact]
+    public void PrivacyPage_HasWhatLexonCanSeeControl()
+    {
+        _sta.Run(() =>
+        {
+            var app = WpfBootstrap.EnsureApplication();
+            using var store = new TempThemeStore();
+            var themes = new ThemeManager(store.Storage);
+            WpfThemeBridge.ApplyTo(app, themes.CurrentTheme);
+
+            var page = CreatePrivacy();
+            var window = Offscreen(page, 700, 720);
+            window.Show();
+            window.UpdateLayout();
+            page.ApplyTemplate();
+            page.UpdateLayout();
+
+            var names = Logical(page)
+                .OfType<FrameworkElement>()
+                .Select(AutomationProperties.GetName)
+                .Where(n => !string.IsNullOrWhiteSpace(n))
+                .ToList();
+            Assert.Contains(PrivacyDisclosure.ButtonLabel, names);
+
+            window.Close();
             _ = app;
         });
     }

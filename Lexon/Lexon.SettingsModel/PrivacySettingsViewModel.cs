@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using Lexon.Core;
 
 namespace Lexon.SettingsModel;
 
@@ -16,6 +17,7 @@ public sealed class PrivacySettingsViewModel : INotifyPropertyChanged, IOwnedSet
     private readonly IAiPolicyPublisher _policy;
     private readonly IProcessPicker _picker;
     private readonly ICloudAiActivityViewer _activity;
+    private readonly IMessageService? _messages;
     private readonly Action? _refresh;
     private readonly Func<AppSettings>? _liveSnapshot;
     private bool _localOnly;
@@ -29,7 +31,8 @@ public sealed class PrivacySettingsViewModel : INotifyPropertyChanged, IOwnedSet
         IProcessPicker picker,
         ICloudAiActivityViewer activity,
         Action? refresh = null,
-        Func<AppSettings>? liveSnapshot = null)
+        Func<AppSettings>? liveSnapshot = null,
+        IMessageService? messages = null)
     {
         _settings = settings ?? throw new ArgumentNullException(nameof(settings));
         _persist = persist ?? throw new ArgumentNullException(nameof(persist));
@@ -38,6 +41,7 @@ public sealed class PrivacySettingsViewModel : INotifyPropertyChanged, IOwnedSet
         _activity = activity ?? throw new ArgumentNullException(nameof(activity));
         _refresh = refresh;
         _liveSnapshot = liveSnapshot;
+        _messages = messages;
     }
 
     public IReadOnlyList<string> OwnedKeys => OwnedKeyList;
@@ -160,6 +164,11 @@ public sealed class PrivacySettingsViewModel : INotifyPropertyChanged, IOwnedSet
     public void ShowActivityLog()
     {
         _activity.Show();
+    }
+
+    public void ShowPrivacyPreview()
+    {
+        _messages?.Info(PrivacyDisclosure.Body, PrivacyDisclosure.Title);
     }
 
     private void MarkDirtyAndSchedule()

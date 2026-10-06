@@ -116,7 +116,8 @@ public sealed class ControlGalleryWindow : Window
                     services.ProcessPicker,
                     services.ActivityViewer,
                     services.Reload,
-                    liveSnapshot);
+                    liveSnapshot,
+                    services.Messages);
                 _privacyVm.PropertyChanged += OnSettingsPropertyChanged;
                 _privacyVm.UserEdited += () => OnPageUserEdited(_privacyVm);
                 if (_aiVm != null)

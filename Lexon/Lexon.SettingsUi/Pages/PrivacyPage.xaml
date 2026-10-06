@@ -57,6 +57,18 @@
                   AutomationProperties.Name="View cloud AI activity log…"
                   AutomationProperties.HelpText="Shows recent cloud AI requests from this PC."/>
           <TextBlock Text="Shows recent cloud AI requests from this PC."
+                     TextWrapping="Wrap" Margin="0,4,0,12"
+                     Foreground="{DynamicResource TextSecondaryBrush}"
+                     FontFamily="{DynamicResource LexonFontFamily}"
+                     FontSize="{DynamicResource CaptionFontSize}"/>
+
+          <Button Content="What Lexon can see…"
+                  HorizontalAlignment="Left"
+                  Click="OnShowPrivacyPreview"
+                  Style="{DynamicResource SecondaryButton}"
+                  AutomationProperties.Name="What Lexon can see…"
+                  AutomationProperties.HelpText="Opens the first-use privacy explanation again."/>
+          <TextBlock Text="Opens the first-use privacy explanation again."
                      TextWrapping="Wrap" Margin="0,4,0,0"
                      Foreground="{DynamicResource TextSecondaryBrush}"
                      FontFamily="{DynamicResource LexonFontFamily}"

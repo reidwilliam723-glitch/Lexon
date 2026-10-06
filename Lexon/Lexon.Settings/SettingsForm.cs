@@ -79,6 +79,7 @@ public partial class SettingsForm : Form
     private Button _btnExportSettings = null!;
     private Button _btnImportSettings = null!;
     private Button _btnAiLog = null!;
+    private Button _btnPrivacyPreview = null!;
     private TableLayoutPanel _layoutHost = null!;
     private FlowLayoutPanel _sectionGeneral = null!;
     private FlowLayoutPanel _sectionAi = null!;
@@ -470,12 +471,21 @@ public partial class SettingsForm : Form
             Margin = new Padding(0, 4, 0, 8)
         };
         _btnAiLog.Click += OnAiLogClicked;
+        _btnPrivacyPreview = new Button
+        {
+            Text = PrivacyDisclosure.ButtonLabel,
+            AutoSize = true,
+            Padding = new Padding(12, 6, 12, 6),
+            Margin = new Padding(0, 4, 0, 8)
+        };
+        _btnPrivacyPreview.Click += OnPrivacyPreviewClicked;
         _sectionPrivacy = Section(
             "Privacy",
             Hint(_chkLocalMode, "Turns off every AI provider immediately, including Ollama. Saved keys stay so you can turn it back on."),
             Caption("Blocked apps"),
             Hint(_blockedRow, "Password fields are always skipped. Add comma-separated process names, for example outlook.exe, or pick a running app."),
-            Hint(_btnAiLog, "Shows recent cloud AI requests from this PC."));
+            Hint(_btnAiLog, "Shows recent cloud AI requests from this PC."),
+            Hint(_btnPrivacyPreview, "Opens the first-use privacy explanation again."));
 
         _cmbTheme = Combo(360);
         _cmbTheme.Items.AddRange(new[] { "Light", "Dark", "High Contrast" });
@@ -1357,6 +1367,16 @@ public partial class SettingsForm : Form
     {
         using var form = new CloudAiActivityForm(_cloudAiLog);
         form.ShowDialog(this);
+    }
+
+    private void OnPrivacyPreviewClicked(object? sender, EventArgs e)
+    {
+        MessageBox.Show(
+            this,
+            PrivacyDisclosure.Body,
+            PrivacyDisclosure.Title,
+            MessageBoxButtons.OK,
+            MessageBoxIcon.Information);
     }
 
     private void OnLearnedWordsClicked(object? sender, EventArgs e)

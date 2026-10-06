@@ -38,6 +38,7 @@
     <ProjectReference Include="..\Lexon.Ui\Lexon.Ui.csproj" />
     <ProjectReference Include="..\Lexon.SettingsModel\Lexon.SettingsModel.csproj" />
     <ProjectReference Include="..\Lexon.SettingsUi\Lexon.SettingsUi.csproj" />
+    <ProjectReference Include="..\Lexon.Onboarding\Lexon.Onboarding.csproj" />
   </ItemGroup>
 
 </Project>

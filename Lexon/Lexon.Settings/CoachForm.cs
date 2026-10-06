@@ -15,7 +15,7 @@ internal sealed class CoachForm : Form
         ShowInTaskbar = false;
         TopMost = true;
         AutoScaleMode = AutoScaleMode.Dpi;
-        ClientSize = new Size(560, 340);
+        ClientSize = new Size(560, 370);
         Font = new Font("Segoe UI", 10);
         BackColor = Color.White;
         Icon = Lexon.Ui.LexonIconFactory.CreateApplicationIcon();
@@ -34,16 +34,17 @@ internal sealed class CoachForm : Form
                 "1. Open Notepad.\n" +
                 "2. Type a word — suggestions appear above or below the caret.\n" +
                 "3. Press 1, 2, or 3 to accept a prediction.\n\n" +
-                "Ctrl+Shift+Z undoes the last Lexon change. Right-click the tray icon to pause.",
+                "Ctrl+Shift+Z undoes the last Lexon change. Right-click the tray icon to pause.\n\n" +
+                "Cloud AI while typing starts off. Use Local-only in Privacy if you want nothing to leave this PC.",
             Location = new Point(32, 78),
-            Size = new Size(496, 180)
+            Size = new Size(496, 200)
         };
 
         var gotIt = new Button
         {
             Text = "Got it",
             Size = new Size(108, 36),
-            Location = new Point(420, 278),
+            Location = new Point(420, 308),
             DialogResult = DialogResult.OK
         };
         AcceptButton = gotIt;

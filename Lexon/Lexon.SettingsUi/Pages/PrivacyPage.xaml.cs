@@ -22,4 +22,7 @@ public partial class PrivacyPage : UserControl
 
     private void OnShowActivityLog(object sender, RoutedEventArgs e)
         => (DataContext as PrivacySettingsViewModel)?.ShowActivityLog();
+
+    private void OnShowPrivacyPreview(object sender, RoutedEventArgs e)
+        => (DataContext as PrivacySettingsViewModel)?.ShowPrivacyPreview();
 }

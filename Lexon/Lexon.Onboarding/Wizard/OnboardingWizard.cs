@@ -1,6 +1,7 @@
 using Lexon.Onboarding.Models;
 using Lexon.Storage;
 using Lexon.Profiles;
+using Lexon.Core;
 using Lexon.Core.Interfaces;
 using Lexon.Core.Theming;
 using Lexon.Ui;
@@ -385,20 +386,9 @@ public class PrivacyDisclosureStep : WizardStep
     public override void Initialize(Panel panel, OnboardingState state)
     {
         var stack = WizardLayout.CreateStack();
-        stack.Controls.Add(WizardLayout.Title("What Lexon can see — and what leaves your PC"));
+        stack.Controls.Add(WizardLayout.Title(PrivacyDisclosure.Title));
         stack.Controls.Add(WizardLayout.Body(
-            "Lexon watches the field you are typing in so it can offer local suggestions. That includes the words around the caret in the focused app.\n\n" +
-            "What stays on this computer:\n" +
-            "• Typing suggestions, spelling corrections, and grammar checks (rule-based, no cloud)\n" +
-            "• Learned vocabulary and writing style\n\n" +
-            "What can leave this computer:\n" +
-            "• Cloud AI while typing — off by default. If you turn it on, the words around the caret go to your chosen provider as you type.\n" +
-            "• Rewrites of selected text — on by default once a provider is connected. The selection is sent with optional tone and writing-style hints (not the rest of the document), and only when you ask (Aa chip or Ctrl+Alt+R).\n" +
-            "• Prefetch on selection — off by default. If you turn it on, selecting text may send it before you pick a rewrite.\n" +
-            "• Local-only mode turns all of the above off immediately, including local Ollama. Saved keys are kept so you can turn it back on.\n" +
-            "• If you never add an API key, nothing is sent to OpenAI, Gemini, or DeepSeek.\n\n" +
-            "Password fields, blocked apps, and other excluded windows are skipped — including rewrite and grammar, not just suggestions.\n\n" +
-            "Double-press Ctrl at any time to fully disable Lexon until you turn it back on.",
+            PrivacyDisclosure.Body,
             new Font("Segoe UI", 11),
             Color.FromArgb(50, 50, 50),
             bottomMargin: 0));
