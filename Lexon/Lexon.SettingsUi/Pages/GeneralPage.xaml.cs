@@ -1,3 +1,4 @@
+using System.Windows;
 using System.Windows.Controls;
 using Lexon.SettingsModel;
 
@@ -15,4 +16,10 @@ public partial class GeneralPage : UserControl
     {
         DataContext = viewModel;
     }
+
+    private void OnExportSettings(object sender, RoutedEventArgs e)
+        => (DataContext as GeneralSettingsViewModel)?.ExportSettings();
+
+    private void OnImportSettings(object sender, RoutedEventArgs e)
+        => (DataContext as GeneralSettingsViewModel)?.ImportSettings();
 }

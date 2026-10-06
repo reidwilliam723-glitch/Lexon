@@ -5,6 +5,7 @@ using Lexon.Core.Interfaces;
 using Lexon.Core.Learning;
 using Lexon.Core.Pipeline;
 using Lexon.Core.Theming;
+using Lexon.Profiles;
 using Lexon.SettingsModel;
 
 namespace Lexon.Settings;
@@ -148,4 +149,20 @@ internal sealed class WritingDialogsAdapter : IWritingDialogs
 
         form.ShowDialog();
     }
+}
+
+internal sealed class SettingsBackupAdapter : ISettingsBackupService
+{
+    private readonly SettingsImportExport _io;
+
+    public SettingsBackupAdapter(IStorage storage, Profile profile)
+    {
+        _io = new SettingsImportExport(storage, profile);
+    }
+
+    public string ExportJson(bool includePersonalData = false)
+        => _io.ExportSettingsAsync(includePersonalData).GetAwaiter().GetResult();
+
+    public bool ImportJson(string json, bool overwrite = true)
+        => _io.ImportSettingsAsync(json, overwrite).GetAwaiter().GetResult();
 }

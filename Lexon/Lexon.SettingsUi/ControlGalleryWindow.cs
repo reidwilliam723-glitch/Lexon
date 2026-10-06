@@ -70,7 +70,14 @@ public sealed class ControlGalleryWindow : Window
             Func<AppSettings> liveSnapshot = services.LiveSnapshot
                 ?? (() => OwnedSettingsWriter.BuildLiveSnapshot(services.Profile ?? new Profile(), services.Pages));
 
-            _generalVm = new GeneralSettingsViewModel(services.Settings, services.Startup, services.Persist);
+            _generalVm = new GeneralSettingsViewModel(
+                services.Settings,
+                services.Startup,
+                services.Persist,
+                services.SettingsBackup,
+                services.FileDialogs,
+                services.Messages,
+                OnSettingsImported);
             _generalVm.OpenFullScreenChanged += OnOpenFullScreenChanged;
             _generalVm.PropertyChanged += OnSettingsPropertyChanged;
             _generalVm.UserEdited += () => OnPageUserEdited(_generalVm);
@@ -658,6 +665,25 @@ public sealed class ControlGalleryWindow : Window
 
         ReloadPage(_writingVm);
         _writingVm?.RefreshLearning();
+    }
+
+    private void OnSettingsImported()
+    {
+        if (_services == null)
+        {
+            return;
+        }
+
+        _services.Reload();
+        _generalVm?.Load();
+        _aiVm?.Load();
+        _privacyVm?.Load();
+        _appearanceVm?.Load();
+        _appToneVm?.Load();
+        _writingVm?.Load();
+        _writingVm?.RefreshLearning();
+        _services.ApplyLive?.Invoke();
+        _services.AfterSettingsImport?.Invoke();
     }
 
     private void ReloadCleanPages()

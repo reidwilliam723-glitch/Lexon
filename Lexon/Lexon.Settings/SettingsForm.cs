@@ -76,6 +76,8 @@ public partial class SettingsForm : Form
     private TextBox _txtGrammarMutedApps = null!;
     private Button _btnExportLearning = null!;
     private Button _btnImportLearning = null!;
+    private Button _btnExportSettings = null!;
+    private Button _btnImportSettings = null!;
     private Button _btnAiLog = null!;
     private TableLayoutPanel _layoutHost = null!;
     private FlowLayoutPanel _sectionGeneral = null!;
@@ -334,6 +336,22 @@ public partial class SettingsForm : Form
             "1 hour"
         });
         _cmbQuickPause.SelectedIndex = 3;
+        _btnExportSettings = new Button
+        {
+            Text = "Export settings…",
+            AutoSize = true,
+            Padding = new Padding(10, 4, 10, 4),
+            Margin = new Padding(0, 0, 8, 8)
+        };
+        _btnExportSettings.Click += OnExportSettingsClicked;
+        _btnImportSettings = new Button
+        {
+            Text = "Import settings…",
+            AutoSize = true,
+            Padding = new Padding(10, 4, 10, 4),
+            Margin = new Padding(0, 0, 0, 8)
+        };
+        _btnImportSettings.Click += OnImportSettingsClicked;
         _sectionGeneral = Section(
             "General",
             Hint(_chkAutoStart, "Launch Lexon when you sign in to Windows."),
@@ -341,7 +359,10 @@ public partial class SettingsForm : Form
             Hint(_chkCheckUpdates, "Asks before installing anything."),
             Hint(_chkOpenFullScreen, "Opens maximized so the three-column layout is used."),
             Caption("Double-press Ctrl pauses for"),
-            Hint(_cmbQuickPause, "How long Lexon stays off after you double-press Ctrl. It turns itself back on when the time is up, or sooner if you double-press Ctrl again."));
+            Hint(_cmbQuickPause, "How long Lexon stays off after you double-press Ctrl. It turns itself back on when the time is up, or sooner if you double-press Ctrl again."),
+            Caption("Backup"),
+            Hint(_btnExportSettings, "Save settings and app rules as a JSON file. Does not include API keys or learned data."),
+            Hint(_btnImportSettings, "Restore settings and app rules from a Lexon settings file. Learned vocabulary stays under Writing."));
 
         _lblAiRecommended = Caption("OpenAI (recommended)");
         _lnkMoreProviders = new LinkLabel
@@ -1226,6 +1247,63 @@ public partial class SettingsForm : Form
     {
             using var form = new WritingStatsForm(_personalization, _expansions, _themeManager);
             form.ShowDialog(this);
+    }
+
+    private void OnExportSettingsClicked(object? sender, EventArgs e)
+    {
+        using var dialog = new SaveFileDialog
+        {
+            Filter = "Lexon settings (*.json)|*.json",
+            FileName = "lexon-settings.json"
+        };
+        if (dialog.ShowDialog(this) != DialogResult.OK)
+        {
+            return;
+        }
+
+        try
+        {
+            var backup = new SettingsImportExport(_storage, _profile);
+            var json = backup.ExportSettingsAsync(includePersonalData: false).GetAwaiter().GetResult();
+            File.WriteAllText(dialog.FileName, json);
+            MessageBox.Show(this, "Settings exported.", "Export");
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            MessageBox.Show(this, "Couldn't save that file.", "Export");
+        }
+    }
+
+    private void OnImportSettingsClicked(object? sender, EventArgs e)
+    {
+        using var dialog = new OpenFileDialog { Filter = "Lexon settings (*.json)|*.json" };
+        if (dialog.ShowDialog(this) != DialogResult.OK)
+        {
+            return;
+        }
+
+        string json;
+        try
+        {
+            json = File.ReadAllText(dialog.FileName);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            MessageBox.Show(this, "Couldn't read that file.", "Import");
+            return;
+        }
+
+        var backup = new SettingsImportExport(_storage, _profile);
+        if (backup.ImportSettingsAsync(json, overwrite: true).GetAwaiter().GetResult())
+        {
+            LoadSettings();
+            _privacyGuard?.ReplaceBlockedApplications(_appSettings.BlockedApplications);
+            MessageBox.Show(this, "Settings imported.", "Import");
+        }
+        else
+        {
+            MessageBox.Show(this, "That file is not a valid Lexon settings export.", "Import");
+        }
     }
 
     private void OnExportLearningClicked(object? sender, EventArgs e)

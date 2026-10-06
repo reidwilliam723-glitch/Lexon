@@ -491,6 +491,19 @@ static class Program
             WritingDialogs = writingDialogs,
             FileDialogs = fileDialogs,
             Messages = messages,
+            SettingsBackup = new SettingsBackupAdapter(_composition.Storage, profile),
+            AfterSettingsImport = () =>
+            {
+                // Theme and AI live effects beyond ApplyGalleryLiveEffects.
+                var snap = new AppSettings();
+                snap.Read(profile);
+                _composition.ThemeManager?.SetTheme(snap.Theme);
+                _composition.AiAccessPolicy?.Update(
+                    snap.LocalMode,
+                    snap.AiSuggestionsWhileTyping,
+                    snap.AiRewriteOnRequest,
+                    snap.AiPrefetchOnSelection);
+            },
             AttachOwner = window =>
             {
                 var owner = WpfDialogOwner.From(window);

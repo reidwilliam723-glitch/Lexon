@@ -55,6 +55,10 @@ public sealed class GallerySettingsServices
 
     public IMessageService? Messages { get; init; }
 
+    public ISettingsBackupService? SettingsBackup { get; init; }
+
+    public Action? AfterSettingsImport { get; init; }
+
     public AiProbeSession? AiSession { get; init; }
 
     public IClipboardWatch? ClipboardWatch { get; init; }

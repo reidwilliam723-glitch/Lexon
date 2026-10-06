@@ -98,7 +98,31 @@
                     AutomationProperties.HelpText="How long Lexon stays off after you double-press Ctrl. It turns itself back on when the time is up, or sooner if you double-press Ctrl again."/>
           <TextBlock Text="How long Lexon stays off after you double-press Ctrl. It turns itself back on when the time is up, or sooner if you double-press Ctrl again."
                      TextWrapping="Wrap"
-                     Margin="0,4,0,0"
+                     Margin="0,4,0,12"
+                     Foreground="{DynamicResource TextSecondaryBrush}"
+                     FontFamily="{DynamicResource LexonFontFamily}"
+                     FontSize="{DynamicResource CaptionFontSize}"/>
+
+          <local:SectionHeader Title="Backup" Margin="0,8,0,12" IsTabStop="False"/>
+          <Button Content="Export settings…"
+                  HorizontalAlignment="Left" Margin="0,0,0,4"
+                  Click="OnExportSettings"
+                  Style="{DynamicResource SecondaryButton}"
+                  AutomationProperties.Name="Export settings…"
+                  AutomationProperties.HelpText="Save settings and app rules as a JSON file. Does not include API keys or learned data."/>
+          <TextBlock Text="Save settings and app rules as a JSON file. Does not include API keys or learned data."
+                     TextWrapping="Wrap" Margin="0,0,0,12"
+                     Foreground="{DynamicResource TextSecondaryBrush}"
+                     FontFamily="{DynamicResource LexonFontFamily}"
+                     FontSize="{DynamicResource CaptionFontSize}"/>
+          <Button Content="Import settings…"
+                  HorizontalAlignment="Left" Margin="0,0,0,4"
+                  Click="OnImportSettings"
+                  Style="{DynamicResource SecondaryButton}"
+                  AutomationProperties.Name="Import settings…"
+                  AutomationProperties.HelpText="Restore settings and app rules from a Lexon settings file."/>
+          <TextBlock Text="Restore settings and app rules from a Lexon settings file. Learned vocabulary stays on the Writing tab."
+                     TextWrapping="Wrap" Margin="0,0,0,0"
                      Foreground="{DynamicResource TextSecondaryBrush}"
                      FontFamily="{DynamicResource LexonFontFamily}"
                      FontSize="{DynamicResource CaptionFontSize}"/>

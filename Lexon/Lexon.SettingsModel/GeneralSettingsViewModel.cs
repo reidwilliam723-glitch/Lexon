@@ -6,6 +6,14 @@ namespace Lexon.SettingsModel;
 public sealed class GeneralSettingsViewModel : INotifyPropertyChanged, IOwnedSettingsPage
 {
     public const string StartupFailedMessage = "Couldn't change the Windows startup setting.";
+    public const string SettingsFilter = "Lexon settings (*.json)|*.json";
+    public const string DefaultSettingsFileName = "lexon-settings.json";
+    public const string ExportSuccessMessage = "Settings exported.";
+    public const string ImportSuccessMessage = "Settings imported.";
+    public const string ImportInvalidMessage = "That file is not a valid Lexon settings export.";
+    public const string SaveFailedMessage = "Couldn't save that file.";
+    public const string ReadFailedMessage = "Couldn't read that file.";
+    public const string BackupUnavailableMessage = "Settings backup is available while Lexon is running.";
 
     public static readonly string[] OwnedKeyList =
     [
@@ -28,6 +36,10 @@ public sealed class GeneralSettingsViewModel : INotifyPropertyChanged, IOwnedSet
     private readonly AppSettings _settings;
     private readonly IStartupRegistration _startup;
     private readonly PersistScheduler _persist;
+    private readonly ISettingsBackupService? _backup;
+    private readonly IFileDialogService? _files;
+    private readonly IMessageService? _messages;
+    private readonly Action? _afterImport;
 
     private bool _startWithWindows;
     private bool _minimizeToTray;
@@ -37,11 +49,22 @@ public sealed class GeneralSettingsViewModel : INotifyPropertyChanged, IOwnedSet
     private string _statusMessage = string.Empty;
     private bool _isDirty;
 
-    public GeneralSettingsViewModel(AppSettings settings, IStartupRegistration startup, PersistScheduler persist)
+    public GeneralSettingsViewModel(
+        AppSettings settings,
+        IStartupRegistration startup,
+        PersistScheduler persist,
+        ISettingsBackupService? backup = null,
+        IFileDialogService? files = null,
+        IMessageService? messages = null,
+        Action? afterImport = null)
     {
         _settings = settings ?? throw new ArgumentNullException(nameof(settings));
         _startup = startup ?? throw new ArgumentNullException(nameof(startup));
         _persist = persist ?? throw new ArgumentNullException(nameof(persist));
+        _backup = backup;
+        _files = files;
+        _messages = messages;
+        _afterImport = afterImport;
     }
 
     public IReadOnlyList<string> OwnedKeys => OwnedKeyList;
@@ -235,6 +258,78 @@ public sealed class GeneralSettingsViewModel : INotifyPropertyChanged, IOwnedSet
     }
 
     public void MarkClean() => _isDirty = false;
+
+    public void ExportSettings()
+    {
+        if (_backup == null)
+        {
+            _messages?.Info(BackupUnavailableMessage, "Export");
+            return;
+        }
+
+        if (_files == null)
+        {
+            return;
+        }
+
+        var path = _files.PickSavePath(SettingsFilter, DefaultSettingsFileName);
+        if (string.IsNullOrEmpty(path))
+        {
+            return;
+        }
+
+        try
+        {
+            File.WriteAllText(path, _backup.ExportJson(includePersonalData: false));
+            _messages?.Info(ExportSuccessMessage, "Export");
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            _messages?.Info(SaveFailedMessage, "Export");
+        }
+    }
+
+    public void ImportSettings()
+    {
+        if (_backup == null)
+        {
+            _messages?.Info(BackupUnavailableMessage, "Import");
+            return;
+        }
+
+        if (_files == null)
+        {
+            return;
+        }
+
+        var path = _files.PickOpenPath(SettingsFilter);
+        if (string.IsNullOrEmpty(path))
+        {
+            return;
+        }
+
+        string json;
+        try
+        {
+            json = File.ReadAllText(path);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            _messages?.Info(ReadFailedMessage, "Import");
+            return;
+        }
+
+        if (_backup.ImportJson(json, overwrite: true))
+        {
+            _afterImport?.Invoke();
+            Load();
+            _messages?.Info(ImportSuccessMessage, "Import");
+        }
+        else
+        {
+            _messages?.Info(ImportInvalidMessage, "Import");
+        }
+    }
 
     private void MarkDirtyAndSchedule()
     {
