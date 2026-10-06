@@ -140,11 +140,13 @@ public static class LexonServiceComposer
         suggestionPipeline.SetSortMode(suggestionSortMode);
         suggestionPipeline.SetAccessPolicy(accessPolicy);
         suggestionPipeline.SetActivityLog(cloudAiLog);
-        suggestionPipeline.AddProvider(new TypoSuggestionProvider());
-        suggestionPipeline.AddProvider(new GrammarSuggestionProvider
+        var typoSuggestionProvider = new TypoSuggestionProvider();
+        suggestionPipeline.AddProvider(typoSuggestionProvider);
+        var grammarSuggestionProvider = new GrammarSuggestionProvider
         {
             IsEnabled = () => profile.GetSetting("GrammarChecking", true)
-        });
+        };
+        suggestionPipeline.AddProvider(grammarSuggestionProvider);
         suggestionPipeline.AddProvider(new DictionarySuggestionProvider(storage));
 
         // Add AI provider if available
@@ -171,6 +173,31 @@ public static class LexonServiceComposer
         var keyboardListener = new KeyboardListener();
         var focusTracker = new FocusTracker();
         var textInjector = new TextInjector();
+
+        IEnumerable<string> ResolveProtectedTerms(string? processName)
+            => TerminologyList.ResolveTerms(
+                processName,
+                profile.GetSetting<List<string>>("CustomTerminology", []),
+                profile.GetSetting<List<string>>("AppTerminologyOverrides", []));
+
+        Func<string, bool> skipProtectedOrForeign = word =>
+        {
+            var ctx = focusTracker.GetCurrentContext();
+            var app = ctx.ApplicationName;
+            if (TerminologyList.IsProtected(word, ResolveProtectedTerms(app), null))
+            {
+                return true;
+            }
+
+            return profile.GetSetting("AllowCodeSwitching", true)
+                   && ScriptLanguageGuard.ShouldSkipSpelling(word, ctx.FullText);
+        };
+        typoSuggestionProvider.IsProtectedWord = word =>
+            TerminologyList.IsProtected(
+                word,
+                ResolveProtectedTerms(focusTracker.GetCurrentContext().ApplicationName),
+                null);
+        grammarSuggestionProvider.SkipSpellingWord = skipProtectedOrForeign;
 
         // Initialize overlay (shared theme host wired to core ThemeManager)
         var overlayThemeHost = new OverlayThemeHost(themeManager);
@@ -255,7 +282,8 @@ public static class LexonServiceComposer
             grammarOverlay,
             () => profile.GetSetting("AutoCorrectTypos", true),
             personalizationManager,
-            () => profile.GetSetting("AllowCodeSwitching", true)
+            () => profile.GetSetting("AllowCodeSwitching", true),
+            ResolveProtectedTerms
         );
 
         lexonService.AttachWritingEnhancement(selectionRewrite, grammarCheck, mouseListener);

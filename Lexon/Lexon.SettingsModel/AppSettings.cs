@@ -35,6 +35,8 @@ public sealed class AppSettings
     public const string EnableGrammarHotkeyKey = "EnableGrammarHotkey";
     public const string GrammarMutedAppsKey = "GrammarMutedApps";
     public const string AppCategoryOverridesKey = "AppCategoryOverrides";
+    public const string CustomTerminologyKey = "CustomTerminology";
+    public const string AppTerminologyOverridesKey = "AppTerminologyOverrides";
 
     public bool MinimizeToTray { get; set; } = true;
     public bool EnableAutoUpdates { get; set; } = true;
@@ -63,6 +65,8 @@ public sealed class AppSettings
     public bool EnableGrammarHotkey { get; set; } = true;
     public List<string> GrammarMutedApps { get; set; } = [];
     public List<string> AppCategoryOverrides { get; set; } = [];
+    public List<string> CustomTerminology { get; set; } = [];
+    public List<string> AppTerminologyOverrides { get; set; } = [];
 
     public void Read(Profile profile)
     {
@@ -96,6 +100,8 @@ public sealed class AppSettings
         EnableGrammarHotkey = profile.GetSetting(EnableGrammarHotkeyKey, true);
         GrammarMutedApps = profile.GetSetting<List<string>>(GrammarMutedAppsKey, []) ?? [];
         AppCategoryOverrides = profile.GetSetting<List<string>>(AppCategoryOverridesKey, []) ?? [];
+        CustomTerminology = profile.GetSetting<List<string>>(CustomTerminologyKey, []) ?? [];
+        AppTerminologyOverrides = profile.GetSetting<List<string>>(AppTerminologyOverridesKey, []) ?? [];
     }
 
     public void Write(Profile profile)
@@ -128,7 +134,9 @@ public sealed class AppSettings
             AllowCodeSwitchingKey,
             EnableGrammarHotkeyKey,
             GrammarMutedAppsKey,
-            AppCategoryOverridesKey);
+            AppCategoryOverridesKey,
+            CustomTerminologyKey,
+            AppTerminologyOverridesKey);
     }
 
     /// <summary>
@@ -221,6 +229,12 @@ public sealed class AppSettings
                     break;
                 case AppCategoryOverridesKey:
                     profile.SetSetting(key, AppCategoryOverrides);
+                    break;
+                case CustomTerminologyKey:
+                    profile.SetSetting(key, CustomTerminology);
+                    break;
+                case AppTerminologyOverridesKey:
+                    profile.SetSetting(key, AppTerminologyOverrides);
                     break;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(keys), key, "Unknown settings key.");

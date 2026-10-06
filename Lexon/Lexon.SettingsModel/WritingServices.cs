@@ -29,6 +29,11 @@ public interface IWritingDialogs
     void ShowWritingStats();
 
     void ShowLearnedWords();
+
+    void ShowTerminology(
+        IReadOnlyList<string> globalTerms,
+        IReadOnlyList<string> appOverrideRows,
+        Action<IReadOnlyList<string>, IReadOnlyList<string>> onApply);
 }
 
 public interface IFileDialogService

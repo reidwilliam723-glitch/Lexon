@@ -28,6 +28,30 @@ public class TypoAutoCorrectTests
     }
 
     [Fact]
+    public void ProtectedTerminology_IsNotAutoCorrected()
+    {
+        Assert.False(TypoAutoCorrect.TryGetCorrection(
+            "teh",
+            enabled: true,
+            learnedWords: [],
+            out _,
+            protectedTerms: ["teh"]));
+        Assert.False(TypoAutoCorrect.TryGetCorrection(
+            "Teh",
+            enabled: true,
+            learnedWords: [],
+            out _,
+            protectedTerms: ["TEH"]));
+        Assert.True(TypoAutoCorrect.TryGetCorrection(
+            "teh",
+            enabled: true,
+            learnedWords: [],
+            out var correction,
+            protectedTerms: ["Lexon"]));
+        Assert.Equal("the", correction);
+    }
+
+    [Fact]
     public void UnknownWord_IsNotCorrected()
     {
         Assert.False(TypoAutoCorrect.TryGetCorrection("hello", enabled: true, learnedWords: [], out _));

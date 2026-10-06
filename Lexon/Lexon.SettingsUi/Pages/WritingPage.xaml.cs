@@ -23,6 +23,9 @@ public partial class WritingPage : UserControl
     private void OnLearnedWords(object sender, RoutedEventArgs e)
         => (DataContext as WritingViewModel)?.ShowLearnedWords();
 
+    private void OnTerminology(object sender, RoutedEventArgs e)
+        => (DataContext as WritingViewModel)?.ShowTerminology();
+
     private void OnExport(object sender, RoutedEventArgs e)
         => (DataContext as WritingViewModel)?.ExportLearning();
 

@@ -12,6 +12,8 @@ public sealed class GrammarSuggestionProvider : ISuggestionProvider
     public bool IsFastPath => true;
     public Func<bool>? IsEnabled { get; set; }
 
+    public Func<string, bool>? SkipSpellingWord { get; set; }
+
     public Task<IEnumerable<Suggestion>> GetSuggestionsAsync(TextContext context, CancellationToken cancellationToken = default)
     {
         if (IsEnabled != null && !IsEnabled())
@@ -19,7 +21,9 @@ public sealed class GrammarSuggestionProvider : ISuggestionProvider
             return Task.FromResult(Enumerable.Empty<Suggestion>());
         }
 
-        IEnumerable<Suggestion> suggestions = GrammarSuggestionMapper.Suggest(context);
+        IEnumerable<Suggestion> suggestions = GrammarSuggestionMapper.Suggest(
+            context,
+            skipSpellingWord: SkipSpellingWord);
         return Task.FromResult(suggestions);
     }
 }

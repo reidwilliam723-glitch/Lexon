@@ -138,6 +138,20 @@ internal sealed class WritingDialogsAdapter : IWritingDialogs
         Show(form);
     }
 
+    public void ShowTerminology(
+        IReadOnlyList<string> globalTerms,
+        IReadOnlyList<string> appOverrideRows,
+        Action<IReadOnlyList<string>, IReadOnlyList<string>> onApply)
+    {
+        using var form = new TerminologyForm(globalTerms, appOverrideRows, _themes);
+        var owner = Owner?.Invoke();
+        var result = owner != null ? form.ShowDialog(owner) : form.ShowDialog();
+        if (result == DialogResult.OK)
+        {
+            onApply(form.GlobalTerms, form.AppOverrideRows);
+        }
+    }
+
     private void Show(Form form)
     {
         var owner = Owner?.Invoke();

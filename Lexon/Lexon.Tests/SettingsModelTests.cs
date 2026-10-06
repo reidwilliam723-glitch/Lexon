@@ -40,7 +40,9 @@ public class AppSettingsRoundTripTests
             AutoCorrectTypos = false,
             EnableGrammarHotkey = false,
             GrammarMutedApps = ["discord.exe"],
-            AppCategoryOverrides = ["slack.exe|Casual"]
+            AppCategoryOverrides = ["slack.exe|Casual"],
+            CustomTerminology = ["Lexon", "Kube"],
+            AppTerminologyOverrides = ["code.exe|Dotnet"]
         };
         source.Write(profile);
 
@@ -72,6 +74,8 @@ public class AppSettingsRoundTripTests
         Assert.Equal(source.EnableGrammarHotkey, loaded.EnableGrammarHotkey);
         Assert.Equal(source.GrammarMutedApps, loaded.GrammarMutedApps);
         Assert.Equal(source.AppCategoryOverrides, loaded.AppCategoryOverrides);
+        Assert.Equal(source.CustomTerminology, loaded.CustomTerminology);
+        Assert.Equal(source.AppTerminologyOverrides, loaded.AppTerminologyOverrides);
 
         Assert.True(profile.HasSetting(AppSettings.MinimizeToTrayKey));
         Assert.True(profile.HasSetting(AppSettings.EnableAutoUpdatesKey));
@@ -98,6 +102,8 @@ public class AppSettingsRoundTripTests
         Assert.True(profile.HasSetting(AppSettings.EnableGrammarHotkeyKey));
         Assert.True(profile.HasSetting(AppSettings.GrammarMutedAppsKey));
         Assert.True(profile.HasSetting(AppSettings.AppCategoryOverridesKey));
+        Assert.True(profile.HasSetting(AppSettings.CustomTerminologyKey));
+        Assert.True(profile.HasSetting(AppSettings.AppTerminologyOverridesKey));
     }
 
     [Fact]

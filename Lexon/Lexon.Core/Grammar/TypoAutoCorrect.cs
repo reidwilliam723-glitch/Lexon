@@ -11,7 +11,8 @@ public static class TypoAutoCorrect
         bool enabled,
         IEnumerable<string>? learnedWords,
         out string correction,
-        bool allowCodeSwitching = true)
+        bool allowCodeSwitching = true,
+        IEnumerable<string>? protectedTerms = null)
     {
         correction = string.Empty;
         if (!enabled || string.IsNullOrWhiteSpace(completedWord))
@@ -30,8 +31,7 @@ public static class TypoAutoCorrect
             return false;
         }
 
-        if (learnedWords != null
-            && learnedWords.Any(word => word.Equals(completedWord, StringComparison.OrdinalIgnoreCase)))
+        if (IsListed(completedWord, learnedWords) || IsListed(completedWord, protectedTerms))
         {
             return false;
         }
@@ -39,6 +39,10 @@ public static class TypoAutoCorrect
         correction = PreserveShape(completedWord, raw);
         return true;
     }
+
+    private static bool IsListed(string completedWord, IEnumerable<string>? words)
+        => words != null
+           && words.Any(word => word.Equals(completedWord, StringComparison.OrdinalIgnoreCase));
 
     public static (int DeleteCount, string InsertText) GetEdit(string completedWord, string correction, char separator)
         => (completedWord.Length + 1, correction + separator);

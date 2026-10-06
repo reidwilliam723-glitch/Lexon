@@ -45,6 +45,18 @@
                      FontFamily="{DynamicResource LexonFontFamily}"
                      FontSize="{DynamicResource CaptionFontSize}"/>
 
+          <Button Content="Manage terminology…"
+                  HorizontalAlignment="Left" Margin="0,0,0,4"
+                  Click="OnTerminology"
+                  Style="{DynamicResource SecondaryButton}"
+                  AutomationProperties.Name="Manage terminology…"
+                  AutomationProperties.HelpText="Names and product terms protected from autocorrect and spelling."/>
+          <TextBlock Text="Names and product terms protected from autocorrect and spelling."
+                     TextWrapping="Wrap" Margin="0,0,0,12"
+                     Foreground="{DynamicResource TextSecondaryBrush}"
+                     FontFamily="{DynamicResource LexonFontFamily}"
+                     FontSize="{DynamicResource CaptionFontSize}"/>
+
           <Button Content="Export learned data…"
                   HorizontalAlignment="Left" Margin="0,0,0,4"
                   Click="OnExport"

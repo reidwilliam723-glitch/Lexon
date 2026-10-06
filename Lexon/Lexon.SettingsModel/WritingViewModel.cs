@@ -27,7 +27,9 @@ public sealed class WritingViewModel : INotifyPropertyChanged, IOwnedSettingsPag
         AppSettings.MuteGrammarForCasualAppsKey,
         AppSettings.GrammarMutedAppsKey,
         AppSettings.EnableRewriteHotkeyKey,
-        AppSettings.EnableGrammarHotkeyKey
+        AppSettings.EnableGrammarHotkeyKey,
+        AppSettings.CustomTerminologyKey,
+        AppSettings.AppTerminologyOverridesKey
     ];
 
     public static IReadOnlyList<string> SensitivityLabels { get; } = ["Low", "Medium", "High"];
@@ -290,6 +292,8 @@ public sealed class WritingViewModel : INotifyPropertyChanged, IOwnedSettingsPag
         target.GrammarMutedApps = BlockedAppList.ParseMutedGrammar(_mutedAppsText);
         target.EnableRewriteHotkey = _enableRewriteHotkey;
         target.EnableGrammarHotkey = _enableGrammarHotkey;
+        target.CustomTerminology = [.. _settings.CustomTerminology ?? []];
+        target.AppTerminologyOverrides = [.. _settings.AppTerminologyOverrides ?? []];
     }
 
     public void MarkClean() => _isDirty = false;
@@ -297,6 +301,19 @@ public sealed class WritingViewModel : INotifyPropertyChanged, IOwnedSettingsPag
     public void ShowWritingStats() => _dialogs?.ShowWritingStats();
 
     public void ShowLearnedWords() => _dialogs?.ShowLearnedWords();
+
+    public void ShowTerminology()
+    {
+        _dialogs?.ShowTerminology(
+            _settings.CustomTerminology ?? [],
+            _settings.AppTerminologyOverrides ?? [],
+            (global, appRows) =>
+            {
+                _settings.CustomTerminology = global.ToList();
+                _settings.AppTerminologyOverrides = appRows.ToList();
+                MarkDirtyAndSchedule();
+            });
+    }
 
     public void ExportLearning()
     {

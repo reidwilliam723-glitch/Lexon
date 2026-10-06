@@ -360,6 +360,13 @@ public class WritingAppTonePageTests
         public void ShowLearnedWords()
         {
         }
+
+        public void ShowTerminology(
+            IReadOnlyList<string> globalTerms,
+            IReadOnlyList<string> appOverrideRows,
+            Action<IReadOnlyList<string>, IReadOnlyList<string>> onApply)
+        {
+        }
     }
 
     private sealed class FakeFiles : IFileDialogService

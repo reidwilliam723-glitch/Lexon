@@ -69,6 +69,7 @@ public partial class SettingsForm : Form
     private ListBox _lstAppTone = null!;
     private Button _btnWritingStats = null!;
     private Button _btnLearnedWords = null!;
+    private Button _btnTerminology = null!;
     private Label _lblStyleSummary = null!;
     private Button _btnResetStyle = null!;
     private ListBox _lstAdaptations = null!;
@@ -552,9 +553,17 @@ public partial class SettingsForm : Form
             Text = "Manage learned words…",
             AutoSize = true,
             Padding = new Padding(12, 6, 12, 6),
-            Margin = new Padding(0, 4, 0, 16)
+            Margin = new Padding(0, 4, 0, 8)
         };
         _btnLearnedWords.Click += OnLearnedWordsClicked;
+        _btnTerminology = new Button
+        {
+            Text = "Manage terminology…",
+            AutoSize = true,
+            Padding = new Padding(12, 6, 12, 6),
+            Margin = new Padding(0, 4, 0, 16)
+        };
+        _btnTerminology.Click += OnTerminologyClicked;
         _btnExportLearning = new Button
         {
             Text = "Export learned data…",
@@ -598,6 +607,7 @@ public partial class SettingsForm : Form
             "Writing",
             Hint(_btnWritingStats, "Words, pace, and style collected while you type."),
             Hint(_btnLearnedWords, "Vocabulary Lexon learned from you."),
+            Hint(_btnTerminology, "Names and product terms protected from autocorrect and spelling."),
             Hint(_btnExportLearning, "Save learned vocabulary and style as a JSON file."),
             Hint(_btnImportLearning, "Restore learned vocabulary and style from a JSON file."),
             Caption("Detected writing style"),
@@ -1389,6 +1399,22 @@ public partial class SettingsForm : Form
     {
             using var form = new LearnedWordsForm(_suggestionPipeline, _themeManager);
             form.ShowDialog(this);
+    }
+
+    private void OnTerminologyClicked(object? sender, EventArgs e)
+    {
+        using var form = new TerminologyForm(
+            _appSettings.CustomTerminology,
+            _appSettings.AppTerminologyOverrides,
+            _themeManager);
+        if (form.ShowDialog(this) != DialogResult.OK)
+        {
+            return;
+        }
+
+        _appSettings.CustomTerminology = form.GlobalTerms.ToList();
+        _appSettings.AppTerminologyOverrides = form.AppOverrideRows.ToList();
+        ApplyNow();
     }
 
     private void RefreshLearnedUi()

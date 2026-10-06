@@ -277,11 +277,14 @@ public sealed class GrammarCheckService
         _sourceText = text;
         _sourceWasSelection = useSelection && !string.IsNullOrWhiteSpace(selected);
         var sensitivity = _profile.GetSetting("GrammarSensitivity", "Medium");
-        Func<string, bool>? skipSpellingWord = null;
-        if (_profile.GetSetting("AllowCodeSwitching", true))
-        {
-            skipSpellingWord = word => ScriptLanguageGuard.ShouldSkipSpelling(word, text);
-        }
+        var protectedTerms = TerminologyList.ResolveTerms(
+            context.ApplicationName,
+            _profile.GetSetting<List<string>>("CustomTerminology", []),
+            _profile.GetSetting<List<string>>("AppTerminologyOverrides", []));
+        var allowCodeSwitching = _profile.GetSetting("AllowCodeSwitching", true);
+        Func<string, bool> skipSpellingWord = word =>
+            TerminologyList.IsProtected(word, protectedTerms, null)
+            || (allowCodeSwitching && ScriptLanguageGuard.ShouldSkipSpelling(word, text));
 
         var found = RuleBasedGrammarChecker.Find(text, sensitivity, skipSpellingWord).ToList();
         var consistencyOn = _profile.GetSetting("DocumentConsistencyChecking", true);
@@ -318,7 +321,8 @@ public sealed class GrammarCheckService
             var trailing = GrammarSuggestionMapper.TrailingMatches(
                 fingerprint,
                 sensitivity,
-                includeConsistency: consistencyOn);
+                includeConsistency: consistencyOn,
+                skipSpellingWord: skipSpellingWord);
             if (trailing.Count == 0 && _matches.Count > 0)
             {
                 trailing = _matches

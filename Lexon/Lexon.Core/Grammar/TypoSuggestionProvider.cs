@@ -11,11 +11,17 @@ public sealed class TypoSuggestionProvider : ISuggestionProvider
     public string Name => "Spelling";
     public bool IsFastPath => true;
 
+    /// <summary>
+    /// When set, returns true for custom terminology that must not be offered as a typo fix.
+    /// </summary>
+    public Func<string, bool>? IsProtectedWord { get; set; }
+
     public Task<IEnumerable<Suggestion>> GetSuggestionsAsync(TextContext context, CancellationToken cancellationToken = default)
     {
         var word = context.CurrentWord ?? string.Empty;
         if (word.Length < 2
             || ScriptLanguageGuard.ShouldSkipSpelling(word, context.FullText)
+            || IsProtectedWord?.Invoke(word) == true
             || !CommonMisspellings.TryCorrect(word, out var correction))
         {
             return Task.FromResult(Enumerable.Empty<Suggestion>());

@@ -33,7 +33,9 @@ public class SettingsImportExportTests : IDisposable
             AIKeyValidated = true,
             MinimizeToTray = false,
             BlockedApplications = ["putty"],
-            AppCategoryOverrides = ["notepad=Casual"]
+            AppCategoryOverrides = ["notepad=Casual"],
+            CustomTerminology = ["Lexon"],
+            AppTerminologyOverrides = ["code.exe|Kube"]
         };
         settings.Write(profile);
         await profile.SaveAsync();
@@ -44,6 +46,8 @@ public class SettingsImportExportTests : IDisposable
         Assert.DoesNotContain("sk-secret-must-not-export", json, StringComparison.Ordinal);
         Assert.Contains("BlockedApplications", json, StringComparison.Ordinal);
         Assert.Contains("AppCategoryOverrides", json, StringComparison.Ordinal);
+        Assert.Contains("CustomTerminology", json, StringComparison.Ordinal);
+        Assert.Contains("AppTerminologyOverrides", json, StringComparison.Ordinal);
         Assert.Contains("MinimizeToTray", json, StringComparison.Ordinal);
     }
 

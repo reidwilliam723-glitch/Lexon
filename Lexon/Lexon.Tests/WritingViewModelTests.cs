@@ -34,7 +34,9 @@ public class WritingViewModelTests
                 AppSettings.MuteGrammarForCasualAppsKey,
                 AppSettings.GrammarMutedAppsKey,
                 AppSettings.EnableRewriteHotkeyKey,
-                AppSettings.EnableGrammarHotkeyKey
+                AppSettings.EnableGrammarHotkeyKey,
+                AppSettings.CustomTerminologyKey,
+                AppSettings.AppTerminologyOverridesKey
             },
             WritingViewModel.OwnedKeyList);
         Assert.True(vm.DocumentConsistencyChecking);
@@ -156,6 +158,30 @@ public class WritingViewModelTests
         Assert.Equal(new[] { "chat.exe" }, loaded.GrammarMutedApps);
         Assert.False(loaded.EnableRewriteHotkey);
         Assert.False(loaded.EnableGrammarHotkey);
+    }
+
+    [Fact]
+    public void ShowTerminology_UpdatesSettingsAndOwnedKeys()
+    {
+        var profile = new SpyingProfile();
+        var settings = new AppSettings();
+        WritingViewModel vm = null!;
+        var persist = new PersistScheduler(() => OwnedSettingsWriter.Flush(profile, vm));
+        var dialogs = new ApplyingTerminologyDialogs();
+        vm = new WritingViewModel(settings, persist, dialogs: dialogs);
+        vm.Load();
+        Assert.False(vm.IsDirty);
+
+        vm.ShowTerminology();
+
+        Assert.Equal(["Lexon"], settings.CustomTerminology);
+        Assert.Equal(["code.exe|Kube"], settings.AppTerminologyOverrides);
+        Assert.True(vm.IsDirty);
+        persist.Flush();
+        Assert.Contains(AppSettings.CustomTerminologyKey, profile.Written);
+        Assert.Contains(AppSettings.AppTerminologyOverridesKey, profile.Written);
+        Assert.Equal(["Lexon"], profile.GetSetting<List<string>>(AppSettings.CustomTerminologyKey, []));
+        Assert.Equal(["code.exe|Kube"], profile.GetSetting<List<string>>(AppSettings.AppTerminologyOverridesKey, []));
     }
 
     [Fact]
@@ -343,6 +369,25 @@ public class WritingViewModelTests
         {
             Written.Add(key);
             base.SetSetting(key, value);
+        }
+    }
+
+    private sealed class ApplyingTerminologyDialogs : IWritingDialogs
+    {
+        public void ShowWritingStats()
+        {
+        }
+
+        public void ShowLearnedWords()
+        {
+        }
+
+        public void ShowTerminology(
+            IReadOnlyList<string> globalTerms,
+            IReadOnlyList<string> appOverrideRows,
+            Action<IReadOnlyList<string>, IReadOnlyList<string>> onApply)
+        {
+            onApply(["Lexon"], ["code.exe|Kube"]);
         }
     }
 
