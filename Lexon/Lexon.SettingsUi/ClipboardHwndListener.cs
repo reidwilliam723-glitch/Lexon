@@ -12,8 +12,16 @@ public sealed class ClipboardHwndListener : IDisposable
 
     public event EventHandler? ClipboardUpdated;
 
+    /// <summary>Test counter: WM_CLIPBOARDUPDATE messages received while attached.</summary>
+    public int ClipboardMessagesSeen { get; private set; }
+
     public void Attach(Window window)
     {
+        if (_listening && _source != null)
+        {
+            return;
+        }
+
         Detach();
         _source = (HwndSource?)PresentationSource.FromVisual(window) ?? HwndSource.FromHwnd(new WindowInteropHelper(window).EnsureHandle());
         if (_source == null)
@@ -30,6 +38,11 @@ public sealed class ClipboardHwndListener : IDisposable
 
     public void Detach()
     {
+        if (_source == null && !_listening)
+        {
+            return;
+        }
+
         if (_source != null)
         {
             if (_listening)
@@ -50,6 +63,7 @@ public sealed class ClipboardHwndListener : IDisposable
     {
         if (msg == WmClipboardUpdate)
         {
+            ClipboardMessagesSeen++;
             ClipboardUpdated?.Invoke(this, EventArgs.Empty);
         }
 

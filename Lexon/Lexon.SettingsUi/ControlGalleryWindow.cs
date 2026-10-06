@@ -55,7 +55,6 @@ public sealed class ControlGalleryWindow : Window
         SetResourceReference(BackgroundProperty, "BackgroundBrush");
         SetResourceReference(ForegroundProperty, "TextBrush");
         PreviewKeyDown += OnPreviewKeyDown;
-        Loaded += OnLoaded;
         IsVisibleChanged += OnIsVisibleChanged;
         Activated += OnActivated;
         Deactivated += OnDeactivated;
@@ -82,7 +81,7 @@ public sealed class ControlGalleryWindow : Window
                 && services.UrlLauncher != null
                 && services.DelayScheduler != null)
             {
-                var clipboardWatch = services.ClipboardWatch ?? new GalleryClipboardWatch(_clipboard);
+                var clipboardWatch = services.ClipboardWatch ?? new GalleryClipboardWatch(_clipboard, this);
                 _aiVm = new AiSettingsViewModel(
                     services.Settings,
                     services.Persist,
@@ -200,6 +199,8 @@ public sealed class ControlGalleryWindow : Window
     internal GeneralSettingsViewModel? GeneralViewModel => _generalVm;
 
     internal AiSettingsViewModel? AiViewModel => _aiVm;
+
+    internal ClipboardHwndListener ClipboardListener => _clipboard;
 
     internal AppearanceSettingsViewModel? AppearanceViewModel => _appearanceVm;
 
@@ -568,11 +569,6 @@ public sealed class ControlGalleryWindow : Window
             _themes?.SetTheme(name);
         };
         return button;
-    }
-
-    private void OnLoaded(object sender, RoutedEventArgs e)
-    {
-        _clipboard.Attach(this);
     }
 
     private void OnIsVisibleChanged(object sender, DependencyPropertyChangedEventArgs e)
