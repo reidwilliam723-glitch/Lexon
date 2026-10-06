@@ -32,6 +32,8 @@ public sealed class AppToneViewModel : INotifyPropertyChanged, IOwnedSettingsPag
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
+    public event Action? UserEdited;
+
     public ObservableCollection<string> Rows => _rows;
 
     public int SelectedRowIndex
@@ -179,6 +181,7 @@ public sealed class AppToneViewModel : INotifyPropertyChanged, IOwnedSettingsPag
             .ToList();
         _isDirty = true;
         _persist.Schedule(DateTime.UtcNow);
+        UserEdited?.Invoke();
         // Tone is read from the profile at run time (AppCategoryMapper.ParseOverrides);
         // Program tray indicator and SelectionRewriteService do not cache overrides.
     }

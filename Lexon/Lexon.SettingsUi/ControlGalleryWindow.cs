@@ -73,6 +73,7 @@ public sealed class ControlGalleryWindow : Window
             _generalVm = new GeneralSettingsViewModel(services.Settings, services.Startup, services.Persist);
             _generalVm.OpenFullScreenChanged += OnOpenFullScreenChanged;
             _generalVm.PropertyChanged += OnSettingsPropertyChanged;
+            _generalVm.UserEdited += () => OnPageUserEdited(_generalVm);
             _generalPage = new GeneralPage(_generalVm);
             services.Pages.Add(_generalVm);
 
@@ -94,6 +95,7 @@ public sealed class ControlGalleryWindow : Window
                     liveSnapshot,
                     action => Dispatcher.BeginInvoke(action));
                 _aiVm.PropertyChanged += OnSettingsPropertyChanged;
+                _aiVm.UserEdited += () => OnPageUserEdited(_aiVm);
                 _aiPage = new AiPage(_aiVm);
                 services.Pages.Add(_aiVm);
             }
@@ -109,6 +111,7 @@ public sealed class ControlGalleryWindow : Window
                     services.Reload,
                     liveSnapshot);
                 _privacyVm.PropertyChanged += OnSettingsPropertyChanged;
+                _privacyVm.UserEdited += () => OnPageUserEdited(_privacyVm);
                 if (_aiVm != null)
                 {
                     _privacyVm.LocalOnlyChanged += local => _aiVm.OnLocalOnlyChanged(local);
@@ -122,6 +125,7 @@ public sealed class ControlGalleryWindow : Window
             {
                 _appearanceVm = new AppearanceSettingsViewModel(services.Settings, services.Persist, services.ThemeSwitcher);
                 _appearanceVm.PropertyChanged += OnSettingsPropertyChanged;
+                _appearanceVm.UserEdited += () => OnPageUserEdited(_appearanceVm);
                 _appearancePage = new AppearancePage(_appearanceVm);
                 services.Pages.Add(_appearanceVm);
             }
@@ -130,6 +134,7 @@ public sealed class ControlGalleryWindow : Window
             {
                 _appToneVm = new AppToneViewModel(services.Settings, services.Persist, services.ProcessPicker);
                 _appToneVm.PropertyChanged += OnSettingsPropertyChanged;
+                _appToneVm.UserEdited += () => OnPageUserEdited(_appToneVm);
                 _appTonePage = new AppTonePage(_appToneVm);
                 services.Pages.Add(_appToneVm);
             }
@@ -144,6 +149,7 @@ public sealed class ControlGalleryWindow : Window
                     services.FileDialogs,
                     services.Messages);
                 _writingVm.PropertyChanged += OnSettingsPropertyChanged;
+                _writingVm.UserEdited += () => OnPageUserEdited(_writingVm);
                 _writingPage = new WritingPage(_writingVm);
                 services.Pages.Add(_writingVm);
             }
@@ -745,6 +751,26 @@ public sealed class ControlGalleryWindow : Window
         WindowState = open ? WindowState.Maximized : WindowState.Normal;
     }
 
+    private void OnPageUserEdited(IOwnedSettingsPage page)
+    {
+        if (_services == null || _services.Persist.IsLoading)
+        {
+            return;
+        }
+
+        // AI publishes its own policy; other pages apply live effects immediately
+        // with the dirty snapshot (new value already overlaid).
+        if (page is not AiSettingsViewModel)
+        {
+            _services.ApplyLive?.Invoke();
+        }
+
+        if (IsVisible)
+        {
+            _persistTimer?.Start();
+        }
+    }
+
     private void OnSettingsPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (_services == null || _services.Persist.IsLoading)
@@ -772,12 +798,7 @@ public sealed class ControlGalleryWindow : Window
             return;
         }
 
-        // AI page publishes policy itself; still schedule persist for dirty pages.
-        if (sender is not AiSettingsViewModel)
-        {
-            _services.ApplyLive?.Invoke();
-        }
-
+        // Live effects are applied from UserEdited (dirty already true).
         if (IsVisible)
         {
             _persistTimer?.Start();

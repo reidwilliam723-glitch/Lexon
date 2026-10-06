@@ -70,6 +70,8 @@ public sealed class WritingViewModel : INotifyPropertyChanged, IOwnedSettingsPag
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
+    public event Action? UserEdited;
+
     public ObservableCollection<AdaptationItem> Adaptations => _adaptations;
 
     public bool GrammarChecking
@@ -101,14 +103,15 @@ public sealed class WritingViewModel : INotifyPropertyChanged, IOwnedSettingsPag
             }
 
             _sensitivityIndex = index;
-            OnPropertyChanged();
             if (_persist.IsLoading)
             {
+                OnPropertyChanged();
                 return;
             }
 
             _settings.GrammarSensitivity = SensitivityLabels[index];
             MarkDirtyAndSchedule();
+            OnPropertyChanged();
         }
     }
 
@@ -129,14 +132,15 @@ public sealed class WritingViewModel : INotifyPropertyChanged, IOwnedSettingsPag
             }
 
             _mutedAppsText = value ?? string.Empty;
-            OnPropertyChanged();
             if (_persist.IsLoading)
             {
+                OnPropertyChanged();
                 return;
             }
 
             _settings.GrammarMutedApps = BlockedAppList.ParseMutedGrammar(_mutedAppsText);
             MarkDirtyAndSchedule();
+            OnPropertyChanged();
         }
     }
 
@@ -383,20 +387,22 @@ public sealed class WritingViewModel : INotifyPropertyChanged, IOwnedSettingsPag
         }
 
         field = value;
-        OnPropertyChanged(name);
         if (_persist.IsLoading)
         {
+            OnPropertyChanged(name);
             return;
         }
 
         apply(value);
         MarkDirtyAndSchedule();
+        OnPropertyChanged(name);
     }
 
     private void MarkDirtyAndSchedule()
     {
         _isDirty = true;
         _persist.Schedule(DateTime.UtcNow);
+        UserEdited?.Invoke();
     }
 
     private static int IndexOfSensitivity(string? value)

@@ -119,6 +119,8 @@ public sealed class AiSettingsViewModel : INotifyPropertyChanged, IOwnedSettings
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
+    public event Action? UserEdited;
+
     public ObservableCollection<string> Models => _models;
 
     public bool AdvancedVisible
@@ -573,6 +575,7 @@ public sealed class AiSettingsViewModel : INotifyPropertyChanged, IOwnedSettings
     {
         _isDirty = true;
         _persist.Schedule(DateTime.UtcNow);
+        UserEdited?.Invoke();
     }
 
     private void OnSessionPersist()

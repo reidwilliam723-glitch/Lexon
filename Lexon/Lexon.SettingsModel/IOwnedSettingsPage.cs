@@ -12,6 +12,12 @@ public interface IOwnedSettingsPage
     /// </summary>
     bool IsDirty { get; }
 
+    /// <summary>
+    /// Raised after a user edit marks the page dirty and schedules persist.
+    /// Never raised during <see cref="Load"/> or for non-user changes.
+    /// </summary>
+    event Action? UserEdited;
+
     void CopyOwnedTo(AppSettings target);
 
     void MarkClean();

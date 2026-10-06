@@ -50,6 +50,8 @@ public sealed class GeneralSettingsViewModel : INotifyPropertyChanged, IOwnedSet
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
+    public event Action? UserEdited;
+
     public event Action<bool>? OpenFullScreenChanged;
 
     public bool StartWithWindows
@@ -77,9 +79,9 @@ public sealed class GeneralSettingsViewModel : INotifyPropertyChanged, IOwnedSet
             }
 
             _startWithWindows = value;
-            OnPropertyChanged();
             StatusMessage = string.Empty;
             MarkDirtyAndSchedule();
+            OnPropertyChanged();
         }
     }
 
@@ -88,13 +90,15 @@ public sealed class GeneralSettingsViewModel : INotifyPropertyChanged, IOwnedSet
         get => _minimizeToTray;
         set
         {
-            if (!SetField(ref _minimizeToTray, value))
+            if (_minimizeToTray == value)
             {
                 return;
             }
 
+            _minimizeToTray = value;
             if (_persist.IsLoading)
             {
+                OnPropertyChanged();
                 return;
             }
 
@@ -102,6 +106,7 @@ public sealed class GeneralSettingsViewModel : INotifyPropertyChanged, IOwnedSet
             // is wired when the standalone settings window exists.
             _settings.MinimizeToTray = value;
             MarkDirtyAndSchedule();
+            OnPropertyChanged();
         }
     }
 
@@ -110,18 +115,21 @@ public sealed class GeneralSettingsViewModel : INotifyPropertyChanged, IOwnedSet
         get => _checkForUpdates;
         set
         {
-            if (!SetField(ref _checkForUpdates, value))
+            if (_checkForUpdates == value)
             {
                 return;
             }
 
+            _checkForUpdates = value;
             if (_persist.IsLoading)
             {
+                OnPropertyChanged();
                 return;
             }
 
             _settings.EnableAutoUpdates = value;
             MarkDirtyAndSchedule();
+            OnPropertyChanged();
         }
     }
 
@@ -130,18 +138,21 @@ public sealed class GeneralSettingsViewModel : INotifyPropertyChanged, IOwnedSet
         get => _openSettingsFullScreen;
         set
         {
-            if (!SetField(ref _openSettingsFullScreen, value))
+            if (_openSettingsFullScreen == value)
             {
                 return;
             }
 
+            _openSettingsFullScreen = value;
             if (_persist.IsLoading)
             {
+                OnPropertyChanged();
                 return;
             }
 
             _settings.OpenSettingsFullScreen = value;
             MarkDirtyAndSchedule();
+            OnPropertyChanged();
             OpenFullScreenChanged?.Invoke(value);
         }
     }
@@ -163,14 +174,15 @@ public sealed class GeneralSettingsViewModel : INotifyPropertyChanged, IOwnedSet
             }
 
             _quickPauseIndex = index;
-            OnPropertyChanged();
             if (_persist.IsLoading)
             {
+                OnPropertyChanged();
                 return;
             }
 
             _settings.QuickPauseMinutes = QuickPauseOptions.MinutesFromIndex(index);
             MarkDirtyAndSchedule();
+            OnPropertyChanged();
         }
     }
 
@@ -228,18 +240,7 @@ public sealed class GeneralSettingsViewModel : INotifyPropertyChanged, IOwnedSet
     {
         _isDirty = true;
         _persist.Schedule(DateTime.UtcNow);
-    }
-
-    private bool SetField(ref bool field, bool value, [CallerMemberName] string? name = null)
-    {
-        if (field == value)
-        {
-            return false;
-        }
-
-        field = value;
-        OnPropertyChanged(name);
-        return true;
+        UserEdited?.Invoke();
     }
 
     private void OnPropertyChanged([CallerMemberName] string? name = null)

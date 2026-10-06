@@ -46,6 +46,8 @@ public sealed class PrivacySettingsViewModel : INotifyPropertyChanged, IOwnedSet
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
+    public event Action? UserEdited;
+
     public event Action<bool>? LocalOnlyChanged;
 
     public bool LocalOnly
@@ -164,6 +166,7 @@ public sealed class PrivacySettingsViewModel : INotifyPropertyChanged, IOwnedSet
     {
         _isDirty = true;
         _persist.Schedule(DateTime.UtcNow);
+        UserEdited?.Invoke();
     }
 
     private void PublishPolicy()

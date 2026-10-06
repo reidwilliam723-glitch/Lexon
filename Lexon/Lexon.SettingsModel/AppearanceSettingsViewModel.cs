@@ -44,6 +44,8 @@ public sealed class AppearanceSettingsViewModel : INotifyPropertyChanged, IOwned
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
+    public event Action? UserEdited;
+
     public int ThemeIndex
     {
         get => _themeIndex;
@@ -61,9 +63,9 @@ public sealed class AppearanceSettingsViewModel : INotifyPropertyChanged, IOwned
             }
 
             _themeIndex = index;
-            OnPropertyChanged();
             if (_persist.IsLoading)
             {
+                OnPropertyChanged();
                 return;
             }
 
@@ -80,6 +82,7 @@ public sealed class AppearanceSettingsViewModel : INotifyPropertyChanged, IOwned
             }
 
             MarkDirtyAndSchedule();
+            OnPropertyChanged();
         }
     }
 
@@ -89,18 +92,26 @@ public sealed class AppearanceSettingsViewModel : INotifyPropertyChanged, IOwned
         set
         {
             var index = value == 1 ? 1 : 0;
-            if (!SetIndex(ref _sortIndex, index, value))
+            if (_sortIndex == index)
             {
+                if (value != index)
+                {
+                    OnPropertyChanged();
+                }
+
                 return;
             }
 
+            _sortIndex = index;
             if (_persist.IsLoading)
             {
+                OnPropertyChanged();
                 return;
             }
 
             _settings.SuggestionSortMode = index == 1 ? "Used" : "Relevant";
             MarkDirtyAndSchedule();
+            OnPropertyChanged();
         }
     }
 
@@ -110,18 +121,26 @@ public sealed class AppearanceSettingsViewModel : INotifyPropertyChanged, IOwned
         set
         {
             var index = value == 1 ? 1 : 0;
-            if (!SetIndex(ref _placementIndex, index, value))
+            if (_placementIndex == index)
             {
+                if (value != index)
+                {
+                    OnPropertyChanged();
+                }
+
                 return;
             }
 
+            _placementIndex = index;
             if (_persist.IsLoading)
             {
+                OnPropertyChanged();
                 return;
             }
 
             _settings.SuggestionPlacement = index == 1 ? "Above" : "Below";
             MarkDirtyAndSchedule();
+            OnPropertyChanged();
         }
     }
 
@@ -136,14 +155,15 @@ public sealed class AppearanceSettingsViewModel : INotifyPropertyChanged, IOwned
             }
 
             _previewRewrites = value;
-            OnPropertyChanged();
             if (_persist.IsLoading)
             {
+                OnPropertyChanged();
                 return;
             }
 
             _settings.RequireConfirmationForEdits = value;
             MarkDirtyAndSchedule();
+            OnPropertyChanged();
         }
     }
 
@@ -187,6 +207,7 @@ public sealed class AppearanceSettingsViewModel : INotifyPropertyChanged, IOwned
     {
         _isDirty = true;
         _persist.Schedule(DateTime.UtcNow);
+        UserEdited?.Invoke();
     }
 
     private void OnExternalThemeChanged(object? sender, ThemeChangedEventArgs e)
@@ -223,23 +244,6 @@ public sealed class AppearanceSettingsViewModel : INotifyPropertyChanged, IOwned
         }
 
         return 0;
-    }
-
-    private bool SetIndex(ref int field, int mapped, int requested, [CallerMemberName] string? name = null)
-    {
-        if (field == mapped)
-        {
-            if (requested != mapped)
-            {
-                OnPropertyChanged(name);
-            }
-
-            return false;
-        }
-
-        field = mapped;
-        OnPropertyChanged(name);
-        return true;
     }
 
     private void OnPropertyChanged([CallerMemberName] string? name = null)
