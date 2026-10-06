@@ -2,6 +2,11 @@
 
 All notable changes to Lexon will be documented in this file.
 
+## [1.6.1] - 2026-10-06
+
+### Settings UI
+- Gallery fixes: the AI tab no longer loses an unsaved provider or key when the window is re-activated or you switch tabs; the clipboard is only listened to while waiting for a key; duplicate key validation requests are skipped; and settings changes now take effect immediately instead of after the save delay. The classic Settings form is still the default.
+
 ## [1.6.0] - 2026-10-06
 
 ### Settings UI
