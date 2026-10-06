@@ -141,6 +141,26 @@
                      FontFamily="{DynamicResource LexonFontFamily}"
                      FontSize="{DynamicResource CaptionFontSize}"/>
 
+          <CheckBox Content="Flag inconsistent spelling of the same term"
+                    IsChecked="{Binding DocumentConsistencyChecking}"
+                    AutomationProperties.Name="Flag inconsistent spelling of the same term"
+                    AutomationProperties.HelpText="Warns when a name or term appears with two different spellings in the same text."/>
+          <TextBlock Text="Warns when a name or term appears with two different spellings in the same text."
+                     TextWrapping="Wrap" Margin="0,4,0,12"
+                     Foreground="{DynamicResource TextSecondaryBrush}"
+                     FontFamily="{DynamicResource LexonFontFamily}"
+                     FontSize="{DynamicResource CaptionFontSize}"/>
+
+          <CheckBox Content="Allow other languages mid-sentence"
+                    IsChecked="{Binding AllowCodeSwitching}"
+                    AutomationProperties.Name="Allow other languages mid-sentence"
+                    AutomationProperties.HelpText="Do not treat foreign or mixed-script words as typos."/>
+          <TextBlock Text="Do not treat foreign or mixed-script words as typos."
+                     TextWrapping="Wrap" Margin="0,4,0,12"
+                     Foreground="{DynamicResource TextSecondaryBrush}"
+                     FontFamily="{DynamicResource LexonFontFamily}"
+                     FontSize="{DynamicResource CaptionFontSize}"/>
+
           <TextBlock Text="Grammar sensitivity" TextWrapping="Wrap" Margin="0,0,0,4"
                      Foreground="{DynamicResource TextBrush}"
                      FontFamily="{DynamicResource LexonFontFamily}"

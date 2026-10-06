@@ -28,6 +28,8 @@ public class WritingViewModelTests
             {
                 AppSettings.GrammarCheckingKey,
                 AppSettings.AutoCorrectTyposKey,
+                AppSettings.DocumentConsistencyCheckingKey,
+                AppSettings.AllowCodeSwitchingKey,
                 AppSettings.GrammarSensitivityKey,
                 AppSettings.MuteGrammarForCasualAppsKey,
                 AppSettings.GrammarMutedAppsKey,
@@ -35,6 +37,8 @@ public class WritingViewModelTests
                 AppSettings.EnableGrammarHotkeyKey
             },
             WritingViewModel.OwnedKeyList);
+        Assert.True(vm.DocumentConsistencyChecking);
+        Assert.True(vm.AllowCodeSwitching);
     }
 
     [Theory]

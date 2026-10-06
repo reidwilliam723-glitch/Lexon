@@ -25,6 +25,7 @@ public class LexonService
     private readonly KeyboardShortcutManager _keyboardShortcutManager;
     private readonly UndoManager _undoManager;
     private readonly Func<bool> _autoCorrectEnabled;
+    private readonly Func<bool> _allowCodeSwitching;
     private readonly PersonalizationManager? _personalization;
     private SelectionRewriteService? _rewrite;
     private GrammarCheckService? _grammar;
@@ -89,7 +90,8 @@ public class LexonService
         UndoManager undoManager,
         ISuggestionOverlay? grammarOverlay = null,
         Func<bool>? autoCorrectEnabled = null,
-        PersonalizationManager? personalization = null)
+        PersonalizationManager? personalization = null,
+        Func<bool>? allowCodeSwitching = null)
     {
         _suggestionPipeline = suggestionPipeline ?? throw new ArgumentNullException(nameof(suggestionPipeline));
         _keyboardListener = keyboardListener ?? throw new ArgumentNullException(nameof(keyboardListener));
@@ -102,6 +104,7 @@ public class LexonService
         _keyboardShortcutManager = keyboardShortcutManager ?? throw new ArgumentNullException(nameof(keyboardShortcutManager));
         _undoManager = undoManager ?? throw new ArgumentNullException(nameof(undoManager));
         _autoCorrectEnabled = autoCorrectEnabled ?? (() => false);
+        _allowCodeSwitching = allowCodeSwitching ?? (() => true);
         _personalization = personalization;
 
         // Wire up event handlers
@@ -587,7 +590,12 @@ public class LexonService
     {
         var enabled = _autoCorrectEnabled();
         var word = SuggestionInsertion.LastCompletedWord(typed);
-        if (!TypoAutoCorrect.TryGetCorrection(word, enabled, _suggestionPipeline.GetLearnedWords(), out var correction))
+        if (!TypoAutoCorrect.TryGetCorrection(
+                word,
+                enabled,
+                _suggestionPipeline.GetLearnedWords(),
+                out var correction,
+                _allowCodeSwitching()))
         {
             return false;
         }
@@ -961,8 +969,11 @@ public class LexonService
         }
 
         prefix ??= SuggestionInsertion.CurrentToken(_focusTracker.GetTypedBufferText());
-        var fromBuffer = GrammarSuggestionMapper.Suggest(ContextFromTypedBuffer(prefix ?? string.Empty));
-        var fromLive = GrammarSuggestionMapper.Suggest(_currentContext);
+        var consistency = _grammar?.IsConsistencyEnabled ?? false;
+        var fromBuffer = GrammarSuggestionMapper.Suggest(
+            ContextFromTypedBuffer(prefix ?? string.Empty),
+            includeConsistency: consistency);
+        var fromLive = GrammarSuggestionMapper.Suggest(_currentContext, includeConsistency: consistency);
         var merged = new List<Suggestion>();
         foreach (var fix in fromBuffer.Concat(fromLive))
         {

@@ -30,6 +30,8 @@ public sealed class AppSettings
     public const string EnableRewriteHotkeyKey = "EnableRewriteHotkey";
     public const string GrammarCheckingKey = "GrammarChecking";
     public const string AutoCorrectTyposKey = "AutoCorrectTypos";
+    public const string DocumentConsistencyCheckingKey = "DocumentConsistencyChecking";
+    public const string AllowCodeSwitchingKey = "AllowCodeSwitching";
     public const string EnableGrammarHotkeyKey = "EnableGrammarHotkey";
     public const string GrammarMutedAppsKey = "GrammarMutedApps";
     public const string AppCategoryOverridesKey = "AppCategoryOverrides";
@@ -56,6 +58,8 @@ public sealed class AppSettings
     public bool EnableRewriteHotkey { get; set; } = true;
     public bool GrammarChecking { get; set; } = true;
     public bool AutoCorrectTypos { get; set; } = true;
+    public bool DocumentConsistencyChecking { get; set; } = true;
+    public bool AllowCodeSwitching { get; set; } = true;
     public bool EnableGrammarHotkey { get; set; } = true;
     public List<string> GrammarMutedApps { get; set; } = [];
     public List<string> AppCategoryOverrides { get; set; } = [];
@@ -87,6 +91,8 @@ public sealed class AppSettings
         EnableRewriteHotkey = profile.GetSetting(EnableRewriteHotkeyKey, true);
         GrammarChecking = profile.GetSetting(GrammarCheckingKey, true);
         AutoCorrectTypos = profile.GetSetting(AutoCorrectTyposKey, true);
+        DocumentConsistencyChecking = profile.GetSetting(DocumentConsistencyCheckingKey, true);
+        AllowCodeSwitching = profile.GetSetting(AllowCodeSwitchingKey, true);
         EnableGrammarHotkey = profile.GetSetting(EnableGrammarHotkeyKey, true);
         GrammarMutedApps = profile.GetSetting<List<string>>(GrammarMutedAppsKey, []) ?? [];
         AppCategoryOverrides = profile.GetSetting<List<string>>(AppCategoryOverridesKey, []) ?? [];
@@ -118,6 +124,8 @@ public sealed class AppSettings
             EnableRewriteHotkeyKey,
             GrammarCheckingKey,
             AutoCorrectTyposKey,
+            DocumentConsistencyCheckingKey,
+            AllowCodeSwitchingKey,
             EnableGrammarHotkeyKey,
             GrammarMutedAppsKey,
             AppCategoryOverridesKey);
@@ -198,6 +206,12 @@ public sealed class AppSettings
                     break;
                 case AutoCorrectTyposKey:
                     profile.SetSetting(key, AutoCorrectTypos);
+                    break;
+                case DocumentConsistencyCheckingKey:
+                    profile.SetSetting(key, DocumentConsistencyChecking);
+                    break;
+                case AllowCodeSwitchingKey:
+                    profile.SetSetting(key, AllowCodeSwitching);
                     break;
                 case EnableGrammarHotkeyKey:
                     profile.SetSetting(key, EnableGrammarHotkey);

@@ -51,6 +51,8 @@ public partial class SettingsForm : Form
     private CheckBox _chkEnableGrammarHotkey = null!;
     private CheckBox _chkGrammarChecking = null!;
     private CheckBox _chkAutoCorrectTypos = null!;
+    private CheckBox _chkDocumentConsistency = null!;
+    private CheckBox _chkAllowCodeSwitching = null!;
     private CheckBox _chkLocalMode = null!;
     private CheckBox _chkAiTyping = null!;
     private CheckBox _chkAiRewrite = null!;
@@ -584,6 +586,8 @@ public partial class SettingsForm : Form
         _chkEnableRewriteHotkey = Check("Rewrite shortcut (Ctrl+Alt+R)");
         _chkGrammarChecking = Check("Suggest grammar fixes automatically");
         _chkAutoCorrectTypos = Check("Auto-correct known typos");
+        _chkDocumentConsistency = Check("Flag inconsistent spelling of the same term");
+        _chkAllowCodeSwitching = Check("Allow other languages mid-sentence");
         _chkEnableGrammarHotkey = Check("Grammar shortcut (Ctrl+Alt+G)");
         _cmbGrammarSensitivity = Combo(360);
         _cmbGrammarSensitivity.Items.AddRange(new[] { "Low", "Medium", "High" });
@@ -605,6 +609,8 @@ public partial class SettingsForm : Form
             Caption("Grammar"),
             Hint(_chkGrammarChecking, "Local rules: agreement, typos, punctuation. Tab accepts a fix. No shortcut required."),
             Hint(_chkAutoCorrectTypos, "Only the built-in misspelling list. Learned words are left alone."),
+            Hint(_chkDocumentConsistency, "Warns when a name or term appears with two different spellings in the same text."),
+            Hint(_chkAllowCodeSwitching, "Do not treat foreign or mixed-script words as typos."),
             Caption("Grammar sensitivity"),
             Hint(_cmbGrammarSensitivity, "Higher flags more issues."),
             Hint(_chkMuteCasualGrammar, "Skip grammar in chat and other casual apps."),
@@ -1511,6 +1517,8 @@ public partial class SettingsForm : Form
         _chkEnableRewriteHotkey.CheckedChanged += (_, _) => ApplyNow();
         _chkGrammarChecking.CheckedChanged += (_, _) => ApplyNow();
         _chkAutoCorrectTypos.CheckedChanged += (_, _) => ApplyNow();
+        _chkDocumentConsistency.CheckedChanged += (_, _) => ApplyNow();
+        _chkAllowCodeSwitching.CheckedChanged += (_, _) => ApplyNow();
         _chkEnableGrammarHotkey.CheckedChanged += (_, _) => ApplyNow();
         _cmbSuggestionSort.SelectedIndexChanged += (_, _) => ApplyNow();
         _cmbSuggestionPlacement.SelectedIndexChanged += (_, _) => ApplyNow();
@@ -1576,6 +1584,8 @@ public partial class SettingsForm : Form
         _chkEnableRewriteHotkey.Checked = _appSettings.EnableRewriteHotkey;
         _chkGrammarChecking.Checked = _appSettings.GrammarChecking;
         _chkAutoCorrectTypos.Checked = _appSettings.AutoCorrectTypos;
+        _chkDocumentConsistency.Checked = _appSettings.DocumentConsistencyChecking;
+        _chkAllowCodeSwitching.Checked = _appSettings.AllowCodeSwitching;
         _chkEnableGrammarHotkey.Checked = _appSettings.EnableGrammarHotkey;
         _txtGrammarMutedApps.Text = BlockedAppList.FormatCsv(_appSettings.GrammarMutedApps);
         _lstAppTone.Items.Clear();
@@ -1661,6 +1671,8 @@ public partial class SettingsForm : Form
         _appSettings.EnableRewriteHotkey = _chkEnableRewriteHotkey.Checked;
         _appSettings.GrammarChecking = _chkGrammarChecking.Checked;
         _appSettings.AutoCorrectTypos = _chkAutoCorrectTypos.Checked;
+        _appSettings.DocumentConsistencyChecking = _chkDocumentConsistency.Checked;
+        _appSettings.AllowCodeSwitching = _chkAllowCodeSwitching.Checked;
         _appSettings.EnableGrammarHotkey = _chkEnableGrammarHotkey.Checked;
         _appSettings.GrammarMutedApps = BlockedAppList.ParseMutedGrammar(_txtGrammarMutedApps.Text);
         _appSettings.AppCategoryOverrides = _lstAppTone.Items.Cast<object>().Select(i => i.ToString()!).Where(s => !string.IsNullOrWhiteSpace(s)).ToList();

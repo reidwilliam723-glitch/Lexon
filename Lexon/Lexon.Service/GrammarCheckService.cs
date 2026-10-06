@@ -94,6 +94,9 @@ public sealed class GrammarCheckService
     public bool IsAutomaticEnabled
         => _enabled && _profile.GetSetting("GrammarChecking", true);
 
+    public bool IsConsistencyEnabled
+        => _profile.GetSetting("DocumentConsistencyChecking", true);
+
     public void NoteActivity()
     {
         Interlocked.Increment(ref _pauseGeneration);
@@ -274,7 +277,23 @@ public sealed class GrammarCheckService
         _sourceText = text;
         _sourceWasSelection = useSelection && !string.IsNullOrWhiteSpace(selected);
         var sensitivity = _profile.GetSetting("GrammarSensitivity", "Medium");
-        var found = RuleBasedGrammarChecker.Find(text, sensitivity);
+        Func<string, bool>? skipSpellingWord = null;
+        if (_profile.GetSetting("AllowCodeSwitching", true))
+        {
+            skipSpellingWord = word => ScriptLanguageGuard.ShouldSkipSpelling(word, text);
+        }
+
+        var found = RuleBasedGrammarChecker.Find(text, sensitivity, skipSpellingWord).ToList();
+        var consistencyOn = _profile.GetSetting("DocumentConsistencyChecking", true);
+        if (consistencyOn)
+        {
+            found.AddRange(ConsistencyChecker.Find(text));
+            found = found
+                .OrderBy(m => m.Start)
+                .ThenBy(m => m.Length)
+                .ToList();
+        }
+
         var limit = sensitivity switch
         {
             "Low" => 4,
@@ -296,7 +315,10 @@ public sealed class GrammarCheckService
 
         if (silentIfNone)
         {
-            var trailing = GrammarSuggestionMapper.TrailingMatches(fingerprint, sensitivity);
+            var trailing = GrammarSuggestionMapper.TrailingMatches(
+                fingerprint,
+                sensitivity,
+                includeConsistency: consistencyOn);
             if (trailing.Count == 0 && _matches.Count > 0)
             {
                 trailing = _matches

@@ -76,7 +76,10 @@ public static class GrammarSuggestionMapper
         return replacement.Length > 0;
     }
 
-    public static IReadOnlyList<GrammarMatch> TrailingMatches(string text, string sensitivity = "Medium")
+    public static IReadOnlyList<GrammarMatch> TrailingMatches(
+        string text,
+        string sensitivity = "Medium",
+        bool includeConsistency = false)
     {
         if (string.IsNullOrWhiteSpace(text))
         {
@@ -84,13 +87,22 @@ public static class GrammarSuggestionMapper
         }
 
         var trimmed = text.TrimEnd();
-        return RuleBasedGrammarChecker.Find(trimmed, sensitivity)
+        IEnumerable<GrammarMatch> matches = RuleBasedGrammarChecker.Find(trimmed, sensitivity);
+        if (includeConsistency)
+        {
+            matches = matches.Concat(ConsistencyChecker.Find(trimmed));
+        }
+
+        return matches
             .Where(match => IsTrailing(trimmed, match))
             .OrderByDescending(match => match.Start)
             .ToList();
     }
 
-    public static IReadOnlyList<Suggestion> Suggest(TextContext context, string sensitivity = "Medium")
+    public static IReadOnlyList<Suggestion> Suggest(
+        TextContext context,
+        string sensitivity = "Medium",
+        bool includeConsistency = false)
     {
         var window = WindowFrom(context);
         if (window.Length < 3)
@@ -98,7 +110,7 @@ public static class GrammarSuggestionMapper
             return [];
         }
 
-        return TrailingMatches(window, sensitivity)
+        return TrailingMatches(window, sensitivity, includeConsistency)
             .Take(3)
             .Select(ToSuggestion)
             .ToList();

@@ -5,7 +5,8 @@ public enum GrammarRuleCategory
     Typo,
     Agreement,
     ConfusedWord,
-    Punctuation
+    Punctuation,
+    Consistency
 }
 
 public sealed class GrammarMatch

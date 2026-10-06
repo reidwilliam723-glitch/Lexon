@@ -21,6 +21,8 @@ public sealed class WritingViewModel : INotifyPropertyChanged, IOwnedSettingsPag
     [
         AppSettings.GrammarCheckingKey,
         AppSettings.AutoCorrectTyposKey,
+        AppSettings.DocumentConsistencyCheckingKey,
+        AppSettings.AllowCodeSwitchingKey,
         AppSettings.GrammarSensitivityKey,
         AppSettings.MuteGrammarForCasualAppsKey,
         AppSettings.GrammarMutedAppsKey,
@@ -39,6 +41,8 @@ public sealed class WritingViewModel : INotifyPropertyChanged, IOwnedSettingsPag
     private readonly ObservableCollection<AdaptationItem> _adaptations = [];
     private bool _grammarChecking = true;
     private bool _autoCorrectTypos = true;
+    private bool _documentConsistencyChecking = true;
+    private bool _allowCodeSwitching = true;
     private int _sensitivityIndex = 1;
     private bool _muteCasual;
     private string _mutedAppsText = string.Empty;
@@ -84,6 +88,18 @@ public sealed class WritingViewModel : INotifyPropertyChanged, IOwnedSettingsPag
     {
         get => _autoCorrectTypos;
         set => SetBool(ref _autoCorrectTypos, value, v => _settings.AutoCorrectTypos = v);
+    }
+
+    public bool DocumentConsistencyChecking
+    {
+        get => _documentConsistencyChecking;
+        set => SetBool(ref _documentConsistencyChecking, value, v => _settings.DocumentConsistencyChecking = v);
+    }
+
+    public bool AllowCodeSwitching
+    {
+        get => _allowCodeSwitching;
+        set => SetBool(ref _allowCodeSwitching, value, v => _settings.AllowCodeSwitching = v);
     }
 
     public int SensitivityIndex
@@ -208,6 +224,8 @@ public sealed class WritingViewModel : INotifyPropertyChanged, IOwnedSettingsPag
         {
             _grammarChecking = _settings.GrammarChecking;
             _autoCorrectTypos = _settings.AutoCorrectTypos;
+            _documentConsistencyChecking = _settings.DocumentConsistencyChecking;
+            _allowCodeSwitching = _settings.AllowCodeSwitching;
             _sensitivityIndex = IndexOfSensitivity(_settings.GrammarSensitivity);
             _muteCasual = _settings.MuteGrammarForCasualApps;
             var fromProfile = _settings.GrammarMutedApps ?? [];
@@ -222,6 +240,8 @@ public sealed class WritingViewModel : INotifyPropertyChanged, IOwnedSettingsPag
             _isDirty = false;
             OnPropertyChanged(nameof(GrammarChecking));
             OnPropertyChanged(nameof(AutoCorrectTypos));
+            OnPropertyChanged(nameof(DocumentConsistencyChecking));
+            OnPropertyChanged(nameof(AllowCodeSwitching));
             OnPropertyChanged(nameof(SensitivityIndex));
             OnPropertyChanged(nameof(MuteGrammarForCasualApps));
             OnPropertyChanged(nameof(MutedAppsText));
@@ -263,6 +283,8 @@ public sealed class WritingViewModel : INotifyPropertyChanged, IOwnedSettingsPag
     {
         target.GrammarChecking = _grammarChecking;
         target.AutoCorrectTypos = _autoCorrectTypos;
+        target.DocumentConsistencyChecking = _documentConsistencyChecking;
+        target.AllowCodeSwitching = _allowCodeSwitching;
         target.GrammarSensitivity = SensitivityLabels[_sensitivityIndex];
         target.MuteGrammarForCasualApps = _muteCasual;
         target.GrammarMutedApps = BlockedAppList.ParseMutedGrammar(_mutedAppsText);
