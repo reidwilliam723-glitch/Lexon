@@ -153,6 +153,16 @@
                      FontFamily="{DynamicResource LexonFontFamily}"
                      FontSize="{DynamicResource CaptionFontSize}"/>
 
+          <CheckBox Content="Auto-insert missing spaces"
+                    IsChecked="{Binding AutoInsertSpaces}"
+                    AutomationProperties.Name="Auto-insert missing spaces"
+                    AutomationProperties.HelpText="Adds a space after commas and periods, and trims extra spaces. Skips code, URLs, and numbers."/>
+          <TextBlock Text="Adds a space after commas and periods, and trims extra spaces. Skips code, URLs, and numbers."
+                     TextWrapping="Wrap" Margin="0,4,0,12"
+                     Foreground="{DynamicResource TextSecondaryBrush}"
+                     FontFamily="{DynamicResource LexonFontFamily}"
+                     FontSize="{DynamicResource CaptionFontSize}"/>
+
           <CheckBox Content="Flag inconsistent spelling of the same term"
                     IsChecked="{Binding DocumentConsistencyChecking}"
                     AutomationProperties.Name="Flag inconsistent spelling of the same term"

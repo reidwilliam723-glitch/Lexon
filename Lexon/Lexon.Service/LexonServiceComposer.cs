@@ -16,6 +16,7 @@ using Lexon.Core.Learning;
 using Lexon.Core.Plugins;
 using Lexon.Core.Theming;
 using Lexon.Core.Grammar;
+using Lexon.Core.Models;
 
 namespace Lexon.Service;
 
@@ -283,7 +284,11 @@ public static class LexonServiceComposer
             () => profile.GetSetting("AutoCorrectTypos", true),
             personalizationManager,
             () => profile.GetSetting("AllowCodeSwitching", true),
-            ResolveProtectedTerms
+            ResolveProtectedTerms,
+            () => profile.GetSetting("AutoInsertSpaces", true),
+            app => SpacingNormalizer.IsCodeApp(
+                app,
+                AppCategoryMapper.ParseOverrides(profile.GetSetting<List<string>>("AppCategoryOverrides", [])))
         );
 
         lexonService.AttachWritingEnhancement(selectionRewrite, grammarCheck, mouseListener);

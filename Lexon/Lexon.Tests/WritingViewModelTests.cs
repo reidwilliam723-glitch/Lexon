@@ -16,6 +16,7 @@ public class WritingViewModelTests
 
         Assert.True(vm.GrammarChecking);
         Assert.True(vm.AutoCorrectTypos);
+        Assert.True(vm.AutoInsertSpaces);
         Assert.Equal(1, vm.SensitivityIndex);
         Assert.False(vm.MuteGrammarForCasualApps);
         Assert.Equal(string.Empty, vm.MutedAppsText);
@@ -28,6 +29,7 @@ public class WritingViewModelTests
             {
                 AppSettings.GrammarCheckingKey,
                 AppSettings.AutoCorrectTyposKey,
+                AppSettings.AutoInsertSpacesKey,
                 AppSettings.DocumentConsistencyCheckingKey,
                 AppSettings.AllowCodeSwitchingKey,
                 AppSettings.GrammarSensitivityKey,
@@ -69,6 +71,7 @@ public class WritingViewModelTests
 
         vm.GrammarChecking = false;
         vm.AutoCorrectTypos = false;
+        vm.AutoInsertSpaces = false;
         vm.SensitivityIndex = 2;
         vm.MuteGrammarForCasualApps = true;
         vm.MutedAppsText = "Discord.exe, Slack.exe";
@@ -77,6 +80,7 @@ public class WritingViewModelTests
 
         Assert.False(settings.GrammarChecking);
         Assert.False(settings.AutoCorrectTypos);
+        Assert.False(settings.AutoInsertSpaces);
         Assert.Equal("High", settings.GrammarSensitivity);
         Assert.True(settings.MuteGrammarForCasualApps);
         Assert.Equal(new[] { "Discord.exe", "Slack.exe" }, settings.GrammarMutedApps);
@@ -144,6 +148,7 @@ public class WritingViewModelTests
         vm.Load();
         vm.GrammarChecking = false;
         vm.AutoCorrectTypos = false;
+        vm.AutoInsertSpaces = false;
         vm.SensitivityIndex = 0;
         vm.MuteGrammarForCasualApps = true;
         vm.MutedAppsText = "chat.exe";
@@ -155,6 +160,7 @@ public class WritingViewModelTests
         loaded.Read(profile);
         Assert.False(loaded.GrammarChecking);
         Assert.False(loaded.AutoCorrectTypos);
+        Assert.False(loaded.AutoInsertSpaces);
         Assert.Equal("Low", loaded.GrammarSensitivity);
         Assert.True(loaded.MuteGrammarForCasualApps);
         Assert.Equal(new[] { "chat.exe" }, loaded.GrammarMutedApps);

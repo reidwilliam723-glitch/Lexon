@@ -2,6 +2,14 @@
 
 All notable changes to Lexon will be documented in this file.
 
+## [1.9.0] - 2026-10-07
+
+### Writing
+- Auto-inserts missing spaces after commas and sentence-ending punctuation, strips a space before punctuation, and collapses extra spaces. Skips code apps, URLs, emails, paths, versions, and numbers. Glued words (`thecat`) are suggestions only.
+- New Writing setting: Auto-insert missing spaces (default on). Independent of auto-correct typos.
+- Larger local typo list and safer contractions (`I'm`, `I've`; `I'll`/`I'd` only with context).
+- More grammar suggestions: homophones (affect/effect, lose/loose, …), intro commas, a small possessive list, ellipsis, question marks, and closed hyphen compounds. Punctuation suggestions now appear at Medium sensitivity. The classic Settings form is still the default.
+
 ## [1.8.0] - 2026-10-06
 
 ### Writing

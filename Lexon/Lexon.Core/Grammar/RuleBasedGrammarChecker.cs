@@ -38,6 +38,27 @@ public static class RuleBasedGrammarChecker
     private static readonly Regex ExtraSpace = Rx(@"[ \t]{2,}");
     private static readonly Regex SpaceBeforePunct = Rx(@"\s+([,.;:!?])");
     private static readonly Regex SpaceAfterPunct = Rx(@"([,.;:!?])(\S)");
+    private static readonly Regex SideAffect = Rx(@"\bside\s+affects?\b");
+    private static readonly Regex TakeAffect = Rx(@"\b(take|takes|took|taken)\s+affect\b");
+    private static readonly Regex IntoAffect = Rx(@"\binto\s+affect\b");
+    private static readonly Regex WillEffect = Rx(@"\b(will|would|could|should|can|may|might)\s+effect\s+(the|a|an|my|your|our|their)\b");
+    private static readonly Regex LooseWeight = Rx(@"\bloose\s+(weight|my|your|the|a|an|his|her|our|their)\b");
+    private static readonly Regex TooLose = Rx(@"\btoo\s+lose\b");
+    private static readonly Regex LoseFit = Rx(@"\blose\s+(fitting|fit|change|change)\b");
+    private static readonly Regex AcceptFor = Rx(@"\baccept\s+for\b");
+    private static readonly Regex EveryoneAccept = Rx(@"\b(everyone|everybody|anyone|anybody|all)\s+accept\b");
+    private static readonly Regex PeekPeak = Rx(@"\bpeek\s+(performance|hours|season|time|demand)\b");
+    private static readonly Regex PeakAt = Rx(@"\bpeak\s+(at|inside|around|through|into)\b");
+    private static readonly Regex InThePassed = Rx(@"\bin\s+the\s+passed\b");
+    private static readonly Regex QuietGood = Rx(@"\bquiet\s+(good|bad|nice|sure|a)\b");
+    private static readonly Regex QuiteDown = Rx(@"\bquite\s+down\b");
+    private static readonly Regex IllBe = Rx(@"\bill\s+(be|see|go|get|do|make|take|have)\b");
+    private static readonly Regex IdLike = Rx(@"\bid\s+(like|love|rather|better)\b");
+    private static readonly Regex IntroComma = Rx(@"\b(However|Yes|No|Well|Anyway)\s+(I|we|you|they|he|she|it|the|this|that|my)\b");
+    private static readonly Regex PossessiveNoun = Rx(@"\b(cat|dog|child|company|user|customer|client|team|boss|friend)s\s+(food|house|name|car|room|idea|opinion|email|phone|work)\b");
+    private static readonly Regex DoubleDot = Rx(@"(?<!\.)\.\.(?!\.)");
+    private static readonly Regex QuestionDot = Rx(@"(?<=^|[.!?]\s)(Who|What|Where|When|Why|How)\b[^.?!\n]{2,120}\.");
+    private static readonly Regex HyphenCompound = Rx(@"\b(well known|long term|real time|high quality)\s+(?!(for|as|to|that|of|in)\b)(\w+)");
 
     private static readonly HashSet<string> AnExceptions = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -86,13 +107,13 @@ public static class RuleBasedGrammarChecker
         var allowed = AllowedCategories(sensitivity);
         var matches = new List<GrammarMatch>();
 
-        foreach (var pair in CommonMisspellings.All)
+        foreach (var (pattern, replacement) in CommonMisspellings.Patterns)
         {
             AddAll(
                 matches,
                 text,
-                Rx(@"\b" + Regex.Escape(pair.Key) + @"\b"),
-                pair.Value,
+                pattern,
+                replacement,
                 "Spelling",
                 GrammarRuleCategory.Typo,
                 allowed,
@@ -127,13 +148,41 @@ public static class RuleBasedGrammarChecker
         AddMapped(matches, text, TooMuch, m => "too " + m.Groups[1].Value, "Use \"too\" for degree", GrammarRuleCategory.ConfusedWord, allowed);
         AddMapped(matches, text, UsedTo, m => m.Groups[1].Value + "d to", "Missing -d on \"used/supposed to\"", GrammarRuleCategory.Agreement, allowed);
         AddMapped(matches, text, LetsGo, m => "let's " + m.Groups[1].Value, "Use \"let's\" for \"let us\"", GrammarRuleCategory.ConfusedWord, allowed);
+        AddMapped(matches, text, SideAffect, SideAffectFix, "Use \"effect\" for the result", GrammarRuleCategory.ConfusedWord, allowed);
+        AddMapped(matches, text, TakeAffect, m => m.Groups[1].Value + " effect", "Use \"effect\" for the result", GrammarRuleCategory.ConfusedWord, allowed);
+        AddAll(matches, text, IntoAffect, "into effect", "Use \"effect\" for the result", GrammarRuleCategory.ConfusedWord, allowed);
+        AddMapped(matches, text, WillEffect, m => m.Groups[1].Value + " affect " + m.Groups[2].Value, "Use \"affect\" for the verb", GrammarRuleCategory.ConfusedWord, allowed);
+        AddMapped(matches, text, LooseWeight, m => "lose " + m.Groups[1].Value, "Use \"lose\" for misplacing", GrammarRuleCategory.ConfusedWord, allowed);
+        AddAll(matches, text, TooLose, "too loose", "Use \"loose\" for not tight", GrammarRuleCategory.ConfusedWord, allowed);
+        AddMapped(matches, text, LoseFit, m => "loose " + m.Groups[1].Value, "Use \"loose\" for not tight", GrammarRuleCategory.ConfusedWord, allowed);
+        AddAll(matches, text, AcceptFor, "except for", "Use \"except\" for exclusion", GrammarRuleCategory.ConfusedWord, allowed);
+        AddMapped(matches, text, EveryoneAccept, m => m.Groups[1].Value + " except", "Use \"except\" for exclusion", GrammarRuleCategory.ConfusedWord, allowed);
+        AddMapped(matches, text, PeekPeak, m => "peak " + m.Groups[1].Value, "Use \"peak\" for a high point", GrammarRuleCategory.ConfusedWord, allowed);
+        AddMapped(matches, text, PeakAt, m => "peek " + m.Groups[1].Value, "Use \"peek\" for a glance", GrammarRuleCategory.ConfusedWord, allowed);
+        AddAll(matches, text, InThePassed, "in the past", "Use \"past\" for time", GrammarRuleCategory.ConfusedWord, allowed);
+        AddMapped(matches, text, QuietGood, m => "quite " + m.Groups[1].Value, "Use \"quite\" for degree", GrammarRuleCategory.ConfusedWord, allowed);
+        AddAll(matches, text, QuiteDown, "quiet down", "Use \"quiet\" for sound", GrammarRuleCategory.ConfusedWord, allowed);
+        AddMapped(matches, text, IllBe, m => "I'll " + m.Groups[1].Value, "Use \"I'll\" for \"I will\"", GrammarRuleCategory.Typo, allowed);
+        AddMapped(matches, text, IdLike, m => "I'd " + m.Groups[1].Value, "Use \"I'd\" for \"I would\"", GrammarRuleCategory.Typo, allowed);
+        AddMapped(matches, text, IntroComma, m => m.Groups[1].Value + ", " + m.Groups[2].Value, "Add a comma after the intro word", GrammarRuleCategory.Punctuation, allowed);
+        AddMapped(matches, text, PossessiveNoun, PossessiveFix, "Use a possessive apostrophe", GrammarRuleCategory.Punctuation, allowed);
+        AddAll(matches, text, DoubleDot, "...", "Use an ellipsis", GrammarRuleCategory.Punctuation, allowed);
+        AddMapped(matches, text, QuestionDot, m => m.Value[..^1] + "?", "Use a question mark", GrammarRuleCategory.Punctuation, allowed);
+        AddMapped(matches, text, HyphenCompound, HyphenFix, "Hyphenate this compound", GrammarRuleCategory.Punctuation, allowed);
         AddMapped(matches, text, AVowel, AToAn, "Use \"an\" before a vowel sound", GrammarRuleCategory.Agreement, allowed);
         AddMapped(matches, text, AnConsonant, AnToA, "Use \"a\" before a consonant sound", GrammarRuleCategory.Agreement, allowed);
         AddMapped(matches, text, SentenceCap, m => m.Value.ToUpperInvariant(), "Capitalize the start of a sentence", GrammarRuleCategory.Punctuation, allowed);
         AddAll(matches, text, CapitalI, "I", "Capitalize \"I\"", GrammarRuleCategory.Punctuation, allowed);
         AddAll(matches, text, ExtraSpace, " ", "Extra space", GrammarRuleCategory.Punctuation, allowed);
         AddMapped(matches, text, SpaceBeforePunct, m => m.Groups[1].Value, "Remove space before punctuation", GrammarRuleCategory.Punctuation, allowed);
-        AddMapped(matches, text, SpaceAfterPunct, m => m.Groups[1].Value + " " + m.Groups[2].Value, "Add a space after punctuation", GrammarRuleCategory.Punctuation, allowed);
+        AddSpaceAfterPunct(matches, text, allowed);
+        if (allowed.Contains(GrammarRuleCategory.Punctuation))
+        {
+            foreach (var glued in GluedWordSplitter.Find(text))
+            {
+                TryAdd(matches, glued);
+            }
+        }
 
         return matches
             .OrderBy(m => m.Start)
@@ -168,9 +217,37 @@ public static class RuleBasedGrammarChecker
             [
                 GrammarRuleCategory.Typo,
                 GrammarRuleCategory.Agreement,
-                GrammarRuleCategory.ConfusedWord
+                GrammarRuleCategory.ConfusedWord,
+                GrammarRuleCategory.Punctuation
             ]
         };
+
+    private static void AddSpaceAfterPunct(
+        List<GrammarMatch> matches,
+        string text,
+        HashSet<GrammarRuleCategory> allowed)
+    {
+        if (!allowed.Contains(GrammarRuleCategory.Punctuation))
+        {
+            return;
+        }
+
+        foreach (Match match in SpaceAfterPunct.Matches(text))
+        {
+            if (SpacingNormalizer.ShouldSkipSpaceAfter(text, match.Index))
+            {
+                continue;
+            }
+
+            TryAdd(matches, new GrammarMatch(
+                match.Index,
+                match.Length,
+                match.Value,
+                match.Groups[1].Value + " " + match.Groups[2].Value,
+                "Add a space after punctuation",
+                GrammarRuleCategory.Punctuation));
+        }
+    }
 
     private static void AddAll(
         List<GrammarMatch> matches,
@@ -276,6 +353,15 @@ public static class RuleBasedGrammarChecker
         var noun = match.Groups[1].Value;
         return AnExceptions.Contains(noun) ? match.Value : "a " + noun;
     }
+
+    private static string SideAffectFix(Match match)
+        => match.Value.Contains("affects", StringComparison.OrdinalIgnoreCase) ? "side effects" : "side effect";
+
+    private static string PossessiveFix(Match match)
+        => match.Groups[1].Value + "'s " + match.Groups[2].Value;
+
+    private static string HyphenFix(Match match)
+        => match.Groups[1].Value.Replace(' ', '-') + " " + match.Groups[3].Value;
 
     private static Regex Rx(string pattern)
         => new(pattern, RegexOptions.IgnoreCase | RegexOptions.Compiled);

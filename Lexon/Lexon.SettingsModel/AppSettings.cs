@@ -30,6 +30,7 @@ public sealed class AppSettings
     public const string EnableRewriteHotkeyKey = "EnableRewriteHotkey";
     public const string GrammarCheckingKey = "GrammarChecking";
     public const string AutoCorrectTyposKey = "AutoCorrectTypos";
+    public const string AutoInsertSpacesKey = "AutoInsertSpaces";
     public const string DocumentConsistencyCheckingKey = "DocumentConsistencyChecking";
     public const string AllowCodeSwitchingKey = "AllowCodeSwitching";
     public const string EnableGrammarHotkeyKey = "EnableGrammarHotkey";
@@ -61,6 +62,7 @@ public sealed class AppSettings
     public bool EnableRewriteHotkey { get; set; } = true;
     public bool GrammarChecking { get; set; } = true;
     public bool AutoCorrectTypos { get; set; } = true;
+    public bool AutoInsertSpaces { get; set; } = true;
     public bool DocumentConsistencyChecking { get; set; } = true;
     public bool AllowCodeSwitching { get; set; } = true;
     public bool EnableGrammarHotkey { get; set; } = true;
@@ -97,6 +99,7 @@ public sealed class AppSettings
         EnableRewriteHotkey = profile.GetSetting(EnableRewriteHotkeyKey, true);
         GrammarChecking = profile.GetSetting(GrammarCheckingKey, true);
         AutoCorrectTypos = profile.GetSetting(AutoCorrectTyposKey, true);
+        AutoInsertSpaces = profile.GetSetting(AutoInsertSpacesKey, true);
         DocumentConsistencyChecking = profile.GetSetting(DocumentConsistencyCheckingKey, true);
         AllowCodeSwitching = profile.GetSetting(AllowCodeSwitchingKey, true);
         EnableGrammarHotkey = profile.GetSetting(EnableGrammarHotkeyKey, true);
@@ -133,6 +136,7 @@ public sealed class AppSettings
             EnableRewriteHotkeyKey,
             GrammarCheckingKey,
             AutoCorrectTyposKey,
+            AutoInsertSpacesKey,
             DocumentConsistencyCheckingKey,
             AllowCodeSwitchingKey,
             EnableGrammarHotkeyKey,
@@ -218,6 +222,9 @@ public sealed class AppSettings
                     break;
                 case AutoCorrectTyposKey:
                     profile.SetSetting(key, AutoCorrectTypos);
+                    break;
+                case AutoInsertSpacesKey:
+                    profile.SetSetting(key, AutoInsertSpaces);
                     break;
                 case DocumentConsistencyCheckingKey:
                     profile.SetSetting(key, DocumentConsistencyChecking);

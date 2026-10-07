@@ -156,4 +156,107 @@ public class GrammarCheckerTests
             CurrentWord = "are"
         }), s => s.Text.Contains("→"));
     }
+
+    [Fact]
+    public void MediumSensitivity_SuggestsSpacingAndSkipsNumbers()
+    {
+        var spaced = RuleBasedGrammarChecker.Find("Hello,world");
+        Assert.Contains(spaced, m => m.Replacement.Contains("Hello, world", StringComparison.OrdinalIgnoreCase)
+            || m.Message.Contains("space after punctuation", StringComparison.OrdinalIgnoreCase));
+
+        var number = RuleBasedGrammarChecker.Find("Use 3.14 here");
+        Assert.DoesNotContain(number, m => m.Message.Contains("space after punctuation", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public void LowSensitivity_SkipsPunctuationSpacing()
+    {
+        var matches = RuleBasedGrammarChecker.Find("Hello,world", "Low");
+        Assert.DoesNotContain(matches, m => m.Category == GrammarRuleCategory.Punctuation);
+    }
+
+    [Fact]
+    public void SuggestsGluedWords_NotCamelCase()
+    {
+        var glued = RuleBasedGrammarChecker.Find("thecat sat down");
+        Assert.Contains(glued, m => m.Replacement.Equals("the cat", StringComparison.OrdinalIgnoreCase));
+
+        var camel = RuleBasedGrammarChecker.Find("GitHub is ready");
+        Assert.DoesNotContain(camel, m => m.Original.Equals("GitHub", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Homophones_NeedContext()
+    {
+        Assert.Contains(
+            RuleBasedGrammarChecker.Find("a side affect"),
+            m => m.Replacement.Equals("side effect", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(
+            RuleBasedGrammarChecker.Find("it will effect the plan"),
+            m => m.Replacement.Equals("will affect the", StringComparison.OrdinalIgnoreCase));
+        Assert.DoesNotContain(
+            RuleBasedGrammarChecker.Find("they will effect change"),
+            m => m.Replacement.Contains("affect", StringComparison.OrdinalIgnoreCase));
+        Assert.DoesNotContain(
+            RuleBasedGrammarChecker.Find("this will affect you"),
+            m => m.Original.Contains("affect", StringComparison.OrdinalIgnoreCase)
+                && m.Replacement.Contains("effect", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(
+            RuleBasedGrammarChecker.Find("loose weight now"),
+            m => m.Replacement.StartsWith("lose ", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(
+            RuleBasedGrammarChecker.Find("everyone accept Sam"),
+            m => m.Replacement.Equals("everyone except", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public void IntroComma_Possessive_Ellipsis_Question_Hyphen()
+    {
+        Assert.Contains(
+            RuleBasedGrammarChecker.Find("However I think so"),
+            m => m.Replacement.StartsWith("However,", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(
+            RuleBasedGrammarChecker.Find("the cats food"),
+            m => m.Replacement.Equals("cat's food", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(
+            RuleBasedGrammarChecker.Find("Wait.."),
+            m => m.Replacement == "...");
+        Assert.Contains(
+            RuleBasedGrammarChecker.Find("Who is there."),
+            m => m.Replacement.EndsWith('?'));
+        Assert.Contains(
+            RuleBasedGrammarChecker.Find("a well known author"),
+            m => m.Replacement.Contains("well-known", StringComparison.OrdinalIgnoreCase));
+        Assert.DoesNotContain(
+            RuleBasedGrammarChecker.Find("send an email later"),
+            m => m.Original.Contains("email", StringComparison.OrdinalIgnoreCase) && m.Replacement.Contains('-'));
+    }
+
+    [Fact]
+    public void IllAndId_OnlyWithContext()
+    {
+        Assert.Contains(
+            RuleBasedGrammarChecker.Find("ill be there"),
+            m => m.Replacement.StartsWith("I'll ", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(
+            RuleBasedGrammarChecker.Find("id like that"),
+            m => m.Replacement.StartsWith("I'd ", StringComparison.OrdinalIgnoreCase));
+        Assert.DoesNotContain(
+            RuleBasedGrammarChecker.Find("I feel ill today"),
+            m => m.Original.Equals("ill", StringComparison.OrdinalIgnoreCase) && m.Replacement.Contains("I'll"));
+        Assert.DoesNotContain(
+            RuleBasedGrammarChecker.Find("user id number"),
+            m => m.Original.Equals("id", StringComparison.OrdinalIgnoreCase) && m.Replacement.Contains("I'd"));
+    }
+
+    [Fact]
+    public void SentenceCapAndCapitalI_AvailableAtMedium()
+    {
+        Assert.Contains(
+            RuleBasedGrammarChecker.Find("Hello. there"),
+            m => m.Replacement == "T" || m.Message.Contains("Capitalize the start", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(
+            RuleBasedGrammarChecker.Find("this is what i want"),
+            m => m.Replacement == "I" && m.Original.Equals("i", StringComparison.Ordinal));
+    }
 }

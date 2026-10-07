@@ -24,7 +24,12 @@ public static class AppCategoryMapper
         ["devenv.exe"] = AppWritingCategory.Code,
         ["idea64.exe"] = AppWritingCategory.Code,
         ["rider64.exe"] = AppWritingCategory.Code,
-        ["cursor.exe"] = AppWritingCategory.Code
+        ["cursor.exe"] = AppWritingCategory.Code,
+        ["windowsterminal.exe"] = AppWritingCategory.Code,
+        ["wt.exe"] = AppWritingCategory.Code,
+        ["powershell.exe"] = AppWritingCategory.Code,
+        ["pwsh.exe"] = AppWritingCategory.Code,
+        ["cmd.exe"] = AppWritingCategory.Code
     };
 
     public static AppWritingCategory Resolve(string? processName, IReadOnlyDictionary<string, AppWritingCategory>? overrides = null)

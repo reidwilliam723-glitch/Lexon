@@ -21,6 +21,7 @@ public sealed class WritingViewModel : INotifyPropertyChanged, IOwnedSettingsPag
     [
         AppSettings.GrammarCheckingKey,
         AppSettings.AutoCorrectTyposKey,
+        AppSettings.AutoInsertSpacesKey,
         AppSettings.DocumentConsistencyCheckingKey,
         AppSettings.AllowCodeSwitchingKey,
         AppSettings.GrammarSensitivityKey,
@@ -53,6 +54,7 @@ public sealed class WritingViewModel : INotifyPropertyChanged, IOwnedSettingsPag
     private readonly ObservableCollection<AdaptationItem> _adaptations = [];
     private bool _grammarChecking = true;
     private bool _autoCorrectTypos = true;
+    private bool _autoInsertSpaces = true;
     private bool _documentConsistencyChecking = true;
     private bool _allowCodeSwitching = true;
     private int _sensitivityIndex = 1;
@@ -101,6 +103,12 @@ public sealed class WritingViewModel : INotifyPropertyChanged, IOwnedSettingsPag
     {
         get => _autoCorrectTypos;
         set => SetBool(ref _autoCorrectTypos, value, v => _settings.AutoCorrectTypos = v);
+    }
+
+    public bool AutoInsertSpaces
+    {
+        get => _autoInsertSpaces;
+        set => SetBool(ref _autoInsertSpaces, value, v => _settings.AutoInsertSpaces = v);
     }
 
     public bool DocumentConsistencyChecking
@@ -266,6 +274,7 @@ public sealed class WritingViewModel : INotifyPropertyChanged, IOwnedSettingsPag
         {
             _grammarChecking = _settings.GrammarChecking;
             _autoCorrectTypos = _settings.AutoCorrectTypos;
+            _autoInsertSpaces = _settings.AutoInsertSpaces;
             _documentConsistencyChecking = _settings.DocumentConsistencyChecking;
             _allowCodeSwitching = _settings.AllowCodeSwitching;
             _sensitivityIndex = IndexOfSensitivity(_settings.GrammarSensitivity);
@@ -283,6 +292,7 @@ public sealed class WritingViewModel : INotifyPropertyChanged, IOwnedSettingsPag
             _isDirty = false;
             OnPropertyChanged(nameof(GrammarChecking));
             OnPropertyChanged(nameof(AutoCorrectTypos));
+            OnPropertyChanged(nameof(AutoInsertSpaces));
             OnPropertyChanged(nameof(DocumentConsistencyChecking));
             OnPropertyChanged(nameof(AllowCodeSwitching));
             OnPropertyChanged(nameof(SensitivityIndex));
@@ -327,6 +337,7 @@ public sealed class WritingViewModel : INotifyPropertyChanged, IOwnedSettingsPag
     {
         target.GrammarChecking = _grammarChecking;
         target.AutoCorrectTypos = _autoCorrectTypos;
+        target.AutoInsertSpaces = _autoInsertSpaces;
         target.DocumentConsistencyChecking = _documentConsistencyChecking;
         target.AllowCodeSwitching = _allowCodeSwitching;
         target.GrammarSensitivity = SensitivityLabels[_sensitivityIndex];

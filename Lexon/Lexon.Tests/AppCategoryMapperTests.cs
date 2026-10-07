@@ -24,6 +24,13 @@ public class AppCategoryMapperTests
     }
 
     [Fact]
+    public void Terminals_AreCode()
+    {
+        Assert.Equal(AppWritingCategory.Code, AppCategoryMapper.Resolve("pwsh.exe"));
+        Assert.Equal(AppWritingCategory.Code, AppCategoryMapper.Resolve("WindowsTerminal.exe"));
+    }
+
+    [Fact]
     public void Override_Wins()
     {
         var overrides = new Dictionary<string, AppWritingCategory>(StringComparer.OrdinalIgnoreCase)

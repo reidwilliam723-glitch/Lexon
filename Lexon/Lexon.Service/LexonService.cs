@@ -25,6 +25,8 @@ public class LexonService
     private readonly KeyboardShortcutManager _keyboardShortcutManager;
     private readonly UndoManager _undoManager;
     private readonly Func<bool> _autoCorrectEnabled;
+    private readonly Func<bool> _autoInsertSpaces;
+    private readonly Func<string?, bool> _isCodeApp;
     private readonly Func<bool> _allowCodeSwitching;
     private readonly Func<string?, IEnumerable<string>>? _resolveProtectedTerms;
     private readonly PersonalizationManager? _personalization;
@@ -93,7 +95,9 @@ public class LexonService
         Func<bool>? autoCorrectEnabled = null,
         PersonalizationManager? personalization = null,
         Func<bool>? allowCodeSwitching = null,
-        Func<string?, IEnumerable<string>>? resolveProtectedTerms = null)
+        Func<string?, IEnumerable<string>>? resolveProtectedTerms = null,
+        Func<bool>? autoInsertSpaces = null,
+        Func<string?, bool>? isCodeApp = null)
     {
         _suggestionPipeline = suggestionPipeline ?? throw new ArgumentNullException(nameof(suggestionPipeline));
         _keyboardListener = keyboardListener ?? throw new ArgumentNullException(nameof(keyboardListener));
@@ -106,6 +110,8 @@ public class LexonService
         _keyboardShortcutManager = keyboardShortcutManager ?? throw new ArgumentNullException(nameof(keyboardShortcutManager));
         _undoManager = undoManager ?? throw new ArgumentNullException(nameof(undoManager));
         _autoCorrectEnabled = autoCorrectEnabled ?? (() => false);
+        _autoInsertSpaces = autoInsertSpaces ?? (() => false);
+        _isCodeApp = isCodeApp ?? (_ => false);
         _allowCodeSwitching = allowCodeSwitching ?? (() => true);
         _resolveProtectedTerms = resolveProtectedTerms;
         _personalization = personalization;
@@ -461,7 +467,26 @@ public class LexonService
                 }
                 else
                 {
-                    QueueOffHook(() => _ = ShowSuggestionsAsync(generation));
+                    QueueOffHook(() =>
+                    {
+                        TextContext context;
+                        try
+                        {
+                            context = _focusTracker.GetCurrentContext();
+                        }
+                        catch
+                        {
+                            context = _currentContext;
+                        }
+
+                        var latest = _focusTracker.GetTypedBufferText();
+                        if (TryApplySpacing(latest, context))
+                        {
+                            return;
+                        }
+
+                        _ = ShowSuggestionsAsync(generation);
+                    });
                 }
             }
         }
@@ -571,6 +596,11 @@ public class LexonService
         _currentContext = context;
 
         var latest = _focusTracker.GetTypedBufferText() ?? typed;
+        if (TryApplySpacing(latest, context))
+        {
+            latest = _focusTracker.GetTypedBufferText() ?? latest;
+        }
+
         if (SuggestionInsertion.LastCompletedWord(latest).Length == 0)
         {
             return;
@@ -624,6 +654,49 @@ public class LexonService
 
         var (x, y) = GetWordAnchorPosition();
         _suggestionOverlay.FlashCorrection(correction, x, y, OverlayLineHeight());
+        return true;
+    }
+
+    private bool TryApplySpacing(string typed, TextContext context)
+    {
+        if (!_autoInsertSpaces() || string.IsNullOrEmpty(typed) || _isCodeApp(context.ApplicationName))
+        {
+            return false;
+        }
+
+        if (_privacyGuard.ShouldBlockAssistance(context))
+        {
+            return false;
+        }
+
+        if (!SpacingNormalizer.TryGetTrailingEdit(typed, out var start, out var length, out var replacement))
+        {
+            return false;
+        }
+
+        var (deleteCount, insertText) = SpacingNormalizer.GetEditToEnd(typed, start, length, replacement);
+        if (deleteCount <= 0)
+        {
+            return false;
+        }
+
+        for (var i = 0; i < deleteCount; i++)
+        {
+            _focusTracker.AddTypedCharacter('\b');
+        }
+
+        foreach (var ch in insertText)
+        {
+            _focusTracker.AddTypedCharacter(ch);
+        }
+
+        var original = typed[^deleteCount..];
+        _undoManager.RecordOperation(original, insertText);
+        _textInjector.DeleteBackward(deleteCount);
+        _textInjector.InjectText(insertText);
+
+        var (x, y) = GetWordAnchorPosition();
+        _suggestionOverlay.FlashCorrection(insertText.Trim(), x, y, OverlayLineHeight());
         return true;
     }
 
