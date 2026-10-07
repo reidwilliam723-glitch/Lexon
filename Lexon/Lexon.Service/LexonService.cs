@@ -25,6 +25,7 @@ public class LexonService
     private readonly KeyboardShortcutManager _keyboardShortcutManager;
     private readonly UndoManager _undoManager;
     private readonly Func<bool> _autoCorrectEnabled;
+    private readonly Func<bool> _autoCorrectContractions;
     private readonly Func<bool> _autoInsertSpaces;
     private readonly Func<string?, bool> _isCodeApp;
     private readonly Func<bool> _allowCodeSwitching;
@@ -97,7 +98,8 @@ public class LexonService
         Func<bool>? allowCodeSwitching = null,
         Func<string?, IEnumerable<string>>? resolveProtectedTerms = null,
         Func<bool>? autoInsertSpaces = null,
-        Func<string?, bool>? isCodeApp = null)
+        Func<string?, bool>? isCodeApp = null,
+        Func<bool>? autoCorrectContractions = null)
     {
         _suggestionPipeline = suggestionPipeline ?? throw new ArgumentNullException(nameof(suggestionPipeline));
         _keyboardListener = keyboardListener ?? throw new ArgumentNullException(nameof(keyboardListener));
@@ -110,6 +112,7 @@ public class LexonService
         _keyboardShortcutManager = keyboardShortcutManager ?? throw new ArgumentNullException(nameof(keyboardShortcutManager));
         _undoManager = undoManager ?? throw new ArgumentNullException(nameof(undoManager));
         _autoCorrectEnabled = autoCorrectEnabled ?? (() => false);
+        _autoCorrectContractions = autoCorrectContractions ?? (() => false);
         _autoInsertSpaces = autoInsertSpaces ?? (() => false);
         _isCodeApp = isCodeApp ?? (_ => false);
         _allowCodeSwitching = allowCodeSwitching ?? (() => true);
@@ -630,7 +633,8 @@ public class LexonService
                 _suggestionPipeline.GetLearnedWords(),
                 out var correction,
                 _allowCodeSwitching(),
-                protectedTerms))
+                protectedTerms,
+                _autoCorrectContractions()))
         {
             return false;
         }

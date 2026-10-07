@@ -2,6 +2,12 @@
 
 All notable changes to Lexon will be documented in this file.
 
+## [1.9.1] - 2026-10-07
+
+### Writing
+- Auto-correct only applies high-confidence spelling (teh → the) and the existing safe spacing rules. Contractions, homophones, and other context-dependent grammar stay as Tab suggestions.
+- Writing settings expose these as separate options: auto-correct high-confidence spelling, auto-insert missing spaces, auto-correct contractions (off by default), and suggest grammar (never auto-applied).
+
 ## [1.9.0] - 2026-10-07
 
 ### Writing

@@ -52,6 +52,7 @@ public partial class SettingsForm : Form
     private CheckBox _chkGrammarChecking = null!;
     private CheckBox _chkAutoCorrectTypos = null!;
     private CheckBox _chkAutoInsertSpaces = null!;
+    private CheckBox _chkAutoCorrectContractions = null!;
     private CheckBox _chkDocumentConsistency = null!;
     private CheckBox _chkAllowCodeSwitching = null!;
     private ComboBox _cmbDefaultWritingMode = null!;
@@ -596,8 +597,9 @@ public partial class SettingsForm : Form
         _btnUndoAdaptation.Click += OnUndoAdaptationClicked;
         _chkEnableRewriteHotkey = Check("Rewrite shortcut (Ctrl+Alt+R)");
         _chkGrammarChecking = Check("Suggest grammar fixes automatically");
-        _chkAutoCorrectTypos = Check("Auto-correct known typos");
+        _chkAutoCorrectTypos = Check("Auto-correct high-confidence spelling");
         _chkAutoInsertSpaces = Check("Auto-insert missing spaces");
+        _chkAutoCorrectContractions = Check("Auto-correct contractions");
         _chkDocumentConsistency = Check("Flag inconsistent spelling of the same term");
         _chkAllowCodeSwitching = Check("Allow other languages mid-sentence");
         _chkEnableGrammarHotkey = Check("Grammar shortcut (Ctrl+Alt+G)");
@@ -623,9 +625,10 @@ public partial class SettingsForm : Form
             Hint(_lstAdaptations, "From repeated rejections of a suggestion."),
             _btnUndoAdaptation,
             Caption("Grammar"),
-            Hint(_chkGrammarChecking, "Local rules: agreement, typos, punctuation. Tab accepts a fix. No shortcut required."),
-            Hint(_chkAutoCorrectTypos, "Only the built-in misspelling list. Learned words are left alone."),
+            Hint(_chkGrammarChecking, "Homophones, agreement, possessives, and punctuation. Tab accepts a fix. Never applied automatically."),
+            Hint(_chkAutoCorrectTypos, "Unambiguous misspellings such as teh → the. Applied as you type."),
             Hint(_chkAutoInsertSpaces, "Adds a space after commas and periods, and trims extra spaces. Skips code, URLs, and numbers."),
+            Hint(_chkAutoCorrectContractions, "I'm, what's, I've, and similar. Off by default; they stay as Tab suggestions."),
             Hint(_chkDocumentConsistency, "Warns when a name or term appears with two different spellings in the same text."),
             Hint(_chkAllowCodeSwitching, "Do not treat foreign or mixed-script words as typos."),
             Caption("Grammar sensitivity"),
@@ -1555,6 +1558,7 @@ public partial class SettingsForm : Form
         _chkGrammarChecking.CheckedChanged += (_, _) => ApplyNow();
         _chkAutoCorrectTypos.CheckedChanged += (_, _) => ApplyNow();
         _chkAutoInsertSpaces.CheckedChanged += (_, _) => ApplyNow();
+        _chkAutoCorrectContractions.CheckedChanged += (_, _) => ApplyNow();
         _chkDocumentConsistency.CheckedChanged += (_, _) => ApplyNow();
         _chkAllowCodeSwitching.CheckedChanged += (_, _) => ApplyNow();
         _chkEnableGrammarHotkey.CheckedChanged += (_, _) => ApplyNow();
@@ -1624,6 +1628,7 @@ public partial class SettingsForm : Form
         _chkGrammarChecking.Checked = _appSettings.GrammarChecking;
         _chkAutoCorrectTypos.Checked = _appSettings.AutoCorrectTypos;
         _chkAutoInsertSpaces.Checked = _appSettings.AutoInsertSpaces;
+        _chkAutoCorrectContractions.Checked = _appSettings.AutoCorrectContractions;
         _chkDocumentConsistency.Checked = _appSettings.DocumentConsistencyChecking;
         _chkAllowCodeSwitching.Checked = _appSettings.AllowCodeSwitching;
         _chkEnableGrammarHotkey.Checked = _appSettings.EnableGrammarHotkey;
@@ -1714,6 +1719,7 @@ public partial class SettingsForm : Form
         _appSettings.GrammarChecking = _chkGrammarChecking.Checked;
         _appSettings.AutoCorrectTypos = _chkAutoCorrectTypos.Checked;
         _appSettings.AutoInsertSpaces = _chkAutoInsertSpaces.Checked;
+        _appSettings.AutoCorrectContractions = _chkAutoCorrectContractions.Checked;
         _appSettings.DocumentConsistencyChecking = _chkDocumentConsistency.Checked;
         _appSettings.AllowCodeSwitching = _chkAllowCodeSwitching.Checked;
         _appSettings.EnableGrammarHotkey = _chkEnableGrammarHotkey.Checked;

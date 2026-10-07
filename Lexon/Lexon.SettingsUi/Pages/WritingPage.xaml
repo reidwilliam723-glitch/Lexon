@@ -136,18 +136,18 @@
           <CheckBox Content="Suggest grammar fixes automatically"
                     IsChecked="{Binding GrammarChecking}"
                     AutomationProperties.Name="Suggest grammar fixes automatically"
-                    AutomationProperties.HelpText="Local rules: agreement, typos, punctuation. Tab accepts a fix. No shortcut required."/>
-          <TextBlock Text="Local rules: agreement, typos, punctuation. Tab accepts a fix. No shortcut required."
+                    AutomationProperties.HelpText="Homophones, agreement, possessives, and punctuation. Tab accepts a fix. Never applied automatically."/>
+          <TextBlock Text="Homophones, agreement, possessives, and punctuation. Tab accepts a fix. Never applied automatically."
                      TextWrapping="Wrap" Margin="0,4,0,12"
                      Foreground="{DynamicResource TextSecondaryBrush}"
                      FontFamily="{DynamicResource LexonFontFamily}"
                      FontSize="{DynamicResource CaptionFontSize}"/>
 
-          <CheckBox Content="Auto-correct known typos"
+          <CheckBox Content="Auto-correct high-confidence spelling"
                     IsChecked="{Binding AutoCorrectTypos}"
-                    AutomationProperties.Name="Auto-correct known typos"
-                    AutomationProperties.HelpText="Only the built-in misspelling list. Learned words are left alone."/>
-          <TextBlock Text="Only the built-in misspelling list. Learned words are left alone."
+                    AutomationProperties.Name="Auto-correct high-confidence spelling"
+                    AutomationProperties.HelpText="Unambiguous misspellings such as teh → the. Applied as you type."/>
+          <TextBlock Text="Unambiguous misspellings such as teh → the. Applied as you type."
                      TextWrapping="Wrap" Margin="0,4,0,12"
                      Foreground="{DynamicResource TextSecondaryBrush}"
                      FontFamily="{DynamicResource LexonFontFamily}"
@@ -158,6 +158,16 @@
                     AutomationProperties.Name="Auto-insert missing spaces"
                     AutomationProperties.HelpText="Adds a space after commas and periods, and trims extra spaces. Skips code, URLs, and numbers."/>
           <TextBlock Text="Adds a space after commas and periods, and trims extra spaces. Skips code, URLs, and numbers."
+                     TextWrapping="Wrap" Margin="0,4,0,12"
+                     Foreground="{DynamicResource TextSecondaryBrush}"
+                     FontFamily="{DynamicResource LexonFontFamily}"
+                     FontSize="{DynamicResource CaptionFontSize}"/>
+
+          <CheckBox Content="Auto-correct contractions"
+                    IsChecked="{Binding AutoCorrectContractions}"
+                    AutomationProperties.Name="Auto-correct contractions"
+                    AutomationProperties.HelpText="I'm, what's, I've, and similar. Off by default; they stay as Tab suggestions."/>
+          <TextBlock Text="I'm, what's, I've, and similar. Off by default; they stay as Tab suggestions."
                      TextWrapping="Wrap" Margin="0,4,0,12"
                      Foreground="{DynamicResource TextSecondaryBrush}"
                      FontFamily="{DynamicResource LexonFontFamily}"

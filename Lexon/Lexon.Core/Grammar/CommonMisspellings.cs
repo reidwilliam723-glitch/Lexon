@@ -197,12 +197,53 @@ public static class CommonMisspellings
         ["whos"] = "who's"
     };
 
+    /// <summary>
+    /// Missing apostrophes. Suggested by default; auto-applied only when
+    /// Auto-correct contractions is on.
+    /// </summary>
+    private static readonly HashSet<string> Contractions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "im", "ive", "youve", "weve", "theyve", "couldve", "wouldve", "shouldve",
+        "youll", "theyll", "itll", "thatll",
+        "whats", "thats", "wheres", "heres", "hows", "whos", "thast", "wans't"
+    };
+
+    /// <summary>
+    /// Real words or short slips that need context. Suggested; never auto-applied.
+    /// </summary>
+    private static readonly HashSet<string> Ambiguous = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "ther", "wich", "wether", "sence", "lightening", "loosing", "tyr", "wih", "jist"
+    };
+
     private static readonly (Regex Pattern, string Replacement)[] CachedPatterns =
         Map.Select(pair => (
             new Regex(@"\b" + Regex.Escape(pair.Key) + @"\b", RegexOptions.IgnoreCase | RegexOptions.Compiled),
             pair.Value)).ToArray();
 
     public static IReadOnlyList<(Regex Pattern, string Replacement)> Patterns => CachedPatterns;
+
+    public static bool TryAutoCorrect(string word, out string correction, bool includeContractions = false)
+    {
+        if (!TryCorrect(word, out correction) || Ambiguous.Contains(word))
+        {
+            correction = string.Empty;
+            return false;
+        }
+
+        if (Contractions.Contains(word))
+        {
+            if (!includeContractions)
+            {
+                correction = string.Empty;
+                return false;
+            }
+
+            return true;
+        }
+
+        return true;
+    }
 
     public static bool TryCorrect(string word, out string correction)
     {

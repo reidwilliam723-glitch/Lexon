@@ -39,6 +39,7 @@ public class AppSettingsRoundTripTests
             GrammarChecking = false,
             AutoCorrectTypos = false,
             AutoInsertSpaces = false,
+            AutoCorrectContractions = true,
             EnableGrammarHotkey = false,
             GrammarMutedApps = ["discord.exe"],
             AppCategoryOverrides = ["slack.exe|Casual"],
@@ -74,6 +75,7 @@ public class AppSettingsRoundTripTests
         Assert.Equal(source.GrammarChecking, loaded.GrammarChecking);
         Assert.Equal(source.AutoCorrectTypos, loaded.AutoCorrectTypos);
         Assert.Equal(source.AutoInsertSpaces, loaded.AutoInsertSpaces);
+        Assert.Equal(source.AutoCorrectContractions, loaded.AutoCorrectContractions);
         Assert.Equal(source.EnableGrammarHotkey, loaded.EnableGrammarHotkey);
         Assert.Equal(source.GrammarMutedApps, loaded.GrammarMutedApps);
         Assert.Equal(source.AppCategoryOverrides, loaded.AppCategoryOverrides);
@@ -104,6 +106,7 @@ public class AppSettingsRoundTripTests
         Assert.True(profile.HasSetting(AppSettings.GrammarCheckingKey));
         Assert.True(profile.HasSetting(AppSettings.AutoCorrectTyposKey));
         Assert.True(profile.HasSetting(AppSettings.AutoInsertSpacesKey));
+        Assert.True(profile.HasSetting(AppSettings.AutoCorrectContractionsKey));
         Assert.True(profile.HasSetting(AppSettings.EnableGrammarHotkeyKey));
         Assert.True(profile.HasSetting(AppSettings.GrammarMutedAppsKey));
         Assert.True(profile.HasSetting(AppSettings.AppCategoryOverridesKey));

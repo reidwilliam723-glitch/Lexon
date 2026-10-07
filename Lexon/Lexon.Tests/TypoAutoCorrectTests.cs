@@ -73,4 +73,40 @@ public class TypoAutoCorrectTests
         Assert.Equal(4, deleteCount);
         Assert.Equal("the ", insertText);
     }
+
+    [Theory]
+    [InlineData("im")]
+    [InlineData("ive")]
+    [InlineData("whats")]
+    [InlineData("thats")]
+    [InlineData("ther")]
+    [InlineData("wether")]
+    [InlineData("lightening")]
+    [InlineData("loosing")]
+    public void ContextDependent_IsNotAutoCorrected(string word)
+    {
+        Assert.False(TypoAutoCorrect.TryGetCorrection(word, enabled: true, learnedWords: [], out _));
+        Assert.True(CommonMisspellings.TryCorrect(word, out _));
+    }
+
+    [Fact]
+    public void Contractions_AutoCorrectOnlyWhenEnabled()
+    {
+        Assert.False(TypoAutoCorrect.TryGetCorrection("im", enabled: true, learnedWords: [], out _));
+        Assert.True(TypoAutoCorrect.TryGetCorrection(
+            "im", enabled: true, learnedWords: [], out var correction, includeContractions: true));
+        Assert.Equal("I'm", correction);
+        Assert.False(TypoAutoCorrect.TryGetCorrection(
+            "wether", enabled: true, learnedWords: [], out _, includeContractions: true));
+    }
+
+    [Fact]
+    public void GrammarStillSuggestsContractions()
+    {
+        var matches = RuleBasedGrammarChecker.Find("im sure whats next");
+        Assert.Contains(matches, m => m.Replacement.Equals("I'm", StringComparison.OrdinalIgnoreCase)
+            || m.Replacement.Equals("I'm sure", StringComparison.OrdinalIgnoreCase)
+            || m.Original.Equals("im", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(matches, m => m.Original.Equals("whats", StringComparison.OrdinalIgnoreCase));
+    }
 }

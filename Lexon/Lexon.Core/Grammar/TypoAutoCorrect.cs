@@ -2,7 +2,8 @@ namespace Lexon.Core.Grammar;
 
 /// <summary>
 /// Decides whether a just-completed word should be auto-corrected.
-/// Only <see cref="CommonMisspellings"/> qualify — never grammar rules.
+/// Only high-confidence mechanical misspellings qualify — never
+/// contractions, homophones, or other context-dependent grammar.
 /// </summary>
 public static class TypoAutoCorrect
 {
@@ -12,7 +13,8 @@ public static class TypoAutoCorrect
         IEnumerable<string>? learnedWords,
         out string correction,
         bool allowCodeSwitching = true,
-        IEnumerable<string>? protectedTerms = null)
+        IEnumerable<string>? protectedTerms = null,
+        bool includeContractions = false)
     {
         correction = string.Empty;
         if (!enabled || string.IsNullOrWhiteSpace(completedWord))
@@ -25,7 +27,7 @@ public static class TypoAutoCorrect
             return false;
         }
 
-        if (!CommonMisspellings.TryCorrect(completedWord, out var raw)
+        if (!CommonMisspellings.TryAutoCorrect(completedWord, out var raw, includeContractions)
             || raw.Equals(completedWord, StringComparison.OrdinalIgnoreCase))
         {
             return false;

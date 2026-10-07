@@ -288,7 +288,8 @@ public static class LexonServiceComposer
             () => profile.GetSetting("AutoInsertSpaces", true),
             app => SpacingNormalizer.IsCodeApp(
                 app,
-                AppCategoryMapper.ParseOverrides(profile.GetSetting<List<string>>("AppCategoryOverrides", [])))
+                AppCategoryMapper.ParseOverrides(profile.GetSetting<List<string>>("AppCategoryOverrides", []))),
+            () => profile.GetSetting("AutoCorrectContractions", false)
         );
 
         lexonService.AttachWritingEnhancement(selectionRewrite, grammarCheck, mouseListener);

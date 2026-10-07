@@ -91,7 +91,22 @@ public static class RuleBasedGrammarChecker
         (Rx(@"\btheyre\b"), "they're"),
         (Rx(@"\bthats\b"), "that's"),
         (Rx(@"\bwhats\b"), "what's"),
-        (Rx(@"\bwheres\b"), "where's")
+        (Rx(@"\bwheres\b"), "where's"),
+        (Rx(@"\bim\b"), "I'm"),
+        (Rx(@"\bive\b"), "I've"),
+        (Rx(@"\byouve\b"), "you've"),
+        (Rx(@"\bweve\b"), "we've"),
+        (Rx(@"\btheyve\b"), "they've"),
+        (Rx(@"\bcouldve\b"), "could've"),
+        (Rx(@"\bwouldve\b"), "would've"),
+        (Rx(@"\bshouldve\b"), "should've"),
+        (Rx(@"\byoull\b"), "you'll"),
+        (Rx(@"\btheyll\b"), "they'll"),
+        (Rx(@"\bitll\b"), "it'll"),
+        (Rx(@"\bthatll\b"), "that'll"),
+        (Rx(@"\bheres\b"), "here's"),
+        (Rx(@"\bhows\b"), "how's"),
+        (Rx(@"\bwhos\b"), "who's")
     ];
 
     public static IReadOnlyList<GrammarMatch> Find(
