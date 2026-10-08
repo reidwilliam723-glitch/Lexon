@@ -12,7 +12,7 @@ public sealed class GrammarSuggestionProvider : ISuggestionProvider
     public bool IsFastPath => true;
     public Func<bool>? IsEnabled { get; set; }
 
-    public Func<string, bool>? SkipSpellingWord { get; set; }
+    public Func<string, TextContext, bool>? SkipSpellingWord { get; set; }
 
     public Task<IEnumerable<Suggestion>> GetSuggestionsAsync(TextContext context, CancellationToken cancellationToken = default)
     {
@@ -23,7 +23,7 @@ public sealed class GrammarSuggestionProvider : ISuggestionProvider
 
         IEnumerable<Suggestion> suggestions = GrammarSuggestionMapper.Suggest(
             context,
-            skipSpellingWord: SkipSpellingWord);
+            skipSpellingWord: word => SkipSpellingWord?.Invoke(word, context) == true);
         return Task.FromResult(suggestions);
     }
 }

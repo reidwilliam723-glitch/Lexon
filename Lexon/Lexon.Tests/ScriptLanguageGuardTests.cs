@@ -47,4 +47,12 @@ public class ScriptLanguageGuardTests
         // 3 non-Latin out of 5 letters = 60% — above threshold
         Assert.True(ScriptLanguageGuard.ShouldSkipSpelling("teh", "a бвгд"));
     }
+
+    [Fact]
+    public void SurroundingScan_UsesOnlyTheLast600Characters()
+    {
+        var early = new string('я', 1000);
+        var recent = new string('a', 700);
+        Assert.False(ScriptLanguageGuard.ShouldSkipSpelling("teh", early + recent));
+    }
 }

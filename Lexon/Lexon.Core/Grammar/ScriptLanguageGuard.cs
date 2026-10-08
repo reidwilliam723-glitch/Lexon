@@ -9,6 +9,7 @@ namespace Lexon.Core.Grammar;
 public static class ScriptLanguageGuard
 {
     private const double NonLatinLetterThreshold = 0.40;
+    private const int SurroundingScanChars = 600;
 
     /// <summary>
     /// Returns true when <paramref name="word"/> has non-ASCII or non-Latin
@@ -22,7 +23,7 @@ public static class ScriptLanguageGuard
             return true;
         }
 
-        return SurroundingIsPredominantlyNonLatin(surroundingText);
+        return SurroundingIsPredominantlyNonLatin(Tail(surroundingText));
     }
 
     private static bool WordLooksForeign(string word)
@@ -41,6 +42,16 @@ public static class ScriptLanguageGuard
         }
 
         return false;
+    }
+
+    private static string? Tail(string? surroundingText)
+    {
+        if (string.IsNullOrEmpty(surroundingText) || surroundingText.Length <= SurroundingScanChars)
+        {
+            return surroundingText;
+        }
+
+        return surroundingText[^SurroundingScanChars..];
     }
 
     private static bool SurroundingIsPredominantlyNonLatin(string? surroundingText)

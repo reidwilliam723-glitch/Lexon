@@ -181,24 +181,12 @@ public static class LexonServiceComposer
                 profile.GetSetting<List<string>>("CustomTerminology", []),
                 profile.GetSetting<List<string>>("AppTerminologyOverrides", []));
 
-        Func<string, bool> skipProtectedOrForeign = word =>
-        {
-            var ctx = focusTracker.GetCurrentContext();
-            var app = ctx.ApplicationName;
-            if (TerminologyList.IsProtected(word, ResolveProtectedTerms(app), null))
-            {
-                return true;
-            }
-
-            return profile.GetSetting("AllowCodeSwitching", true)
-                   && ScriptLanguageGuard.ShouldSkipSpelling(word, ctx.FullText);
-        };
-        typoSuggestionProvider.IsProtectedWord = word =>
-            TerminologyList.IsProtected(
-                word,
-                ResolveProtectedTerms(focusTracker.GetCurrentContext().ApplicationName),
-                null);
-        grammarSuggestionProvider.SkipSpellingWord = skipProtectedOrForeign;
+        typoSuggestionProvider.IsProtectedWord = (word, ctx) =>
+            TerminologyList.IsProtected(word, ResolveProtectedTerms(ctx.ApplicationName), null);
+        grammarSuggestionProvider.SkipSpellingWord = (word, ctx) =>
+            TerminologyList.IsProtected(word, ResolveProtectedTerms(ctx.ApplicationName), null)
+            || (profile.GetSetting("AllowCodeSwitching", true)
+                && ScriptLanguageGuard.ShouldSkipSpelling(word, ctx.FullText));
 
         // Initialize overlay (shared theme host wired to core ThemeManager)
         var overlayThemeHost = new OverlayThemeHost(themeManager);

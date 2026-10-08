@@ -14,7 +14,7 @@ public sealed class TypoSuggestionProvider : ISuggestionProvider
     /// <summary>
     /// When set, returns true for custom terminology that must not be offered as a typo fix.
     /// </summary>
-    public Func<string, bool>? IsProtectedWord { get; set; }
+    public Func<string, TextContext, bool>? IsProtectedWord { get; set; }
 
     public Task<IEnumerable<Suggestion>> GetSuggestionsAsync(TextContext context, CancellationToken cancellationToken = default)
     {
@@ -22,7 +22,7 @@ public sealed class TypoSuggestionProvider : ISuggestionProvider
         if (word.Length < 2
             || ScriptLanguageGuard.ShouldSkipSpelling(word, context.FullText)
             || !CommonMisspellings.TryCorrect(word, out var correction)
-            || IsProtectedWord?.Invoke(word) == true)
+            || IsProtectedWord?.Invoke(word, context) == true)
         {
             return Task.FromResult(Enumerable.Empty<Suggestion>());
         }
