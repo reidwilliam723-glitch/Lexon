@@ -148,7 +148,16 @@ public static class LexonServiceComposer
             IsEnabled = () => profile.GetSetting("GrammarChecking", true)
         };
         suggestionPipeline.AddProvider(grammarSuggestionProvider);
-        suggestionPipeline.AddProvider(new DictionarySuggestionProvider(storage));
+        bool AllowsLearned(string? app) => LearnedWordPolicy.Allows(
+            profile.GetSetting("UseLearnedWords", true),
+            profile.GetSetting<List<string>>("LearnedWordsMutedApps", []) ?? [],
+            app);
+        var dictionary = new DictionarySuggestionProvider(storage)
+        {
+            AllowsLearnedWords = AllowsLearned
+        };
+        suggestionPipeline.AddProvider(dictionary);
+        suggestionPipeline.SetLearnedWordsAllowed(AllowsLearned);
 
         // Add AI provider if available
         if (aiProvider != null)

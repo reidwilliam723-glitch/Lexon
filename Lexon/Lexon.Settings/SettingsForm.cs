@@ -80,6 +80,8 @@ public partial class SettingsForm : Form
     private ComboBox _cmbGrammarSensitivity = null!;
     private CheckBox _chkMuteCasualGrammar = null!;
     private TextBox _txtGrammarMutedApps = null!;
+    private CheckBox _chkUseLearnedWords = null!;
+    private TextBox _txtLearnedMutedApps = null!;
     private Button _btnExportLearning = null!;
     private Button _btnImportLearning = null!;
     private Button _btnExportSettings = null!;
@@ -611,10 +613,15 @@ public partial class SettingsForm : Form
         _cmbGrammarSensitivity.SelectedIndex = 1;
         _chkMuteCasualGrammar = Check("Mute grammar checks in casual apps");
         _txtGrammarMutedApps = Field(360);
+        _chkUseLearnedWords = Check("Use learned words");
+        _txtLearnedMutedApps = Field(360);
         _sectionWriting = Section(
             "Writing",
             Hint(_btnWritingStats, "Words, pace, and style collected while you type."),
             Hint(_btnLearnedWords, "Vocabulary Lexon learned from you."),
+            Hint(_chkUseLearnedWords, "Offer vocabulary Lexon learned from your typing. Turn this off to stop it in every app."),
+            Caption("Don't use learned words in these apps"),
+            Hint(_txtLearnedMutedApps, "Comma-separated process names. Learned words stay on in every other app."),
             Hint(_btnTerminology, "Names and product terms protected from autocorrect and spelling."),
             Hint(_btnExportLearning, "Save learned vocabulary and style as a JSON file."),
             Hint(_btnImportLearning, "Restore learned vocabulary and style from a JSON file."),
@@ -1182,6 +1189,7 @@ public partial class SettingsForm : Form
             SetWidth(_cmbGrammarSensitivity, middle);
             SetWidth(_cmbDefaultWritingMode, middle);
             SetWidth(_txtGrammarMutedApps, middle);
+            SetWidth(_txtLearnedMutedApps, middle);
             SetWidth(_lstAppTone, right);
             if (Math.Abs(_lstAppTone.Height - listHeight) >= 2)
             {
@@ -1229,6 +1237,7 @@ public partial class SettingsForm : Form
             SetWidth(_cmbGrammarSensitivity, 360);
             SetWidth(_cmbDefaultWritingMode, 360);
             SetWidth(_txtGrammarMutedApps, 360);
+            SetWidth(_txtLearnedMutedApps, 360);
             SetWidth(_lstAppTone, 360);
             if (_lstAppTone.Height != 110)
             {
@@ -1556,6 +1565,7 @@ public partial class SettingsForm : Form
         _cmbAiModel.SelectedIndexChanged += (_, _) => ApplyNow();
         _chkEnableRewriteHotkey.CheckedChanged += (_, _) => ApplyNow();
         _chkGrammarChecking.CheckedChanged += (_, _) => ApplyNow();
+        _chkUseLearnedWords.CheckedChanged += (_, _) => ApplyNow();
         _chkAutoCorrectTypos.CheckedChanged += (_, _) => ApplyNow();
         _chkAutoInsertSpaces.CheckedChanged += (_, _) => ApplyNow();
         _chkAutoCorrectContractions.CheckedChanged += (_, _) => ApplyNow();
@@ -1581,6 +1591,7 @@ public partial class SettingsForm : Form
         };
         _txtBlockedApps.TextChanged += (_, _) => SchedulePersist();
         _txtGrammarMutedApps.TextChanged += (_, _) => SchedulePersist();
+        _txtLearnedMutedApps.TextChanged += (_, _) => SchedulePersist();
     }
 
     private void LoadSettings()
@@ -1635,6 +1646,8 @@ public partial class SettingsForm : Form
         var modeIndex = _cmbDefaultWritingMode.Items.IndexOf(_appSettings.DefaultWritingMode);
         _cmbDefaultWritingMode.SelectedIndex = modeIndex >= 0 ? modeIndex : 0;
         _txtGrammarMutedApps.Text = BlockedAppList.FormatCsv(_appSettings.GrammarMutedApps);
+        _chkUseLearnedWords.Checked = _appSettings.UseLearnedWords;
+        _txtLearnedMutedApps.Text = BlockedAppList.FormatCsv(_appSettings.LearnedWordsMutedApps);
         _lstAppTone.Items.Clear();
         foreach (var row in _appSettings.AppCategoryOverrides)
         {
@@ -1726,6 +1739,8 @@ public partial class SettingsForm : Form
         _appSettings.DefaultWritingMode = _cmbDefaultWritingMode.SelectedItem?.ToString()
             ?? WritingViewModel.WritingModeLabels[0];
         _appSettings.GrammarMutedApps = BlockedAppList.ParseMutedGrammar(_txtGrammarMutedApps.Text);
+        _appSettings.UseLearnedWords = _chkUseLearnedWords.Checked;
+        _appSettings.LearnedWordsMutedApps = BlockedAppList.ParseMutedGrammar(_txtLearnedMutedApps.Text);
         _appSettings.AppCategoryOverrides = _lstAppTone.Items.Cast<object>().Select(i => i.ToString()!).Where(s => !string.IsNullOrWhiteSpace(s)).ToList();
         _appSettings.Write(_profile);
 

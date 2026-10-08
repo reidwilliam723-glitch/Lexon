@@ -143,6 +143,23 @@ public class NextWordAndAutoCorrectTests
     }
 
     [Fact]
+    public void NumberKey_ConfirmsTheMatchingSuggestionRow()
+    {
+        var harness = WordHarness.WithBuffer("hel", autoCorrect: false);
+        harness.Privacy.Setup(p => p.ShouldBlockAssistance(It.IsAny<TextContext>())).Returns(false);
+        harness.Overlay.Setup(o => o.IsVisible).Returns(true);
+        harness.Overlay.Setup(o => o.HasSuggestionList).Returns(true);
+        harness.Overlay.Setup(o => o.CanConfirmVisible(1)).Returns(true);
+
+        harness.TypeKey(0x32);
+        harness.WaitForIdle();
+
+        harness.Overlay.Verify(o => o.ConfirmVisible(1), Times.Once);
+        harness.Overlay.Verify(o => o.ConfirmPrediction(It.IsAny<int>()), Times.Never);
+        Assert.True(harness.LastKey.Handled);
+    }
+
+    [Fact]
     public void Tab_WithOnlyPredictionChips_IsNotStolen()
     {
         var harness = WordHarness.WithBuffer("thank ", autoCorrect: false);

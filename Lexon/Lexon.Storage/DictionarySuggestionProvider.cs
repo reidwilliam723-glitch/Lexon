@@ -35,6 +35,12 @@ public class DictionarySuggestionProvider : ISuggestionProvider, ILearnableSugge
 
     public string Name => "Dictionary";
 
+    /// <summary>
+    /// When this returns false for the current app, words that exist only because
+    /// the user typed them are left out of suggestions. Null means they are included.
+    /// </summary>
+    public Func<string?, bool>? AllowsLearnedWords { get; set; }
+
     public DictionarySuggestionProvider(IStorage storage)
     {
         _storage = storage ?? throw new ArgumentNullException(nameof(storage));
@@ -52,15 +58,16 @@ public class DictionarySuggestionProvider : ISuggestionProvider, ILearnableSugge
         var prefix = context.CurrentWord.ToLowerInvariant();
         var matches = new HashSet<string>(WordComparer);
 
+        var includeLearned = AllowsLearnedWords?.Invoke(context.ApplicationName) ?? true;
         lock (_lock)
         {
             if (prefix.Length == 1)
             {
-                CollectFirstLetterMatches(prefix[0], matches);
+                CollectFirstLetterMatches(prefix[0], matches, includeLearned);
             }
             else
             {
-                CollectPrefixMatches(prefix, matches);
+                CollectPrefixMatches(prefix, matches, includeLearned);
             }
         }
 
@@ -230,6 +237,20 @@ public class DictionarySuggestionProvider : ISuggestionProvider, ILearnableSugge
         _lastLearnedAt = null;
     }
 
+    public bool IsLearnedOnly(string word)
+    {
+        var normalized = Normalize(word);
+        if (normalized.Length == 0)
+        {
+            return false;
+        }
+
+        lock (_lock)
+        {
+            return _learnedWords.Contains(normalized) && !_lexiconWords.Contains(normalized);
+        }
+    }
+
     public bool UndoLastLearn(TimeSpan? maxAge = null)
     {
         lock (_lock)
@@ -305,7 +326,7 @@ public class DictionarySuggestionProvider : ISuggestionProvider, ILearnableSugge
         }
     }
 
-    private void CollectFirstLetterMatches(char letter, HashSet<string> matches)
+    private void CollectFirstLetterMatches(char letter, HashSet<string> matches, bool includeLearned)
     {
         if (_firstLetterCommon.TryGetValue(letter, out var common))
         {
@@ -315,7 +336,7 @@ public class DictionarySuggestionProvider : ISuggestionProvider, ILearnableSugge
             }
         }
 
-        if (_learnedByLetter.TryGetValue(letter, out var learned))
+        if (includeLearned && _learnedByLetter.TryGetValue(letter, out var learned))
         {
             foreach (var word in learned)
             {
@@ -324,7 +345,7 @@ public class DictionarySuggestionProvider : ISuggestionProvider, ILearnableSugge
         }
     }
 
-    private void CollectPrefixMatches(string prefix, HashSet<string> matches)
+    private void CollectPrefixMatches(string prefix, HashSet<string> matches, bool includeLearned)
     {
         if (string.IsNullOrEmpty(prefix))
         {
@@ -347,7 +368,7 @@ public class DictionarySuggestionProvider : ISuggestionProvider, ILearnableSugge
             }
         }
 
-        if (_learnedByLetter.TryGetValue(letter, out var learned))
+        if (includeLearned && _learnedByLetter.TryGetValue(letter, out var learned))
         {
             foreach (var word in learned)
             {

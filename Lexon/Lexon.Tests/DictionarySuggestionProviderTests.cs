@@ -319,4 +319,32 @@ public class DictionarySuggestionProviderTests
 
         Assert.True(provider.WordCount > 300_000, $"Expected a full lexicon, got {provider.WordCount}");
     }
+
+    [Fact]
+    public async Task LearnedOnlyWord_IsOmittedWhenThatAppDisablesLearnedWords()
+    {
+        _mockStorage.Setup(s => s.LoadAsync<string>(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((string?)null);
+
+        var provider = new DictionarySuggestionProvider(_mockStorage.Object)
+        {
+            AllowsLearnedWords = app => !string.Equals(app, "winword", StringComparison.OrdinalIgnoreCase)
+        };
+        provider.AddExplicitWord("zzqxxcustomword");
+
+        var allowed = await provider.GetSuggestionsAsync(new TextContext
+        {
+            CurrentWord = "zzq",
+            ApplicationName = "notepad"
+        });
+        var muted = await provider.GetSuggestionsAsync(new TextContext
+        {
+            CurrentWord = "zzq",
+            ApplicationName = "winword"
+        });
+
+        Assert.Contains(allowed, s => s.Text == "zzqxxcustomword");
+        Assert.DoesNotContain(muted, s => s.Text == "zzqxxcustomword");
+        Assert.True(provider.IsLearnedOnly("zzqxxcustomword"));
+    }
 }

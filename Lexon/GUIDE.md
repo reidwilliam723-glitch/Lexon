@@ -15,10 +15,13 @@ Right-click the Lexon icon next to the clock:
 
 1. Type in almost any text box.
 2. A small popup lists completions.
-3. **Up / Down** moves the highlight.
-4. **Tab** inserts the highlighted word (adds a space).
-5. **Esc** hides the list.
-6. **Space** does **not** accept a suggestion (it just types a space).
+3. **1**, **2**, or **3** inserts that row. The number is shown on the left. The number pad works too.
+4. **Up / Down** moves the highlight.
+5. **Tab** inserts the highlighted word (adds a space).
+6. **Esc** hides the list.
+7. **Space** does **not** accept a suggestion (it just types a space).
+
+After you finish a word, the next-word chips also use **1**, **2**, and **3**. While the word list is open, those keys accept the list instead.
 
 If the list covers your text, press Esc, then keep typing.
 

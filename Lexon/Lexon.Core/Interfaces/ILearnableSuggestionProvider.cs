@@ -20,4 +20,7 @@ public interface ILearnableSuggestionProvider
     void ClearLearnedWords();
 
     bool UndoLastLearn(TimeSpan? maxAge = null);
+
+    /// <summary>True when the word is in the user's vocabulary and not in the built-in lexicon.</summary>
+    bool IsLearnedOnly(string word);
 }

@@ -45,6 +45,31 @@
                      FontFamily="{DynamicResource LexonFontFamily}"
                      FontSize="{DynamicResource CaptionFontSize}"/>
 
+          <CheckBox Content="Use learned words"
+                    IsChecked="{Binding UseLearnedWords}"
+                    AutomationProperties.Name="Use learned words"
+                    AutomationProperties.HelpText="Offer vocabulary Lexon learned from your typing."/>
+          <TextBlock Text="Offer vocabulary Lexon learned from your typing. Turn this off to stop it in every app."
+                     TextWrapping="Wrap" Margin="0,4,0,12"
+                     Foreground="{DynamicResource TextSecondaryBrush}"
+                     FontFamily="{DynamicResource LexonFontFamily}"
+                     FontSize="{DynamicResource CaptionFontSize}"/>
+
+          <TextBlock Text="Don't use learned words in these apps" TextWrapping="Wrap" Margin="0,0,0,4"
+                     Foreground="{DynamicResource TextBrush}"
+                     FontFamily="{DynamicResource LexonFontFamily}"
+                     FontSize="{DynamicResource BodyFontSize}"/>
+          <TextBox Text="{Binding LearnedMutedAppsText, UpdateSourceTrigger=PropertyChanged}"
+                   HorizontalAlignment="Stretch" MinWidth="0"
+                   Margin="0,0,0,4"
+                   AutomationProperties.Name="Don't use learned words in these apps"
+                   AutomationProperties.HelpText="Comma-separated process names. Learned words stay on in every other app."/>
+          <TextBlock Text="Comma-separated process names, such as winword, chrome. Learned words stay on in every other app."
+                     TextWrapping="Wrap" Margin="0,0,0,12"
+                     Foreground="{DynamicResource TextSecondaryBrush}"
+                     FontFamily="{DynamicResource LexonFontFamily}"
+                     FontSize="{DynamicResource CaptionFontSize}"/>
+
           <Button Content="Manage terminology…"
                   HorizontalAlignment="Left" Margin="0,0,0,4"
                   Click="OnTerminology"

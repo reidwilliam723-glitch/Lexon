@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Sockets;
 using Lexon.AI;
+using Lexon.Core.Grammar;
 using Lexon.Service;
 using Xunit;
 
@@ -93,6 +94,15 @@ public class GrammarPauseTriggerTests
         Assert.False(GrammarCheckService.ShouldRunPauseCheck("hello there", "", true, true, false));
         Assert.False(GrammarCheckService.ShouldRunPauseCheck("hello there", "", true, false, true));
         Assert.False(GrammarCheckService.ShouldRunPauseCheck(" ", "", true, false, false));
+    }
+
+    [Fact]
+    public void PausePopup_DropsAnIssueOnceTypingMovesPastIt()
+    {
+        var atCaret = GrammarSuggestionMapper.TrailingMatches("he are");
+        var movedOn = GrammarSuggestionMapper.TrailingMatches("he are going to the store");
+        Assert.NotEmpty(atCaret);
+        Assert.Empty(GrammarCheckService.PausePopupMatches(atCaret, movedOn));
     }
 
     [Fact]

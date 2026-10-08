@@ -13,6 +13,13 @@ public interface ISuggestionOverlay : IDisposable
     void Hide();
     bool IsVisible { get; }
     bool HasPredictions { get; }
+
+    /// <summary>True when the word or grammar list has rows, not only next-word chips.</summary>
+    bool HasSuggestionList { get; }
+
+    bool CanConfirmVisible(int visibleIndex);
+
+    void ConfirmVisible(int visibleIndex);
     void MoveTo(int x, int y, int lineHeight = 20);
     void SelectNext();
     void SelectPrevious();

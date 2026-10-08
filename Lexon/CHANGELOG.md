@@ -2,6 +2,15 @@
 
 All notable changes to Lexon will be documented in this file.
 
+## [1.10.2] - 2026-10-08
+
+### Suggestions
+- The suggestion list shows 1, 2, and 3 beside the visible rows. Those keys, including the number pad, insert that row. Next-word chips still use 1, 2, and 3 when the list is not open.
+
+### Writing
+- Learned words can be turned off for every app, or for the apps you list under Writing. Words stay saved; they are just not offered there.
+- A grammar popup goes away once you type past the flagged words. After you pause, it only comes back if that issue is still at the caret.
+
 ## [1.10.1] - 2026-10-08
 
 ### Settings

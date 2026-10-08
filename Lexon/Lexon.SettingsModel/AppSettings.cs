@@ -40,6 +40,8 @@ public sealed class AppSettings
     public const string CustomTerminologyKey = "CustomTerminology";
     public const string AppTerminologyOverridesKey = "AppTerminologyOverrides";
     public const string DefaultWritingModeKey = "DefaultWritingMode";
+    public const string UseLearnedWordsKey = "UseLearnedWords";
+    public const string LearnedWordsMutedAppsKey = "LearnedWordsMutedApps";
 
     public bool MinimizeToTray { get; set; } = true;
     public bool EnableAutoUpdates { get; set; } = true;
@@ -73,6 +75,8 @@ public sealed class AppSettings
     public List<string> CustomTerminology { get; set; } = [];
     public List<string> AppTerminologyOverrides { get; set; } = [];
     public string DefaultWritingMode { get; set; } = "Plain language";
+    public bool UseLearnedWords { get; set; } = true;
+    public List<string> LearnedWordsMutedApps { get; set; } = [];
 
     public void Read(Profile profile)
     {
@@ -111,6 +115,8 @@ public sealed class AppSettings
         CustomTerminology = profile.GetSetting<List<string>>(CustomTerminologyKey, []) ?? [];
         AppTerminologyOverrides = profile.GetSetting<List<string>>(AppTerminologyOverridesKey, []) ?? [];
         DefaultWritingMode = profile.GetSetting(DefaultWritingModeKey, "Plain language");
+        UseLearnedWords = profile.GetSetting(UseLearnedWordsKey, true);
+        LearnedWordsMutedApps = profile.GetSetting<List<string>>(LearnedWordsMutedAppsKey, []) ?? [];
     }
 
     public void Write(Profile profile)
@@ -148,7 +154,9 @@ public sealed class AppSettings
             AppCategoryOverridesKey,
             CustomTerminologyKey,
             AppTerminologyOverridesKey,
-            DefaultWritingModeKey);
+            DefaultWritingModeKey,
+            UseLearnedWordsKey,
+            LearnedWordsMutedAppsKey);
     }
 
     /// <summary>
@@ -256,6 +264,12 @@ public sealed class AppSettings
                     break;
                 case DefaultWritingModeKey:
                     profile.SetSetting(key, DefaultWritingMode);
+                    break;
+                case UseLearnedWordsKey:
+                    profile.SetSetting(key, UseLearnedWords);
+                    break;
+                case LearnedWordsMutedAppsKey:
+                    profile.SetSetting(key, LearnedWordsMutedApps);
                     break;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(keys), key, "Unknown settings key.");

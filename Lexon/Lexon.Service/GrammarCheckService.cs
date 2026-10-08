@@ -100,6 +100,9 @@ public sealed class GrammarCheckService
     public void NoteActivity()
     {
         Interlocked.Increment(ref _pauseGeneration);
+        // A keystroke means the sentence moved on. Drop the inline popup now;
+        // the pause check shows it again only if the issue is still at the caret.
+        _suggestions?.Hide();
     }
 
     public void DismissAssistance()
@@ -135,6 +138,18 @@ public sealed class GrammarCheckService
                 // Pause checks must never surface on the typing path.
             }
         });
+    }
+
+    /// <summary>
+    /// The pause popup only lists issues still sitting at the caret.
+    /// A match earlier in the sentence is left alone once typing has moved past it.
+    /// </summary>
+    public static IReadOnlyList<GrammarMatch> PausePopupMatches(
+        IReadOnlyList<GrammarMatch> documentMatches,
+        IReadOnlyList<GrammarMatch> trailingMatches)
+    {
+        _ = documentMatches;
+        return trailingMatches.Take(3).ToList();
     }
 
     public static bool ShouldRunPauseCheck(
@@ -307,7 +322,11 @@ public sealed class GrammarCheckService
         var caret = _focusTracker.GetCaretScreenPosition();
         if (_matches.Count == 0)
         {
-            if (!silentIfNone)
+            if (silentIfNone)
+            {
+                _suggestions?.Hide();
+            }
+            else
             {
                 _menu.ShowMenu(["No issues found"], caret.X, caret.Y);
             }
@@ -322,16 +341,10 @@ public sealed class GrammarCheckService
                 sensitivity,
                 includeConsistency: consistencyOn,
                 skipSpellingWord: skipSpellingWord);
-            if (trailing.Count == 0 && _matches.Count > 0)
-            {
-                trailing = _matches
-                    .OrderByDescending(m => m.Start)
-                    .Take(1)
-                    .ToList();
-            }
-
+            trailing = PausePopupMatches(_matches, trailing);
             if (trailing.Count == 0)
             {
+                _suggestions?.Hide();
                 return Task.CompletedTask;
             }
 

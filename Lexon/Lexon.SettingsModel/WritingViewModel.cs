@@ -32,7 +32,9 @@ public sealed class WritingViewModel : INotifyPropertyChanged, IOwnedSettingsPag
         AppSettings.EnableGrammarHotkeyKey,
         AppSettings.CustomTerminologyKey,
         AppSettings.AppTerminologyOverridesKey,
-        AppSettings.DefaultWritingModeKey
+        AppSettings.DefaultWritingModeKey,
+        AppSettings.UseLearnedWordsKey,
+        AppSettings.LearnedWordsMutedAppsKey
     ];
 
     public static IReadOnlyList<string> SensitivityLabels { get; } = ["Low", "Medium", "High"];
@@ -62,6 +64,8 @@ public sealed class WritingViewModel : INotifyPropertyChanged, IOwnedSettingsPag
     private int _sensitivityIndex = 1;
     private bool _muteCasual;
     private string _mutedAppsText = string.Empty;
+    private bool _useLearnedWords = true;
+    private string _learnedMutedAppsText = string.Empty;
     private bool _enableRewriteHotkey = true;
     private bool _enableGrammarHotkey = true;
     private int _writingModeIndex;
@@ -189,6 +193,35 @@ public sealed class WritingViewModel : INotifyPropertyChanged, IOwnedSettingsPag
         }
     }
 
+    public bool UseLearnedWords
+    {
+        get => _useLearnedWords;
+        set => SetBool(ref _useLearnedWords, value, v => _settings.UseLearnedWords = v);
+    }
+
+    public string LearnedMutedAppsText
+    {
+        get => _learnedMutedAppsText;
+        set
+        {
+            if (_learnedMutedAppsText == value)
+            {
+                return;
+            }
+
+            _learnedMutedAppsText = value ?? string.Empty;
+            if (_persist.IsLoading)
+            {
+                OnPropertyChanged();
+                return;
+            }
+
+            _settings.LearnedWordsMutedApps = BlockedAppList.ParseMutedGrammar(_learnedMutedAppsText);
+            MarkDirtyAndSchedule();
+            OnPropertyChanged();
+        }
+    }
+
     public bool EnableRewriteHotkey
     {
         get => _enableRewriteHotkey;
@@ -295,6 +328,14 @@ public sealed class WritingViewModel : INotifyPropertyChanged, IOwnedSettingsPag
                 _mutedAppsText = BlockedAppList.FormatCsv(fromProfile);
             }
 
+            _useLearnedWords = _settings.UseLearnedWords;
+            var learnedFromProfile = _settings.LearnedWordsMutedApps ?? [];
+            var learnedParsed = BlockedAppList.ParseMutedGrammar(_learnedMutedAppsText);
+            if (!MutedListEquals(learnedParsed, learnedFromProfile))
+            {
+                _learnedMutedAppsText = BlockedAppList.FormatCsv(learnedFromProfile);
+            }
+
             _enableRewriteHotkey = _settings.EnableRewriteHotkey;
             _enableGrammarHotkey = _settings.EnableGrammarHotkey;
             _writingModeIndex = IndexOfWritingMode(_settings.DefaultWritingMode);
@@ -308,6 +349,8 @@ public sealed class WritingViewModel : INotifyPropertyChanged, IOwnedSettingsPag
             OnPropertyChanged(nameof(SensitivityIndex));
             OnPropertyChanged(nameof(MuteGrammarForCasualApps));
             OnPropertyChanged(nameof(MutedAppsText));
+            OnPropertyChanged(nameof(UseLearnedWords));
+            OnPropertyChanged(nameof(LearnedMutedAppsText));
             OnPropertyChanged(nameof(EnableRewriteHotkey));
             OnPropertyChanged(nameof(EnableGrammarHotkey));
             OnPropertyChanged(nameof(WritingModeIndex));
@@ -354,6 +397,8 @@ public sealed class WritingViewModel : INotifyPropertyChanged, IOwnedSettingsPag
         target.GrammarSensitivity = SensitivityLabels[_sensitivityIndex];
         target.MuteGrammarForCasualApps = _muteCasual;
         target.GrammarMutedApps = BlockedAppList.ParseMutedGrammar(_mutedAppsText);
+        target.UseLearnedWords = _useLearnedWords;
+        target.LearnedWordsMutedApps = BlockedAppList.ParseMutedGrammar(_learnedMutedAppsText);
         target.EnableRewriteHotkey = _enableRewriteHotkey;
         target.EnableGrammarHotkey = _enableGrammarHotkey;
         target.CustomTerminology = [.. _settings.CustomTerminology ?? []];

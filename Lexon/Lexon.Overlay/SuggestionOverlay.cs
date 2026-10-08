@@ -25,6 +25,7 @@ public class SuggestionOverlay : ISuggestionOverlay
     public const string GrammarClassName = "LexonGrammarOverlay";
 
     private const int VisibleRowCount = 3;
+    private const int NumberColumnWidth = 18;
     private const int ItemHeight = 30;
     private const int ChipHeight = 26;
     private const int ChipGap = 6;
@@ -887,6 +888,7 @@ public class SuggestionOverlay : ISuggestionOverlay
 
                     var textColor = actualIndex == selectedIndexCopy ? _chrome.SelectedText : _chrome.Text;
                     using var textBrush = new SolidBrush(textColor);
+                    using var numberBrush = new SolidBrush(actualIndex == selectedIndexCopy ? _chrome.SelectedText : _chrome.Muted);
                     using var format = new StringFormat
                     {
                         Alignment = StringAlignment.Near,
@@ -894,7 +896,10 @@ public class SuggestionOverlay : ISuggestionOverlay
                         Trimming = StringTrimming.EllipsisCharacter,
                         FormatFlags = StringFormatFlags.NoWrap
                     };
-                    graphics.DrawString(visible[i].Text ?? string.Empty, font, textBrush, itemRect, format);
+                    var numberRect = new Rectangle(itemRect.X, itemRect.Y, NumberColumnWidth, itemRect.Height);
+                    var wordRect = new Rectangle(itemRect.X + NumberColumnWidth, itemRect.Y, Math.Max(1, itemRect.Width - NumberColumnWidth), itemRect.Height);
+                    graphics.DrawString((i + 1).ToString(), font, numberBrush, numberRect, format);
+                    graphics.DrawString(visible[i].Text ?? string.Empty, font, textBrush, wordRect, format);
                 }
 
                 DrawPredictionChips(graphics, width, height, suggestionsCopy.Count, predictionsCopy, flashCopy, _chrome);
@@ -1395,6 +1400,52 @@ public class SuggestionOverlay : ISuggestionOverlay
             {
                 return _isShowing;
             }
+        }
+    }
+
+    public bool HasSuggestionList
+    {
+        get
+        {
+            lock (_suggestionsLock)
+            {
+                return _currentSuggestions.Count > 0;
+            }
+        }
+    }
+
+    public bool CanConfirmVisible(int visibleIndex)
+    {
+        lock (_suggestionsLock)
+        {
+            if (!_isShowing || visibleIndex < 0 || visibleIndex >= VisibleRowCount)
+            {
+                return false;
+            }
+
+            var index = _scrollOffset + visibleIndex;
+            return index >= 0 && index < _currentSuggestions.Count;
+        }
+    }
+
+    public void ConfirmVisible(int visibleIndex)
+    {
+        Suggestion? selected = null;
+        lock (_suggestionsLock)
+        {
+            if (!CanConfirmVisible(visibleIndex))
+            {
+                return;
+            }
+
+            selected = _currentSuggestions[_scrollOffset + visibleIndex];
+            _isShowing = false;
+        }
+
+        ForceHideWindow();
+        if (selected != null)
+        {
+            OnSuggestionSelected(selected);
         }
     }
 

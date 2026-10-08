@@ -17,6 +17,7 @@ public class SuggestionPipeline : ISuggestionPipeline
     private CloudAiActivityLog? _aiLog;
     private bool _isEnabled = true;
     private string _sortMode = "Relevant";
+    private Func<string?, bool>? _allowsLearnedWords;
     private int _aiEpoch;
     private CancellationTokenSource _epochCts = new();
 
@@ -42,6 +43,14 @@ public class SuggestionPipeline : ISuggestionPipeline
     /// <summary>
     /// Set the personalization manager for learning user preferences
     /// </summary>
+    /// <summary>
+    /// When set, learned-only vocabulary is omitted for apps this returns false for.
+    /// </summary>
+    public void SetLearnedWordsAllowed(Func<string?, bool> allowsLearnedWords)
+    {
+        _allowsLearnedWords = allowsLearnedWords;
+    }
+
     public void SetPersonalizationManager(PersonalizationManager personalizationManager)
     {
         _personalizationManager = personalizationManager;
@@ -161,6 +170,14 @@ public class SuggestionPipeline : ISuggestionPipeline
         }
 
         var allSuggestions = results.SelectMany(s => s).ToList();
+        if (!LearnedWordsAllowed(context))
+        {
+            var learnable = FirstLearnable();
+            if (learnable != null)
+            {
+                allSuggestions.RemoveAll(s => learnable.IsLearnedOnly(s.Text));
+            }
+        }
 
         if (_personalizationManager != null && _personalizationManager.IsEnabled)
         {
@@ -181,8 +198,14 @@ public class SuggestionPipeline : ISuggestionPipeline
             if (fastPathOnly)
             {
                 var preferredSuggestions = _personalizationManager.GetPreferredSuggestions(context, 3);
+                var learnable = FirstLearnable();
                 foreach (var preferred in preferredSuggestions)
                 {
+                    if (!LearnedWordsAllowed(context) && learnable?.IsLearnedOnly(preferred) == true)
+                    {
+                        continue;
+                    }
+
                     if (!allSuggestions.Any(s => s.Text.Equals(preferred, StringComparison.OrdinalIgnoreCase)))
                     {
                         allSuggestions.Add(new Suggestion
@@ -295,6 +318,9 @@ public class SuggestionPipeline : ISuggestionPipeline
         return !policy.SuggestionsWhileTyping
             && CloudAiNames.RequiresTypingConsent(provider.Name, provider.NetworkEndpoint);
     }
+
+    private bool LearnedWordsAllowed(TextContext context)
+        => _allowsLearnedWords?.Invoke(context.ApplicationName) ?? true;
 
     private ILearnableSuggestionProvider? FirstLearnable()
         => _providers.OfType<ILearnableSuggestionProvider>().FirstOrDefault();

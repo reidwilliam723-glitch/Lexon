@@ -379,7 +379,7 @@ public class LexonService
             }
         }
 
-        if (TryHandlePredictionNumberKey(e))
+        if (TryHandleNumberKey(e))
         {
             return;
         }
@@ -551,9 +551,9 @@ public class LexonService
         return virtualKey is >= 48 and <= 90 or >= 186;
     }
 
-    private bool TryHandlePredictionNumberKey(Input.Interfaces.KeyboardEventArgs e)
+    private bool TryHandleNumberKey(Input.Interfaces.KeyboardEventArgs e)
     {
-        if (e.IsShiftPressed || e.IsControlPressed || e.IsAltPressed || !_suggestionOverlay.HasPredictions)
+        if (e.IsShiftPressed || e.IsControlPressed || e.IsAltPressed)
         {
             return false;
         }
@@ -563,6 +563,12 @@ public class LexonService
             0x31 or 0x61 => 0,
             0x32 or 0x62 => 1,
             0x33 or 0x63 => 2,
+            0x34 or 0x64 => 3,
+            0x35 or 0x65 => 4,
+            0x36 or 0x66 => 5,
+            0x37 or 0x67 => 6,
+            0x38 or 0x68 => 7,
+            0x39 or 0x69 => 8,
             _ => -1
         };
         if (index < 0)
@@ -570,9 +576,31 @@ public class LexonService
             return false;
         }
 
-        e.Handled = true;
-        QueueOffHook(() => _suggestionOverlay.ConfirmPrediction(index));
-        return true;
+        if (_grammarOverlay is { IsVisible: true, HasSuggestionList: true }
+            && _grammarOverlay.CanConfirmVisible(index))
+        {
+            e.Handled = true;
+            QueueOffHook(() => _grammarOverlay.ConfirmVisible(index));
+            return true;
+        }
+
+        if (_suggestionOverlay.IsVisible
+            && _suggestionOverlay.HasSuggestionList
+            && _suggestionOverlay.CanConfirmVisible(index))
+        {
+            e.Handled = true;
+            QueueOffHook(() => _suggestionOverlay.ConfirmVisible(index));
+            return true;
+        }
+
+        if (_suggestionOverlay.HasPredictions && index < 3)
+        {
+            e.Handled = true;
+            QueueOffHook(() => _suggestionOverlay.ConfirmPrediction(index));
+            return true;
+        }
+
+        return false;
     }
 
     private void OnWordCompleted(string typed)
@@ -1065,6 +1093,7 @@ public class LexonService
             return _allowCodeSwitching()
                    && ScriptLanguageGuard.ShouldSkipSpelling(word, _currentContext.FullText);
         };
+        var typed = _focusTracker.GetTypedBufferText() ?? string.Empty;
         var fromBuffer = GrammarSuggestionMapper.Suggest(
             ContextFromTypedBuffer(prefix ?? string.Empty),
             includeConsistency: consistency,
@@ -1073,6 +1102,13 @@ public class LexonService
             _currentContext,
             includeConsistency: consistency,
             skipSpellingWord: skipSpelling);
+        if (!string.IsNullOrWhiteSpace(typed))
+        {
+            // Live text often still ends at the previous phrase. Don't keep a
+            // grammar popup for words the user has already typed past.
+            fromLive = fromLive.Where(fix => GrammarSuggestionStillTrailing(fix, typed)).ToList();
+        }
+
         var merged = new List<Suggestion>();
         foreach (var fix in fromBuffer.Concat(fromLive))
         {
@@ -1268,7 +1304,7 @@ public class LexonService
             return;
         }
 
-        if (IsShowingPinnedSuggestion())
+        if (IsShowingPinnedSuggestion() && GrammarFixesFromTypedBuffer().Count > 0)
         {
             _suggestionOverlay.Hide();
             _isOverlayVisible = AnySuggestionOverlayVisible();
@@ -1464,6 +1500,16 @@ public class LexonService
     /// raised, so the flagged words are no longer where selecting backward by word
     /// count from the caret would land.
     /// </summary>
+    private static bool GrammarSuggestionStillTrailing(Suggestion suggestion, string typed)
+    {
+        if (!GrammarSuggestionMapper.TryGetSpanReplacement(suggestion, out var original, out var replacement))
+        {
+            return false;
+        }
+
+        return SuggestionInsertion.TryReplaceTrailingPhrase(original, replacement, typed, out _, out _);
+    }
+
     private static bool IsGrammarFixStillApplicable(
         string? original,
         string? replacement,

@@ -41,7 +41,9 @@ public class WritingViewModelTests
                 AppSettings.EnableGrammarHotkeyKey,
                 AppSettings.CustomTerminologyKey,
                 AppSettings.AppTerminologyOverridesKey,
-                AppSettings.DefaultWritingModeKey
+                AppSettings.DefaultWritingModeKey,
+                AppSettings.UseLearnedWordsKey,
+                AppSettings.LearnedWordsMutedAppsKey
             },
             WritingViewModel.OwnedKeyList);
         Assert.True(vm.DocumentConsistencyChecking);
