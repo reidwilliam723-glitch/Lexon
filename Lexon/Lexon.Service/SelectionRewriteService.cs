@@ -333,11 +333,15 @@ public sealed class SelectionRewriteService
     }
 
     private List<string> OrderedOptions()
+        => OrderOptions(
+            _profile.GetSetting("LastRewriteOption", string.Empty),
+            _profile.GetSetting("DefaultWritingMode", PlainLanguageOption));
+
+    internal static List<string> OrderOptions(string? lastUsed, string? defaultMode)
     {
-        var last = _profile.GetSetting("LastRewriteOption", string.Empty);
-        var preferred = !string.IsNullOrWhiteSpace(last)
-            ? last
-            : _profile.GetSetting("DefaultWritingMode", PlainLanguageOption);
+        var preferred = !string.IsNullOrWhiteSpace(lastUsed)
+            ? lastUsed
+            : NormalizeDefaultMode(defaultMode);
         var items = Options.ToList();
         if (!string.IsNullOrEmpty(preferred) && items.Remove(preferred))
         {

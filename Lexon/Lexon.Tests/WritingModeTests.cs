@@ -21,6 +21,19 @@ public class WritingModeTests
         Assert.Contains("everyday", instruction, StringComparison.OrdinalIgnoreCase);
     }
 
+    [Fact]
+    public void OrderOptions_DefaultIsFirstUntilAModeIsUsed()
+    {
+        var fresh = SelectionRewriteService.OrderOptions(lastUsed: null, defaultMode: "more concise");
+        Assert.Equal(SelectionRewriteService.ConciseOption, fresh[0]);
+
+        var used = SelectionRewriteService.OrderOptions(lastUsed: "More formal", defaultMode: "More concise");
+        Assert.Equal(SelectionRewriteService.FormalOption, used[0]);
+
+        var cased = SelectionRewriteService.OrderOptions(lastUsed: "  ", defaultMode: "PLAIN LANGUAGE");
+        Assert.Equal(SelectionRewriteService.PlainLanguageOption, cased[0]);
+    }
+
     [Theory]
     [InlineData(null, "Plain language")]
     [InlineData("", "Plain language")]

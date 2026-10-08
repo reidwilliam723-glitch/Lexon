@@ -638,7 +638,7 @@ public partial class SettingsForm : Form
             Hint(_txtGrammarMutedApps, "Comma-separated process names."),
             Hint(_chkEnableRewriteHotkey, "You can also select text and click Aa."),
             Caption("Default writing mode"),
-            Hint(_cmbDefaultWritingMode, "Shown first in the rewrite menu. Modes preview the rewrite before you apply it."),
+            Hint(_cmbDefaultWritingMode, "Used first until you pick another mode; the menu then remembers your last choice."),
             Hint(_chkEnableGrammarHotkey, "Run a grammar check immediately."));
 
         Controls.Add(_layoutHost);

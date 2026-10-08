@@ -251,8 +251,8 @@
                     SelectedIndex="{Binding WritingModeIndex}"
                     HorizontalAlignment="Stretch" MinWidth="0"
                     AutomationProperties.Name="Default writing mode"
-                    AutomationProperties.HelpText="Shown first in the rewrite menu. Modes preview the rewrite before you apply it."/>
-          <TextBlock Text="Shown first in the rewrite menu. Modes preview the rewrite before you apply it."
+                    AutomationProperties.HelpText="Used first until you pick another mode; the menu then remembers your last choice."/>
+          <TextBlock Text="Used first until you pick another mode; the menu then remembers your last choice."
                      TextWrapping="Wrap" Margin="0,4,0,12"
                      Foreground="{DynamicResource TextSecondaryBrush}"
                      FontFamily="{DynamicResource LexonFontFamily}"
