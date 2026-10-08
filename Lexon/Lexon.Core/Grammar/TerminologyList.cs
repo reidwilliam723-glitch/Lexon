@@ -37,7 +37,7 @@ public static class TerminologyList
         foreach (var item in fromSettings)
         {
             var term = Normalize(item);
-            if (term.Length == 0 || !seen.Add(term))
+            if (term.Length == 0 || term.Contains('|') || !seen.Add(term))
             {
                 continue;
             }
@@ -63,7 +63,20 @@ public static class TerminologyList
                 continue;
             }
 
-            result[app] = terms.ToList();
+            if (!result.TryGetValue(app, out var existing))
+            {
+                result[app] = terms.ToList();
+                continue;
+            }
+
+            var seen = new HashSet<string>(existing, StringComparer.OrdinalIgnoreCase);
+            foreach (var term in terms)
+            {
+                if (seen.Add(term))
+                {
+                    existing.Add(term);
+                }
+            }
         }
 
         return result;

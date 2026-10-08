@@ -52,6 +52,21 @@ public class TerminologyListTests
     }
 
     [Fact]
+    public void ParseAppRows_MergesDuplicateApps_KeepingFirstSpelling()
+    {
+        var map = TerminologyList.ParseAppRows(["code.exe|Foo|Bar", "Code|Baz|foo"]);
+        Assert.True(map.TryGetValue("code.exe", out var terms));
+        Assert.Equal(["Foo", "Bar", "Baz"], terms);
+    }
+
+    [Fact]
+    public void FormatAppRow_RejectsTermsThatContainAPipe()
+    {
+        Assert.Equal(string.Empty, TerminologyList.FormatAppRow("a.exe", ["x|y"]));
+        Assert.Equal("a.exe|ok", TerminologyList.FormatAppRow("a.exe", ["ok", "x|y"]));
+    }
+
+    [Fact]
     public void ResolveTerms_WithoutAppStillReturnsGlobal()
     {
         var resolved = TerminologyList.ResolveTerms(null, ["Lexon"], ["slack.exe|Kube"]);

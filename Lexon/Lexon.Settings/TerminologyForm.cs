@@ -1,4 +1,5 @@
 using Lexon.Core.Grammar;
+using Lexon.Core.Models;
 using Lexon.Core.Theming;
 using Lexon.Ui;
 
@@ -27,9 +28,10 @@ public class TerminologyForm : Form
             _globalList.Items.Add(term);
         }
 
-        foreach (var row in appOverrideRows ?? [])
+        foreach (var pair in TerminologyList.ParseAppRows(appOverrideRows))
         {
-            if (TerminologyList.TryParseAppRow(row, out _, out _))
+            var row = TerminologyList.FormatAppRow(pair.Key, pair.Value);
+            if (!string.IsNullOrEmpty(row))
             {
                 _appList.Items.Add(row);
             }
@@ -170,6 +172,17 @@ public class TerminologyForm : Form
             return;
         }
 
+        if (term.Contains('|'))
+        {
+            MessageBox.Show(
+                this,
+                "A term cannot contain |.",
+                "Custom terminology",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Information);
+            return;
+        }
+
         foreach (var existing in _globalList.Items)
         {
             if (existing is string s
@@ -186,8 +199,20 @@ public class TerminologyForm : Form
 
     private void OnPickApp(object? sender, EventArgs e)
     {
-        var terms = TerminologyList.ParseGlobal(
-            (_appTermsBox.Text ?? string.Empty).Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries));
+        var rawTerms = (_appTermsBox.Text ?? string.Empty)
+            .Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+        if (rawTerms.Any(term => term.Contains('|')))
+        {
+            MessageBox.Show(
+                this,
+                "A term cannot contain |.",
+                "Per-app terminology",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Information);
+            return;
+        }
+
+        var terms = TerminologyList.ParseGlobal(rawTerms);
         if (terms.Count == 0)
         {
             MessageBox.Show(
@@ -206,25 +231,25 @@ public class TerminologyForm : Form
             return;
         }
 
-        var row = TerminologyList.FormatAppRow(picker.SelectedProcessName, terms);
-        if (string.IsNullOrEmpty(row))
-        {
-            return;
-        }
-
-        if (!TerminologyList.TryParseAppRow(row, out var app, out _))
-        {
-            return;
-        }
-
+        var combined = new List<string>(terms);
         for (var i = _appList.Items.Count - 1; i >= 0; i--)
         {
             if (_appList.Items[i] is string existing
-                && TerminologyList.TryParseAppRow(existing, out var existingApp, out _)
-                && string.Equals(existingApp, app, StringComparison.OrdinalIgnoreCase))
+                && TerminologyList.TryParseAppRow(existing, out var existingApp, out var existingTerms)
+                && string.Equals(
+                    existingApp,
+                    AppCategoryMapper.EnsureExeExtension(picker.SelectedProcessName),
+                    StringComparison.OrdinalIgnoreCase))
             {
+                combined.InsertRange(0, existingTerms);
                 _appList.Items.RemoveAt(i);
             }
+        }
+
+        var row = TerminologyList.FormatAppRow(picker.SelectedProcessName, combined);
+        if (string.IsNullOrEmpty(row))
+        {
+            return;
         }
 
         _appList.Items.Add(row);
@@ -233,13 +258,12 @@ public class TerminologyForm : Form
 
     private void OnOk(object? sender, EventArgs e)
     {
-        GlobalTerms = _globalList.Items.Cast<object>()
-            .Select(i => i.ToString() ?? string.Empty)
-            .Where(s => !string.IsNullOrWhiteSpace(s))
-            .ToList();
-        AppOverrideRows = _appList.Items.Cast<object>()
-            .Select(i => i.ToString() ?? string.Empty)
-            .Where(s => TerminologyList.TryParseAppRow(s, out _, out _))
+        GlobalTerms = TerminologyList.ParseGlobal(
+            _globalList.Items.Cast<object>().Select(i => i.ToString() ?? string.Empty));
+        AppOverrideRows = TerminologyList.ParseAppRows(
+                _appList.Items.Cast<object>().Select(i => i.ToString() ?? string.Empty))
+            .Select(pair => TerminologyList.FormatAppRow(pair.Key, pair.Value))
+            .Where(row => !string.IsNullOrEmpty(row))
             .ToList();
         DialogResult = DialogResult.OK;
         Close();
