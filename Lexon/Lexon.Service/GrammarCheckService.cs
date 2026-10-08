@@ -286,16 +286,15 @@ public sealed class GrammarCheckService
             TerminologyList.IsProtected(word, protectedTerms, null)
             || (allowCodeSwitching && ScriptLanguageGuard.ShouldSkipSpelling(word, text));
 
-        var found = RuleBasedGrammarChecker.Find(text, sensitivity, skipSpellingWord).ToList();
+        var rules = RuleBasedGrammarChecker.Find(text, sensitivity, skipSpellingWord).ToList();
         var consistencyOn = _profile.GetSetting("DocumentConsistencyChecking", true);
-        if (consistencyOn)
-        {
-            found.AddRange(ConsistencyChecker.Find(text));
-            found = found
-                .OrderBy(m => m.Start)
-                .ThenBy(m => m.Length)
-                .ToList();
-        }
+        var found = consistencyOn
+            ? GrammarMatch.PreferRuleBased(rules, ConsistencyChecker.Find(text))
+            : rules;
+        found = found
+            .OrderBy(m => m.Start)
+            .ThenBy(m => m.Length)
+            .ToList();
 
         var limit = sensitivity switch
         {

@@ -34,4 +34,30 @@ public sealed class GrammarMatch
     public string Message { get; }
     public GrammarRuleCategory Category { get; }
     public string DisplayText => $"{Original} → {Replacement}";
+
+    public bool Overlaps(GrammarMatch other)
+    {
+        var end = Start + Length;
+        var otherEnd = other.Start + other.Length;
+        return Start < otherEnd && other.Start < end;
+    }
+
+    /// <summary>
+    /// Keeps every rule-based match and drops consistency matches that cover the same span.
+    /// </summary>
+    public static List<GrammarMatch> PreferRuleBased(IReadOnlyList<GrammarMatch> ruleBased, IEnumerable<GrammarMatch> consistency)
+    {
+        var merged = new List<GrammarMatch>(ruleBased);
+        foreach (var match in consistency)
+        {
+            if (ruleBased.Any(rule => rule.Overlaps(match)))
+            {
+                continue;
+            }
+
+            merged.Add(match);
+        }
+
+        return merged;
+    }
 }

@@ -88,11 +88,10 @@ public static class GrammarSuggestionMapper
         }
 
         var trimmed = text.TrimEnd();
-        IEnumerable<GrammarMatch> matches = RuleBasedGrammarChecker.Find(trimmed, sensitivity, skipSpellingWord);
-        if (includeConsistency)
-        {
-            matches = matches.Concat(ConsistencyChecker.Find(trimmed));
-        }
+        var rules = RuleBasedGrammarChecker.Find(trimmed, sensitivity, skipSpellingWord).ToList();
+        IEnumerable<GrammarMatch> matches = includeConsistency
+            ? GrammarMatch.PreferRuleBased(rules, ConsistencyChecker.Find(trimmed))
+            : rules;
 
         return matches
             .Where(match => IsTrailing(trimmed, match))

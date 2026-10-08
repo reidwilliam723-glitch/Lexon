@@ -69,6 +69,12 @@ public static class ConsistencyChecker
                 continue;
             }
 
+            // A known misspelling must never become the preferred spelling.
+            if (CommonMisspellings.TryCorrect(match.Value, out _))
+            {
+                continue;
+            }
+
             if (IsInitialCapOnly(match.Value) && IsSentenceOpener(text, match.Index))
             {
                 openers.Add((match.Index, match.Value));
