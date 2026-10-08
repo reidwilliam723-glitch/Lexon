@@ -29,9 +29,12 @@ public class AppSettingsRoundTripTests
             AiRewriteOnRequest = false,
             AiPrefetchOnSelection = true,
             BlockedApplications = ["putty", "mstsc"],
+            ConfirmAiSends = false,
+            AiSendAllowedScopes = ["Prefetch"],
             Theme = "Dark",
             SuggestionSortMode = "Used",
             SuggestionPlacement = "Above",
+            SuggestionAcceptKey = "Enter",
             RequireConfirmationForEdits = false,
             GrammarSensitivity = "High",
             MuteGrammarForCasualApps = true,
@@ -65,9 +68,12 @@ public class AppSettingsRoundTripTests
         Assert.Equal(source.AiRewriteOnRequest, loaded.AiRewriteOnRequest);
         Assert.Equal(source.AiPrefetchOnSelection, loaded.AiPrefetchOnSelection);
         Assert.Equal(source.BlockedApplications, loaded.BlockedApplications);
+        Assert.Equal(source.ConfirmAiSends, loaded.ConfirmAiSends);
+        Assert.Equal(source.AiSendAllowedScopes, loaded.AiSendAllowedScopes);
         Assert.Equal(source.Theme, loaded.Theme);
         Assert.Equal(source.SuggestionSortMode, loaded.SuggestionSortMode);
         Assert.Equal(source.SuggestionPlacement, loaded.SuggestionPlacement);
+        Assert.Equal(source.SuggestionAcceptKey, loaded.SuggestionAcceptKey);
         Assert.Equal(source.RequireConfirmationForEdits, loaded.RequireConfirmationForEdits);
         Assert.Equal(source.GrammarSensitivity, loaded.GrammarSensitivity);
         Assert.Equal(source.MuteGrammarForCasualApps, loaded.MuteGrammarForCasualApps);
@@ -96,9 +102,12 @@ public class AppSettingsRoundTripTests
         Assert.True(profile.HasSetting(AppSettings.AiRewriteOnRequestKey));
         Assert.True(profile.HasSetting(AppSettings.AiPrefetchOnSelectionKey));
         Assert.True(profile.HasSetting(AppSettings.BlockedApplicationsKey));
+        Assert.True(profile.HasSetting(AppSettings.ConfirmAiSendsKey));
+        Assert.True(profile.HasSetting(AppSettings.AiSendAllowedScopesKey));
         Assert.True(profile.HasSetting(AppSettings.ThemeKey));
         Assert.True(profile.HasSetting(AppSettings.SuggestionSortModeKey));
         Assert.True(profile.HasSetting(AppSettings.SuggestionPlacementKey));
+        Assert.True(profile.HasSetting(AppSettings.SuggestionAcceptKeyKey));
         Assert.True(profile.HasSetting(AppSettings.RequireConfirmationForEditsKey));
         Assert.True(profile.HasSetting(AppSettings.GrammarSensitivityKey));
         Assert.True(profile.HasSetting(AppSettings.MuteGrammarForCasualAppsKey));
@@ -128,6 +137,7 @@ public class AppSettingsRoundTripTests
         Assert.True(profile.GetSetting(AppSettings.AiRewriteOnRequestKey, false));
         Assert.Equal("Relevant", profile.GetSetting(AppSettings.SuggestionSortModeKey, ""));
         Assert.Equal("Below", profile.GetSetting(AppSettings.SuggestionPlacementKey, ""));
+        Assert.Equal("Tab", profile.GetSetting(AppSettings.SuggestionAcceptKeyKey, ""));
         Assert.Equal("Medium", profile.GetSetting(AppSettings.GrammarSensitivityKey, ""));
     }
 }

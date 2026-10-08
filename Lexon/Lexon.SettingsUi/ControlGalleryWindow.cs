@@ -27,18 +27,21 @@ public sealed class ControlGalleryWindow : Window
     private NavItem? _appearanceTab;
     private NavItem? _appToneTab;
     private NavItem? _writingTab;
+    private NavItem? _appsTab;
     private GeneralPage? _generalPage;
     private AiPage? _aiPage;
     private PrivacyPage? _privacyPage;
     private AppearancePage? _appearancePage;
     private AppTonePage? _appTonePage;
     private WritingPage? _writingPage;
+    private AppsPage? _appsPage;
     private GeneralSettingsViewModel? _generalVm;
     private AiSettingsViewModel? _aiVm;
     private PrivacySettingsViewModel? _privacyVm;
     private AppearanceSettingsViewModel? _appearanceVm;
     private AppToneViewModel? _appToneVm;
     private WritingViewModel? _writingVm;
+    private AppsSettingsViewModel? _appsVm;
     private SettingsPagesHost? _host;
 
     public ControlGalleryWindow(ThemeManager? themes = null, GallerySettingsServices? services = null)
@@ -78,6 +81,8 @@ public sealed class ControlGalleryWindow : Window
             _appTonePage = _host.AppTonePage;
             _writingVm = _host.Writing;
             _writingPage = _host.WritingPage;
+            _appsVm = _host.Apps;
+            _appsPage = _host.AppsPage;
         }
 
         Content = Build();
@@ -95,6 +100,8 @@ public sealed class ControlGalleryWindow : Window
 
     internal bool HasWritingTab => _writingTab != null;
 
+    internal bool HasAppsTab => _appsTab != null;
+
     internal int GalleryTabCount
         => (_controlsTab != null ? 1 : 0)
            + (_generalTab != null ? 1 : 0)
@@ -102,7 +109,8 @@ public sealed class ControlGalleryWindow : Window
            + (_privacyTab != null ? 1 : 0)
            + (_appearanceTab != null ? 1 : 0)
            + (_appToneTab != null ? 1 : 0)
-           + (_writingTab != null ? 1 : 0);
+           + (_writingTab != null ? 1 : 0)
+           + (_appsTab != null ? 1 : 0);
 
     internal bool IsGeneralPageVisible => _generalPage != null && _contentHost?.Content == _generalPage;
 
@@ -325,6 +333,14 @@ public sealed class ControlGalleryWindow : Window
             tabs.Children.Add(_writingTab);
         }
 
+        if (_appsPage != null)
+        {
+            _appsTab = new NavItem { Content = "Apps", GroupName = "galleryTabs", Margin = new Thickness(0, 0, 8, 4) };
+            AutomationProperties.SetName(_appsTab, "Apps");
+            _appsTab.Checked += (_, _) => ShowAppsContent();
+            tabs.Children.Add(_appsTab);
+        }
+
         DockPanel.SetDock(tabs, Dock.Top);
         root.Children.Add(tabs);
 
@@ -528,6 +544,14 @@ public sealed class ControlGalleryWindow : Window
         if (_contentHost != null && _host != null)
         {
             _host.ShowAppTone(_contentHost);
+        }
+    }
+
+    private void ShowAppsContent()
+    {
+        if (_contentHost != null && _host != null)
+        {
+            _host.ShowApps(_contentHost);
         }
     }
 

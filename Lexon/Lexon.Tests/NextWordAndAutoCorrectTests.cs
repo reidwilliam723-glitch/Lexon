@@ -160,6 +160,44 @@ public class NextWordAndAutoCorrectTests
     }
 
     [Fact]
+    public void Enter_AcceptsTheHighlightedRowWhenThatIsTheChosenKey()
+    {
+        var harness = WordHarness.WithBuffer("hel", autoCorrect: false, acceptKey: () => "Enter");
+        harness.Overlay.Setup(o => o.IsVisible).Returns(true);
+
+        harness.TypeKey(13);
+        harness.WaitForIdle();
+
+        Assert.True(harness.LastKey.Handled);
+        harness.Overlay.Verify(o => o.ConfirmSelection(), Times.Once);
+    }
+
+    [Fact]
+    public void Tab_DoesNotAcceptWhenEnterIsTheChosenKey()
+    {
+        var harness = WordHarness.WithBuffer("hel", autoCorrect: false, acceptKey: () => "Enter");
+        harness.Overlay.Setup(o => o.IsVisible).Returns(true);
+
+        harness.TypeKey(9);
+        harness.WaitForIdle();
+
+        Assert.False(harness.LastKey.Handled);
+        harness.Overlay.Verify(o => o.ConfirmSelection(), Times.Never);
+    }
+
+    [Fact]
+    public void Enter_PassesThroughWhenTabIsTheChosenKey()
+    {
+        var harness = WordHarness.WithBuffer("hel", autoCorrect: false);
+        harness.Overlay.Setup(o => o.IsVisible).Returns(true);
+
+        harness.TypeKey(13);
+
+        Assert.False(harness.LastKey.Handled);
+        harness.Overlay.Verify(o => o.ConfirmSelection(), Times.Never);
+    }
+
+    [Fact]
     public void Tab_WithOnlyPredictionChips_IsNotStolen()
     {
         var harness = WordHarness.WithBuffer("thank ", autoCorrect: false);
@@ -202,7 +240,7 @@ public class NextWordAndAutoCorrectTests
 
         private readonly StringBuilder _buffer;
 
-        private WordHarness(string typed, bool autoCorrect)
+        private WordHarness(string typed, bool autoCorrect, Func<string>? acceptKey)
         {
             _buffer = new StringBuilder(typed);
             Undo = new UndoManager(Injector.Object);
@@ -252,10 +290,12 @@ public class NextWordAndAutoCorrectTests
                 new KeyboardShortcutManager(),
                 Undo,
                 autoCorrectEnabled: () => autoCorrect,
-                personalization: personalization);
+                personalization: personalization,
+                suggestionAcceptKey: acceptKey);
         }
 
-        public static WordHarness WithBuffer(string typed, bool autoCorrect) => new(typed, autoCorrect);
+        public static WordHarness WithBuffer(string typed, bool autoCorrect, Func<string>? acceptKey = null)
+            => new(typed, autoCorrect, acceptKey);
 
         public void TypeSpace() => TypeKey(32);
 

@@ -253,6 +253,8 @@ public static class LexonServiceComposer
             selectionChip,
             glanceOverlay,
             accessPolicy);
+        suggestionPipeline.SetCloudSendAllowed(selectionRewrite.AllowTypingCloud);
+
         var grammarCheck = new GrammarCheckService(
             aiProvider,
             focusTracker,
@@ -286,7 +288,8 @@ public static class LexonServiceComposer
             app => SpacingNormalizer.IsCodeApp(
                 app,
                 AppCategoryMapper.ParseOverrides(profile.GetSetting<List<string>>("AppCategoryOverrides", []))),
-            () => profile.GetSetting("AutoCorrectContractions", false)
+            () => profile.GetSetting("AutoCorrectContractions", false),
+            () => SuggestionAcceptKey.Normalize(profile.GetSetting("SuggestionAcceptKey", SuggestionAcceptKey.Tab))
         );
 
         lexonService.AttachWritingEnhancement(selectionRewrite, grammarCheck, mouseListener);

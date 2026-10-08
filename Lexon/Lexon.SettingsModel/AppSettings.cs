@@ -21,9 +21,12 @@ public sealed class AppSettings
     public const string AiRewriteOnRequestKey = "AiRewriteOnRequest";
     public const string AiPrefetchOnSelectionKey = "AiPrefetchOnSelection";
     public const string BlockedApplicationsKey = "BlockedApplications";
+    public const string ConfirmAiSendsKey = "ConfirmAiSends";
+    public const string AiSendAllowedScopesKey = "AiSendAllowedScopes";
     public const string ThemeKey = "Theme";
     public const string SuggestionSortModeKey = "SuggestionSortMode";
     public const string SuggestionPlacementKey = "SuggestionPlacement";
+    public const string SuggestionAcceptKeyKey = "SuggestionAcceptKey";
     public const string RequireConfirmationForEditsKey = "RequireConfirmationForEdits";
     public const string GrammarSensitivityKey = "GrammarSensitivity";
     public const string MuteGrammarForCasualAppsKey = "MuteGrammarForCasualApps";
@@ -56,9 +59,12 @@ public sealed class AppSettings
     public bool AiRewriteOnRequest { get; set; } = true;
     public bool AiPrefetchOnSelection { get; set; }
     public List<string> BlockedApplications { get; set; } = [];
+    public bool ConfirmAiSends { get; set; } = true;
+    public List<string> AiSendAllowedScopes { get; set; } = [];
     public string Theme { get; set; } = "Light";
     public string SuggestionSortMode { get; set; } = "Relevant";
     public string SuggestionPlacement { get; set; } = "Below";
+    public string SuggestionAcceptKey { get; set; } = "Tab";
     public bool RequireConfirmationForEdits { get; set; } = true;
     public string GrammarSensitivity { get; set; } = "Medium";
     public bool MuteGrammarForCasualApps { get; set; }
@@ -96,9 +102,12 @@ public sealed class AppSettings
         AiRewriteOnRequest = profile.GetSetting(AiRewriteOnRequestKey, true);
         AiPrefetchOnSelection = profile.GetSetting(AiPrefetchOnSelectionKey, false);
         BlockedApplications = profile.GetSetting<List<string>>(BlockedApplicationsKey, []) ?? [];
+        ConfirmAiSends = profile.GetSetting(ConfirmAiSendsKey, true);
+        AiSendAllowedScopes = profile.GetSetting<List<string>>(AiSendAllowedScopesKey, []) ?? [];
         Theme = profile.GetSetting(ThemeKey, "Light");
         SuggestionSortMode = profile.GetSetting(SuggestionSortModeKey, "Relevant");
         SuggestionPlacement = profile.GetSetting(SuggestionPlacementKey, "Below");
+        SuggestionAcceptKey = profile.GetSetting(SuggestionAcceptKeyKey, "Tab");
         RequireConfirmationForEdits = profile.GetSetting(RequireConfirmationForEditsKey, true);
         GrammarSensitivity = profile.GetSetting(GrammarSensitivityKey, "Medium");
         MuteGrammarForCasualApps = profile.GetSetting(MuteGrammarForCasualAppsKey, false);
@@ -136,9 +145,12 @@ public sealed class AppSettings
             AiRewriteOnRequestKey,
             AiPrefetchOnSelectionKey,
             BlockedApplicationsKey,
+            ConfirmAiSendsKey,
+            AiSendAllowedScopesKey,
             ThemeKey,
             SuggestionSortModeKey,
             SuggestionPlacementKey,
+            SuggestionAcceptKeyKey,
             RequireConfirmationForEditsKey,
             GrammarSensitivityKey,
             MuteGrammarForCasualAppsKey,
@@ -208,6 +220,12 @@ public sealed class AppSettings
                 case BlockedApplicationsKey:
                     profile.SetSetting(key, BlockedApplications);
                     break;
+                case ConfirmAiSendsKey:
+                    profile.SetSetting(key, ConfirmAiSends);
+                    break;
+                case AiSendAllowedScopesKey:
+                    profile.SetSetting(key, AiSendAllowedScopes);
+                    break;
                 case ThemeKey:
                     profile.SetSetting(key, Theme);
                     break;
@@ -216,6 +234,9 @@ public sealed class AppSettings
                     break;
                 case SuggestionPlacementKey:
                     profile.SetSetting(key, SuggestionPlacement);
+                    break;
+                case SuggestionAcceptKeyKey:
+                    profile.SetSetting(key, SuggestionAcceptKey);
                     break;
                 case RequireConfirmationForEditsKey:
                     profile.SetSetting(key, RequireConfirmationForEdits);

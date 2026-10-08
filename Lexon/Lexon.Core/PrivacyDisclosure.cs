@@ -16,7 +16,7 @@ public static class PrivacyDisclosure
         "Can leave this PC (only when enabled)\n" +
         "• Cloud AI while typing — off by default. Words around the caret go to your chosen provider as you type.\n" +
         "• Rewrites — selection only, when you ask (Aa chip or Ctrl+Alt+R).\n" +
-        "• Prefetch on selection — off by default.\n\n" +
+        "• Prefetch on selection — off by default. Before a selection is sent, Lexon names the provider and asks.\n\n" +
         "Stay fully local\n" +
         "• Turn on Local-only mode\n" +
         "• Block apps you do not want Lexon in\n" +

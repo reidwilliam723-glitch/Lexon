@@ -64,6 +64,21 @@
                      FontFamily="{DynamicResource LexonFontFamily}"
                      FontSize="{DynamicResource CaptionFontSize}"/>
 
+          <TextBlock Text="Accept suggestion with" TextWrapping="Wrap" Margin="0,0,0,4"
+                     Foreground="{DynamicResource TextBrush}"
+                     FontFamily="{DynamicResource LexonFontFamily}"
+                     FontSize="{DynamicResource BodyFontSize}"/>
+          <ComboBox ItemsSource="{x:Static model:AppearanceSettingsViewModel.AcceptKeyLabels}"
+                    SelectedIndex="{Binding AcceptKeyIndex}"
+                    HorizontalAlignment="Stretch" MinWidth="0"
+                    AutomationProperties.Name="Accept suggestion with"
+                    AutomationProperties.HelpText="Which key accepts the highlighted suggestion. Space never accepts. 1, 2, and 3 still insert the numbered rows. Enter is not sent to the app while the list is open, so a chat message is not sent as well."/>
+          <TextBlock Text="Space never accepts. 1, 2, and 3 still insert the numbered rows. Enter is not sent to the app while the list is open, so a chat message is not sent as well."
+                     TextWrapping="Wrap" Margin="0,4,0,12"
+                     Foreground="{DynamicResource TextSecondaryBrush}"
+                     FontFamily="{DynamicResource LexonFontFamily}"
+                     FontSize="{DynamicResource CaptionFontSize}"/>
+
           <CheckBox Content="Preview AI rewrites before applying"
                     IsChecked="{Binding PreviewRewrites}"
                     AutomationProperties.Name="Preview AI rewrites before applying"

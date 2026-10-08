@@ -123,6 +123,13 @@ public sealed class AppToneViewModel : INotifyPropertyChanged, IOwnedSettingsPag
 
     public void MarkClean() => _isDirty = false;
 
+    public void AcceptExternalRows(IReadOnlyList<string> rows)
+    {
+        ReplaceRows(rows);
+        _settings.AppCategoryOverrides = _rows.Where(static r => !string.IsNullOrWhiteSpace(r)).ToList();
+        OnPropertyChanged(nameof(CanRemove));
+    }
+
     public void AddRunningApp()
     {
         if (!Enum.TryParse<AppWritingCategory>(ToneLabels[_selectedToneIndex], ignoreCase: true, out var category))

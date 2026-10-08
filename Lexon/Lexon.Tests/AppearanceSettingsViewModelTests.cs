@@ -16,6 +16,7 @@ public class AppearanceSettingsViewModelTests
             Theme = "Dark",
             SuggestionSortMode = "Used",
             SuggestionPlacement = "Above",
+            SuggestionAcceptKey = "Right",
             RequireConfirmationForEdits = false
         };
         var themes = new FakeThemes();
@@ -27,6 +28,7 @@ public class AppearanceSettingsViewModelTests
         Assert.Equal(1, vm.ThemeIndex);
         Assert.Equal(1, vm.SortIndex);
         Assert.Equal(1, vm.PlacementIndex);
+        Assert.Equal(2, vm.AcceptKeyIndex);
         Assert.False(vm.PreviewRewrites);
         Assert.Equal(0, themes.ApplyCalls);
         Assert.False(persist.HasPending);
@@ -101,6 +103,8 @@ public class AppearanceSettingsViewModelTests
         Assert.Equal("Used", settings.SuggestionSortMode);
         vm.PlacementIndex = 1;
         Assert.Equal("Above", settings.SuggestionPlacement);
+        vm.AcceptKeyIndex = 3;
+        Assert.Equal("Numbers", settings.SuggestionAcceptKey);
         vm.PreviewRewrites = false;
         Assert.False(settings.RequireConfirmationForEdits);
         persist.Flush();
@@ -139,6 +143,7 @@ public class AppearanceSettingsViewModelTests
         vm.ThemeIndex = 1;
         vm.SortIndex = 1;
         vm.PlacementIndex = 1;
+        vm.AcceptKeyIndex = 1;
         vm.PreviewRewrites = false;
         persist.Flush();
 
@@ -147,6 +152,7 @@ public class AppearanceSettingsViewModelTests
         Assert.Equal("Dark", loaded.Theme);
         Assert.Equal("Used", loaded.SuggestionSortMode);
         Assert.Equal("Above", loaded.SuggestionPlacement);
+        Assert.Equal("Enter", loaded.SuggestionAcceptKey);
         Assert.False(loaded.RequireConfirmationForEdits);
         Assert.Equal("keep", loaded.AIModel);
     }

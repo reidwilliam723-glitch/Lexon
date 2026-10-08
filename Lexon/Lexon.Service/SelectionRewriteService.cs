@@ -72,6 +72,11 @@ public sealed class SelectionRewriteService
     private string _prefetchOption = string.Empty;
     private CancellationTokenSource? _rewriteCts;
     private bool _enabled = true;
+    private AiSendScope? _sendPrompt;
+    private string _sendPromptSelection = string.Empty;
+    private string? _deferredRewriteOption;
+    private string _declinedPrefetch = string.Empty;
+    private bool _typingSendOnce;
 
     public SelectionRewriteService(
         IAIProvider? aiProvider,
@@ -106,7 +111,16 @@ public sealed class SelectionRewriteService
         _chip = chip;
         _glance = glance;
         _menu.ItemSelected += (_, args) => _ = OnOptionSelected(args.Text);
-        _menu.Cancelled += (_, _) => CancelPrefetch();
+        _menu.Cancelled += (_, _) =>
+        {
+            if (_sendPrompt != null)
+            {
+                DeclinePrompt();
+                return;
+            }
+
+            CancelPrefetch();
+        };
         if (_chip != null)
         {
             _chip.Clicked += (_, _) => ShowRewriteMenu();
@@ -315,6 +329,8 @@ public sealed class SelectionRewriteService
         }
 
         _pickingTone = false;
+        _sendPrompt = null;
+        _deferredRewriteOption = null;
         _pendingSelection = selected;
         _cachedSelection = selected;
         _chip?.Hide();
@@ -412,7 +428,7 @@ public sealed class SelectionRewriteService
         StartPrefetch(selected, OrderedOptions(), context);
     }
 
-    private void StartPrefetch(string selected, IEnumerable<string> items, TextContext context)
+    private void StartPrefetch(string selected, IEnumerable<string> items, TextContext context, bool skipPrompt = false)
     {
         var provider = _aiProvider;
         if (provider == null || string.IsNullOrEmpty(selected) || _privacyGuard.ShouldBlockAssistance(context))
@@ -452,6 +468,17 @@ public sealed class SelectionRewriteService
             {
                 return;
             }
+        }
+
+        if (!skipPrompt && NeedsPrompt(AiSendScope.Prefetch))
+        {
+            if (_menu.IsVisible || _declinedPrefetch == selected || _sendPromptSelection == selected)
+            {
+                return;
+            }
+
+            ShowPrompt(AiSendScope.Prefetch, selected, null);
+            return;
         }
 
         CancelPrefetch();
@@ -541,8 +568,138 @@ public sealed class SelectionRewriteService
         }
     }
 
+    private bool NeedsPrompt(AiSendScope scope, bool? leavesThisPc = null)
+    {
+        if (scope == AiSendScope.Rewrite && _rewriteApprovedOnce)
+        {
+            _rewriteApprovedOnce = false;
+            return false;
+        }
+
+        var provider = _aiProvider;
+        var cloud = leavesThisPc
+            ?? CloudAiNames.RequiresTypingConsent(provider?.Name, provider?.NetworkEndpoint);
+        var confirm = _profile.GetSetting(AiSendCheck.ConfirmKey, true);
+        var allowed = _profile.GetSetting<List<string>>(AiSendCheck.AllowedScopesKey, []) ?? [];
+        return AiSendCheck.NeedsPrompt(confirm, allowed, scope, cloud);
+    }
+
+    private void ShowPrompt(AiSendScope scope, string? selection, string? deferredOption, string? providerName = null)
+    {
+        _sendPrompt = scope;
+        _sendPromptSelection = selection ?? string.Empty;
+        _deferredRewriteOption = deferredOption;
+        var caret = _focusTracker.GetCaretScreenPosition();
+        var name = string.IsNullOrWhiteSpace(providerName) ? _aiProvider?.Name : providerName;
+        _menu.ShowMenu(
+            [AiSendCheck.SendOnce, AiSendCheck.AlwaysAllow(scope), AiSendCheck.DontSend],
+            caret.X,
+            caret.Y,
+            AiSendCheck.Message(name, scope));
+    }
+
+    private void CompletePrompt(string option)
+    {
+        var scope = _sendPrompt ?? AiSendScope.Typing;
+        var selection = _sendPromptSelection;
+        var deferred = _deferredRewriteOption;
+        _sendPrompt = null;
+        _deferredRewriteOption = null;
+        _sendPromptSelection = string.Empty;
+
+        if (option == AiSendCheck.DontSend)
+        {
+            if (scope == AiSendScope.Prefetch)
+            {
+                _declinedPrefetch = selection;
+            }
+
+            return;
+        }
+
+        if (option == AiSendCheck.AlwaysAllow(scope))
+        {
+            Remember(scope);
+        }
+        else if (scope == AiSendScope.Typing)
+        {
+            _typingSendOnce = true;
+        }
+
+        if (scope == AiSendScope.Prefetch && !string.IsNullOrEmpty(selection))
+        {
+            var context = Enrich(_focusTracker.GetCurrentContext());
+            StartPrefetch(selection, OrderedOptions(), context, skipPrompt: true);
+        }
+        else if (scope == AiSendScope.Rewrite && !string.IsNullOrEmpty(deferred))
+        {
+            _rewriteApprovedOnce = true;
+            _ = OnOptionSelected(deferred);
+        }
+    }
+
+    private void DeclinePrompt()
+    {
+        if (_sendPrompt == AiSendScope.Prefetch)
+        {
+            _declinedPrefetch = _sendPromptSelection;
+        }
+
+        _sendPrompt = null;
+        _deferredRewriteOption = null;
+        _sendPromptSelection = string.Empty;
+    }
+
+    private void Remember(AiSendScope scope)
+    {
+        var allowed = _profile.GetSetting<List<string>>(AiSendCheck.AllowedScopesKey, []) ?? [];
+        var token = scope.ToString();
+        if (allowed.Any(item => string.Equals(item, token, StringComparison.OrdinalIgnoreCase)))
+        {
+            return;
+        }
+
+        allowed.Add(token);
+        _profile.SetSetting(AiSendCheck.AllowedScopesKey, allowed);
+        _ = _profile.SaveAsync();
+    }
+
+    private bool _rewriteApprovedOnce;
+
+    public bool AllowTypingCloud(string? providerName, string? endpoint)
+    {
+        if (!CloudAiNames.RequiresTypingConsent(providerName, endpoint))
+        {
+            return true;
+        }
+
+        if (!NeedsPrompt(AiSendScope.Typing, leavesThisPc: true))
+        {
+            return true;
+        }
+
+        if (_typingSendOnce)
+        {
+            _typingSendOnce = false;
+            return true;
+        }
+
+        if (!_menu.IsVisible)
+        {
+            ShowPrompt(AiSendScope.Typing, null, null, providerName);
+        }
+
+        return false;
+    }
+
     private async Task OnOptionSelected(string option)
     {
+        if (_sendPrompt != null)
+        {
+            CompletePrompt(option);
+            return;
+        }
+
         if (_pickingTone)
         {
             ApplyToneOverride(option);
@@ -571,6 +728,12 @@ public sealed class SelectionRewriteService
         if (_accessPolicy != null && !_accessPolicy.AllowsRewrite)
         {
             NotifyBlocked("AI rewrites are turned off in Settings.");
+            return;
+        }
+
+        if (NeedsPrompt(AiSendScope.Rewrite))
+        {
+            ShowPrompt(AiSendScope.Rewrite, selected, option);
             return;
         }
 

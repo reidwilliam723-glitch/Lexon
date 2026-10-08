@@ -1,3 +1,4 @@
+using Lexon.Core;
 using Lexon.Core.Grammar;
 using Lexon.Core.Interfaces;
 using Lexon.Core.Learning;
@@ -26,6 +27,7 @@ public class LexonService
     private readonly UndoManager _undoManager;
     private readonly Func<bool> _autoCorrectEnabled;
     private readonly Func<bool> _autoCorrectContractions;
+    private readonly Func<string> _suggestionAcceptKey;
     private readonly Func<bool> _autoInsertSpaces;
     private readonly Func<string?, bool> _isCodeApp;
     private readonly Func<bool> _allowCodeSwitching;
@@ -99,7 +101,8 @@ public class LexonService
         Func<string?, IEnumerable<string>>? resolveProtectedTerms = null,
         Func<bool>? autoInsertSpaces = null,
         Func<string?, bool>? isCodeApp = null,
-        Func<bool>? autoCorrectContractions = null)
+        Func<bool>? autoCorrectContractions = null,
+        Func<string>? suggestionAcceptKey = null)
     {
         _suggestionPipeline = suggestionPipeline ?? throw new ArgumentNullException(nameof(suggestionPipeline));
         _keyboardListener = keyboardListener ?? throw new ArgumentNullException(nameof(keyboardListener));
@@ -113,6 +116,7 @@ public class LexonService
         _undoManager = undoManager ?? throw new ArgumentNullException(nameof(undoManager));
         _autoCorrectEnabled = autoCorrectEnabled ?? (() => false);
         _autoCorrectContractions = autoCorrectContractions ?? (() => false);
+        _suggestionAcceptKey = suggestionAcceptKey ?? (() => SuggestionAcceptKey.Tab);
         _autoInsertSpaces = autoInsertSpaces ?? (() => false);
         _isCodeApp = isCodeApp ?? (_ => false);
         _allowCodeSwitching = allowCodeSwitching ?? (() => true);
@@ -367,16 +371,19 @@ public class LexonService
             return;
         }
 
-        // Tab must be decided inside the hook callback (set Handled) before any slow work.
-        // Otherwise Windows delivers Tab to the editor and you get indentation spaces.
-        if (e.VirtualKey == 9 && !e.IsShiftPressed && !e.IsControlPressed && !e.IsAltPressed)
+        // The accept key must be swallowed inside the hook callback, before any slow work.
+        // Otherwise Tab indents, Enter sends a chat message, or Right arrow moves the caret.
+        if (SuggestionListVisible()
+            && SuggestionAcceptKey.Matches(
+                _suggestionAcceptKey(),
+                e.VirtualKey,
+                e.IsShiftPressed,
+                e.IsControlPressed,
+                e.IsAltPressed))
         {
-            if (SuggestionListVisible())
-            {
-                e.Handled = true;
-                QueueOffHook(AcceptFromTab);
-                return;
-            }
+            e.Handled = true;
+            QueueOffHook(AcceptFromTab);
+            return;
         }
 
         if (TryHandleNumberKey(e))
@@ -403,8 +410,7 @@ public class LexonService
         if (e.VirtualKey == 32 && !e.IsControlPressed && !e.IsAltPressed)
         {
             _suppressSuggestionOverlay = false;
-            // Space finishes the current word in the document. Never treat it
-            // as accept — only Tab (and Enter while the list is focused) does that.
+            // Space finishes the current word. It never accepts a suggestion.
             _focusTracker.AddTypedCharacter(' ');
             _textExpansionManager.OnCharacterTyped(' ');
             Interlocked.Increment(ref _suggestionGeneration);
@@ -438,13 +444,6 @@ public class LexonService
             {
                 e.Handled = true;
                 navOverlay?.SelectNext();
-                return;
-            }
-
-            if (e.VirtualKey == 13)
-            {
-                e.Handled = true;
-                QueueOffHook(AcceptFromTab);
                 return;
             }
         }

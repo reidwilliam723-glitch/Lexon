@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using Lexon.Core;
 using Lexon.Core.Theming;
 
 namespace Lexon.SettingsModel;
@@ -11,6 +12,7 @@ public sealed class AppearanceSettingsViewModel : INotifyPropertyChanged, IOwned
         AppSettings.ThemeKey,
         AppSettings.SuggestionSortModeKey,
         AppSettings.SuggestionPlacementKey,
+        AppSettings.SuggestionAcceptKeyKey,
         AppSettings.RequireConfirmationForEditsKey
     ];
 
@@ -20,12 +22,15 @@ public sealed class AppearanceSettingsViewModel : INotifyPropertyChanged, IOwned
 
     public static IReadOnlyList<string> PlacementLabels { get; } = ["Below the word", "Above the word"];
 
+    public static IReadOnlyList<string> AcceptKeyLabels { get; } = ["Tab", "Enter", "Right arrow", "Numbers only"];
+
     private readonly AppSettings _settings;
     private readonly PersistScheduler _persist;
     private readonly IThemeSwitcher _themes;
     private int _themeIndex;
     private int _sortIndex;
     private int _placementIndex;
+    private int _acceptKeyIndex;
     private bool _previewRewrites = true;
     private bool _applyingTheme;
     private bool _isDirty;
@@ -144,6 +149,35 @@ public sealed class AppearanceSettingsViewModel : INotifyPropertyChanged, IOwned
         }
     }
 
+    public int AcceptKeyIndex
+    {
+        get => _acceptKeyIndex;
+        set
+        {
+            var index = value is >= 0 and <= 3 ? value : 0;
+            if (_acceptKeyIndex == index)
+            {
+                if (value != index)
+                {
+                    OnPropertyChanged();
+                }
+
+                return;
+            }
+
+            _acceptKeyIndex = index;
+            if (_persist.IsLoading)
+            {
+                OnPropertyChanged();
+                return;
+            }
+
+            _settings.SuggestionAcceptKey = StoredAcceptKey(index);
+            MarkDirtyAndSchedule();
+            OnPropertyChanged();
+        }
+    }
+
     public bool PreviewRewrites
     {
         get => _previewRewrites;
@@ -180,11 +214,13 @@ public sealed class AppearanceSettingsViewModel : INotifyPropertyChanged, IOwned
             _themeIndex = IndexOfTheme(_settings.Theme);
             _sortIndex = string.Equals(_settings.SuggestionSortMode, "Used", StringComparison.OrdinalIgnoreCase) ? 1 : 0;
             _placementIndex = string.Equals(_settings.SuggestionPlacement, "Above", StringComparison.OrdinalIgnoreCase) ? 1 : 0;
+            _acceptKeyIndex = IndexOfAcceptKey(_settings.SuggestionAcceptKey);
             _previewRewrites = _settings.RequireConfirmationForEdits;
             _isDirty = false;
             OnPropertyChanged(nameof(ThemeIndex));
             OnPropertyChanged(nameof(SortIndex));
             OnPropertyChanged(nameof(PlacementIndex));
+            OnPropertyChanged(nameof(AcceptKeyIndex));
             OnPropertyChanged(nameof(PreviewRewrites));
         }
         finally
@@ -198,6 +234,7 @@ public sealed class AppearanceSettingsViewModel : INotifyPropertyChanged, IOwned
         target.Theme = ThemeLabels[_themeIndex];
         target.SuggestionSortMode = _sortIndex == 1 ? "Used" : "Relevant";
         target.SuggestionPlacement = _placementIndex == 1 ? "Above" : "Below";
+        target.SuggestionAcceptKey = StoredAcceptKey(_acceptKeyIndex);
         target.RequireConfirmationForEdits = _previewRewrites;
     }
 
@@ -232,6 +269,22 @@ public sealed class AppearanceSettingsViewModel : INotifyPropertyChanged, IOwned
         _themeIndex = index;
         OnPropertyChanged(nameof(ThemeIndex));
     }
+
+    private static string StoredAcceptKey(int index) => index switch
+    {
+        1 => SuggestionAcceptKey.Enter,
+        2 => SuggestionAcceptKey.Right,
+        3 => SuggestionAcceptKey.Numbers,
+        _ => SuggestionAcceptKey.Tab
+    };
+
+    private static int IndexOfAcceptKey(string? stored) => SuggestionAcceptKey.Normalize(stored) switch
+    {
+        SuggestionAcceptKey.Enter => 1,
+        SuggestionAcceptKey.Right => 2,
+        SuggestionAcceptKey.Numbers => 3,
+        _ => 0
+    };
 
     private static int IndexOfTheme(string? name)
     {

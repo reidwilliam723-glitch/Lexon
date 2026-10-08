@@ -127,7 +127,7 @@ public class WritingAppTonePageTests
             window.Show();
             window.UpdateLayout();
 
-            Assert.Equal(7, window.GalleryTabCount);
+            Assert.Equal(8, window.GalleryTabCount);
             Assert.True(window.HasAiTab);
             Assert.True(window.HasWritingTab);
             Assert.True(window.HasAppToneTab);

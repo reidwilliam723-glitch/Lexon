@@ -161,8 +161,8 @@
           <CheckBox Content="Suggest grammar fixes automatically"
                     IsChecked="{Binding GrammarChecking}"
                     AutomationProperties.Name="Suggest grammar fixes automatically"
-                    AutomationProperties.HelpText="Homophones, agreement, possessives, and punctuation. Tab accepts a fix. Never applied automatically."/>
-          <TextBlock Text="Homophones, agreement, possessives, and punctuation. Tab accepts a fix. Never applied automatically."
+                    AutomationProperties.HelpText="Homophones, agreement, possessives, and punctuation. The accept key from Appearance confirms a fix. Never applied automatically."/>
+          <TextBlock Text="Homophones, agreement, possessives, and punctuation. The accept key from Appearance confirms a fix. Never applied automatically."
                      TextWrapping="Wrap" Margin="0,4,0,12"
                      Foreground="{DynamicResource TextSecondaryBrush}"
                      FontFamily="{DynamicResource LexonFontFamily}"
@@ -191,8 +191,8 @@
           <CheckBox Content="Auto-correct contractions"
                     IsChecked="{Binding AutoCorrectContractions}"
                     AutomationProperties.Name="Auto-correct contractions"
-                    AutomationProperties.HelpText="I'm, what's, I've, and similar. Off by default; they stay as Tab suggestions."/>
-          <TextBlock Text="I'm, what's, I've, and similar. Off by default; they stay as Tab suggestions."
+                    AutomationProperties.HelpText="I'm, what's, I've, and similar. Off by default; they stay as suggestions you accept."/>
+          <TextBlock Text="I'm, what's, I've, and similar. Off by default; they stay as suggestions you accept."
                      TextWrapping="Wrap" Margin="0,4,0,12"
                      Foreground="{DynamicResource TextSecondaryBrush}"
                      FontFamily="{DynamicResource LexonFontFamily}"

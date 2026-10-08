@@ -144,6 +144,11 @@ public sealed class SettingsWindow : Window
             AddTab(nav, "Writing", () => _host.ShowWriting(_content));
         }
 
+        if (_host.AppsPage != null)
+        {
+            AddTab(nav, "Apps", () => _host.ShowApps(_content));
+        }
+
         var about = new Button
         {
             Content = "About",

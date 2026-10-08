@@ -57,6 +57,13 @@ public partial class SettingsForm : Form
     private CheckBox _chkAllowCodeSwitching = null!;
     private ComboBox _cmbDefaultWritingMode = null!;
     private CheckBox _chkLocalMode = null!;
+    private CheckBox _chkConfirmAiSends = null!;
+    private TextBox _txtAppControl = null!;
+    private CheckBox _chkAppBlocked = null!;
+    private ComboBox _cmbAppControlTone = null!;
+    private CheckBox _chkAppGrammar = null!;
+    private CheckBox _chkAppLearned = null!;
+    private bool _appControlsLoading;
     private CheckBox _chkAiTyping = null!;
     private CheckBox _chkAiRewrite = null!;
     private CheckBox _chkAiPrefetch = null!;
@@ -67,6 +74,7 @@ public partial class SettingsForm : Form
     private ComboBox _cmbTheme = null!;
     private ComboBox _cmbSuggestionSort = null!;
     private ComboBox _cmbSuggestionPlacement = null!;
+    private ComboBox _cmbSuggestionAcceptKey = null!;
     private CheckBox _chkRequireConfirmation = null!;
     private ComboBox _cmbAppToneCategory = null!;
     private ListBox _lstAppTone = null!;
@@ -94,6 +102,7 @@ public partial class SettingsForm : Form
     private FlowLayoutPanel _sectionPrivacy = null!;
     private FlowLayoutPanel _sectionAppearance = null!;
     private FlowLayoutPanel _sectionAppTone = null!;
+    private FlowLayoutPanel _sectionApps = null!;
     private FlowLayoutPanel _sectionWriting = null!;
     private FlowLayoutPanel _columnLeft = null!;
     private FlowLayoutPanel _columnMiddle = null!;
@@ -452,6 +461,7 @@ public partial class SettingsForm : Form
             Hint(_cmbAiModel, "Filled automatically. Change only if you want a different model."));
 
         _chkLocalMode = Check("Local-only mode (no cloud)");
+        _chkConfirmAiSends = Check("Ask before sending text to AI");
         _blockedRow = new FlowLayoutPanel
         {
             FlowDirection = FlowDirection.LeftToRight,
@@ -490,6 +500,7 @@ public partial class SettingsForm : Form
         _sectionPrivacy = Section(
             "Privacy",
             Hint(_chkLocalMode, "Turns off every AI provider immediately, including Ollama. Saved keys stay so you can turn it back on."),
+            Hint(_chkConfirmAiSends, "Names the provider and whether the send is a selection prefetch, a rewrite, or the words around the caret. Allowing a kind of send skips the question next time. Turning this off sends without asking. Turning it back on asks again."),
             Caption("Blocked apps"),
             Hint(_blockedRow, "Password fields are always skipped. Add comma-separated process names, for example outlook.exe, or pick a running app."),
             Hint(_btnAiLog, "Shows recent cloud AI requests from this PC."),
@@ -504,6 +515,9 @@ public partial class SettingsForm : Form
         _cmbSuggestionPlacement = Combo(360);
         _cmbSuggestionPlacement.Items.AddRange(new[] { "Below the word", "Above the word" });
         _cmbSuggestionPlacement.SelectedIndex = 0;
+        _cmbSuggestionAcceptKey = Combo(360);
+        _cmbSuggestionAcceptKey.Items.AddRange(new[] { "Tab", "Enter", "Right arrow", "Numbers only" });
+        _cmbSuggestionAcceptKey.SelectedIndex = 0;
         _chkRequireConfirmation = Check("Preview AI rewrites before applying");
         _sectionAppearance = Section(
             "Appearance",
@@ -513,6 +527,8 @@ public partial class SettingsForm : Form
             Hint(_cmbSuggestionSort, "How chips are sorted when several matches appear."),
             Caption("Suggestion position"),
             Hint(_cmbSuggestionPlacement, "Where the overlay sits relative to the current word."),
+            Caption("Accept suggestion with"),
+            Hint(_cmbSuggestionAcceptKey, "Space never accepts. 1, 2, and 3 still insert the numbered rows. Enter is not sent to the app while the list is open, so a chat message is not sent as well."),
             Hint(_chkRequireConfirmation, "Show a preview before an AI rewrite is applied."));
 
         _lstAppTone = new ListBox { Width = 360, Height = 110, Margin = new Padding(0, 0, 0, 8) };
@@ -544,6 +560,40 @@ public partial class SettingsForm : Form
             Hint(_lstAppTone, "Defaults cover Slack, Teams, Outlook, Word, and editors. Add a row only to override."),
             Caption("Tone"),
             Hint(_toneRow, "Pick a tone, then choose a running app. Remove uses the selected row."));
+
+        _txtAppControl = Field(200);
+        _chkAppBlocked = Check("Block assistance");
+        _cmbAppControlTone = Combo(160);
+        _cmbAppControlTone.Items.AddRange(AppControlEditor.ToneChoices.ToArray());
+        _cmbAppControlTone.SelectedIndex = 0;
+        _chkAppGrammar = Check("Suggest grammar");
+        _chkAppLearned = Check("Use learned words");
+        _chkAppGrammar.Checked = true;
+        _chkAppLearned.Checked = true;
+        var appRow = new FlowLayoutPanel { AutoSize = true, WrapContents = false, Margin = new Padding(0, 0, 0, 8) };
+        var btnPickApp = new Button
+        {
+            Text = "Add running app…",
+            AutoSize = true,
+            Padding = new Padding(10, 4, 10, 4),
+            Margin = new Padding(8, 0, 0, 0)
+        };
+        btnPickApp.Click += (_, _) => PickAppControl();
+        appRow.Controls.Add(_txtAppControl);
+        appRow.Controls.Add(btnPickApp);
+        _txtAppControl.TextChanged += (_, _) => ShowAppControl();
+        _chkAppBlocked.CheckedChanged += (_, _) => ApplyAppControl();
+        _cmbAppControlTone.SelectedIndexChanged += (_, _) => ApplyAppControl();
+        _chkAppGrammar.CheckedChanged += (_, _) => ApplyAppControl();
+        _chkAppLearned.CheckedChanged += (_, _) => ApplyAppControl();
+        _sectionApps = Section(
+            "Apps",
+            Hint(appRow, "Same lists as blocked apps, app tone, grammar, and learned words, for one app."),
+            Hint(_chkAppBlocked, "Lexon skips this app."),
+            Caption("Writing tone"),
+            Hint(_cmbAppControlTone, "Default keeps the built-in tone."),
+            Hint(_chkAppGrammar, "Turn off to stop grammar suggestions in this app."),
+            Hint(_chkAppLearned, "Turn off to hide learned words in this app."));
 
         _btnWritingStats = new Button
         {
@@ -632,10 +682,10 @@ public partial class SettingsForm : Form
             Hint(_lstAdaptations, "From repeated rejections of a suggestion."),
             _btnUndoAdaptation,
             Caption("Grammar"),
-            Hint(_chkGrammarChecking, "Homophones, agreement, possessives, and punctuation. Tab accepts a fix. Never applied automatically."),
+            Hint(_chkGrammarChecking, "Homophones, agreement, possessives, and punctuation. The accept key from Appearance confirms a fix. Never applied automatically."),
             Hint(_chkAutoCorrectTypos, "Unambiguous misspellings such as teh → the. Applied as you type."),
             Hint(_chkAutoInsertSpaces, "Adds a space after commas and periods, and trims extra spaces. Skips code, URLs, and numbers."),
-            Hint(_chkAutoCorrectContractions, "I'm, what's, I've, and similar. Off by default; they stay as Tab suggestions."),
+            Hint(_chkAutoCorrectContractions, "I'm, what's, I've, and similar. Off by default; they stay as suggestions you accept."),
             Hint(_chkDocumentConsistency, "Warns when a name or term appears with two different spellings in the same text."),
             Hint(_chkAllowCodeSwitching, "Do not treat foreign or mixed-script words as typos."),
             Caption("Grammar sensitivity"),
@@ -655,6 +705,7 @@ public partial class SettingsForm : Form
         _layoutHost.Controls.Add(_sectionAppearance, 0, 3);
         _layoutHost.Controls.Add(_sectionAppTone, 0, 4);
         _layoutHost.Controls.Add(_sectionWriting, 0, 5);
+        _layoutHost.Controls.Add(_sectionApps, 0, 6);
         ApplyCompactLayout();
 
         ResumeLayout(false);
@@ -976,6 +1027,7 @@ public partial class SettingsForm : Form
             Place(_sectionAppearance, 0, 3);
             Place(_sectionAppTone, 0, 4);
             Place(_sectionWriting, 0, 5);
+            Place(_sectionApps, 0, 6);
             _wideLayoutActive = false;
             Padding = new Padding(24, 20, 24, 16);
         }
@@ -1001,7 +1053,7 @@ public partial class SettingsForm : Form
             ConfigureGrid(33.3f, 33.3f, 33.4f, fillRows: false);
             FillColumn(_columnLeft, _sectionGeneral, _sectionAi, _sectionPrivacy);
             FillColumn(_columnMiddle, _sectionAppearance, _sectionWriting);
-            FillColumn(_columnRight, _sectionAppTone);
+            FillColumn(_columnRight, _sectionAppTone, _sectionApps);
             Place(_columnLeft, 0, 0);
             Place(_columnMiddle, 1, 0);
             Place(_columnRight, 2, 0);
@@ -1185,6 +1237,7 @@ public partial class SettingsForm : Form
             SetWidth(_cmbTheme, middle);
             SetWidth(_cmbSuggestionSort, middle);
             SetWidth(_cmbSuggestionPlacement, middle);
+            SetWidth(_cmbSuggestionAcceptKey, middle);
             SetWidth(_lstAdaptations, middle);
             SetWidth(_cmbGrammarSensitivity, middle);
             SetWidth(_cmbDefaultWritingMode, middle);
@@ -1233,6 +1286,7 @@ public partial class SettingsForm : Form
             SetWidth(_cmbTheme, 360);
             SetWidth(_cmbSuggestionSort, 360);
             SetWidth(_cmbSuggestionPlacement, 360);
+            SetWidth(_cmbSuggestionAcceptKey, 360);
             SetWidth(_lstAdaptations, 360);
             SetWidth(_cmbGrammarSensitivity, 360);
             SetWidth(_cmbDefaultWritingMode, 360);
@@ -1269,6 +1323,22 @@ public partial class SettingsForm : Form
         _fieldListHeight = listHeight;
         return false;
     }
+
+    private static int AcceptKeyIndex(string? stored) => SuggestionAcceptKey.Normalize(stored) switch
+    {
+        SuggestionAcceptKey.Enter => 1,
+        SuggestionAcceptKey.Right => 2,
+        SuggestionAcceptKey.Numbers => 3,
+        _ => 0
+    };
+
+    private static string AcceptKeyStored(int index) => index switch
+    {
+        1 => SuggestionAcceptKey.Enter,
+        2 => SuggestionAcceptKey.Right,
+        3 => SuggestionAcceptKey.Numbers,
+        _ => SuggestionAcceptKey.Tab
+    };
 
     private static void SetWidth(Control control, int width)
     {
@@ -1575,6 +1645,7 @@ public partial class SettingsForm : Form
         _cmbDefaultWritingMode.SelectedIndexChanged += (_, _) => ApplyNow();
         _cmbSuggestionSort.SelectedIndexChanged += (_, _) => ApplyNow();
         _cmbSuggestionPlacement.SelectedIndexChanged += (_, _) => ApplyNow();
+        _cmbSuggestionAcceptKey.SelectedIndexChanged += (_, _) => ApplyNow();
         _chkRequireConfirmation.CheckedChanged += (_, _) => ApplyNow();
         _cmbGrammarSensitivity.SelectedIndexChanged += (_, _) => ApplyNow();
         _chkMuteCasualGrammar.CheckedChanged += (_, _) => ApplyNow();
@@ -1619,6 +1690,7 @@ public partial class SettingsForm : Form
 
         UpdateAiEntryMode();
         _chkLocalMode.Checked = _appSettings.LocalMode;
+        _chkConfirmAiSends.Checked = _appSettings.ConfirmAiSends;
         _chkAiTyping.Checked = _appSettings.AiSuggestionsWhileTyping;
         _chkAiRewrite.Checked = _appSettings.AiRewriteOnRequest;
         _chkAiPrefetch.Checked = _appSettings.AiPrefetchOnSelection;
@@ -1631,6 +1703,7 @@ public partial class SettingsForm : Form
 
         _cmbSuggestionSort.SelectedIndex = string.Equals(_appSettings.SuggestionSortMode, "Used", StringComparison.OrdinalIgnoreCase) ? 1 : 0;
         _cmbSuggestionPlacement.SelectedIndex = string.Equals(_appSettings.SuggestionPlacement, "Above", StringComparison.OrdinalIgnoreCase) ? 1 : 0;
+        _cmbSuggestionAcceptKey.SelectedIndex = AcceptKeyIndex(_appSettings.SuggestionAcceptKey);
         _chkRequireConfirmation.Checked = _appSettings.RequireConfirmationForEdits;
         var grammarIndex = _cmbGrammarSensitivity.Items.IndexOf(_appSettings.GrammarSensitivity);
         _cmbGrammarSensitivity.SelectedIndex = grammarIndex >= 0 ? grammarIndex : 1;
@@ -1718,6 +1791,12 @@ public partial class SettingsForm : Form
         _appSettings.AIKeyValidated = _ai.AiValidated;
         _appSettings.AIModel = SelectedModel();
         _appSettings.LocalMode = _chkLocalMode.Checked;
+        if (_chkConfirmAiSends.Checked && !_appSettings.ConfirmAiSends)
+        {
+            _appSettings.AiSendAllowedScopes = [];
+        }
+
+        _appSettings.ConfirmAiSends = _chkConfirmAiSends.Checked;
         _appSettings.AiSuggestionsWhileTyping = _chkAiTyping.Checked;
         _appSettings.AiRewriteOnRequest = _chkAiRewrite.Checked;
         _appSettings.AiPrefetchOnSelection = _chkAiPrefetch.Checked;
@@ -1725,6 +1804,7 @@ public partial class SettingsForm : Form
         _appSettings.Theme = _cmbTheme.SelectedItem?.ToString() ?? "Light";
         _appSettings.SuggestionSortMode = _cmbSuggestionSort.SelectedIndex == 1 ? "Used" : "Relevant";
         _appSettings.SuggestionPlacement = _cmbSuggestionPlacement.SelectedIndex == 1 ? "Above" : "Below";
+        _appSettings.SuggestionAcceptKey = AcceptKeyStored(_cmbSuggestionAcceptKey.SelectedIndex);
         _appSettings.RequireConfirmationForEdits = _chkRequireConfirmation.Checked;
         _appSettings.GrammarSensitivity = _cmbGrammarSensitivity.SelectedItem?.ToString() ?? "Medium";
         _appSettings.MuteGrammarForCasualApps = _chkMuteCasualGrammar.Checked;
@@ -2121,6 +2201,80 @@ public partial class SettingsForm : Form
         if (_cmbAiModel.SelectedItem == null || _cmbAiModel.Items.Count == 0)
         {
             FillModelChoices(provider, AiProviderCatalog.DefaultModel(provider));
+        }
+    }
+
+    private void ShowAppControl()
+    {
+        if (_loading)
+        {
+            return;
+        }
+
+        _appControlsLoading = true;
+        try
+        {
+            var state = AppControlEditor.Read(CurrentAppLists(), _txtAppControl.Text);
+            _chkAppBlocked.Checked = state.BlockAssistance;
+            _chkAppGrammar.Checked = state.Grammar;
+            _chkAppLearned.Checked = state.LearnedWords;
+            var tone = _cmbAppControlTone.Items.IndexOf(state.Tone);
+            _cmbAppControlTone.SelectedIndex = tone >= 0 ? tone : 0;
+        }
+        finally
+        {
+            _appControlsLoading = false;
+        }
+    }
+
+    private void ApplyAppControl()
+    {
+        if (_loading || _appControlsLoading || string.IsNullOrWhiteSpace(_txtAppControl.Text))
+        {
+            return;
+        }
+
+        var lists = CurrentAppLists();
+        AppControlEditor.Apply(lists, new AppControlState(
+            _txtAppControl.Text,
+            _chkAppBlocked.Checked,
+            _cmbAppControlTone.SelectedItem?.ToString() ?? AppControlState.DefaultTone,
+            _chkAppGrammar.Checked,
+            _chkAppLearned.Checked));
+        _appControlsLoading = true;
+        try
+        {
+            _txtBlockedApps.Text = BlockedAppList.FormatCsv(lists.BlockedApplications);
+            _txtGrammarMutedApps.Text = BlockedAppList.FormatCsv(lists.GrammarMutedApps);
+            _txtLearnedMutedApps.Text = BlockedAppList.FormatCsv(lists.LearnedWordsMutedApps);
+            _lstAppTone.Items.Clear();
+            foreach (var row in lists.AppCategoryOverrides)
+            {
+                _lstAppTone.Items.Add(row);
+            }
+        }
+        finally
+        {
+            _appControlsLoading = false;
+        }
+
+        ApplyNow();
+    }
+
+    private AppSettings CurrentAppLists() => new()
+    {
+        BlockedApplications = BlockedAppList.Parse(_txtBlockedApps.Text),
+        GrammarMutedApps = BlockedAppList.ParseMutedGrammar(_txtGrammarMutedApps.Text),
+        LearnedWordsMutedApps = BlockedAppList.ParseMutedGrammar(_txtLearnedMutedApps.Text),
+        AppCategoryOverrides = _lstAppTone.Items.Cast<object>().Select(i => i?.ToString() ?? string.Empty).ToList()
+    };
+
+    private void PickAppControl()
+    {
+        using var picker = new ProcessPickerForm("Select a running application:");
+        if (picker.ShowDialog() == DialogResult.OK && !string.IsNullOrEmpty(picker.SelectedProcessName))
+        {
+            _txtAppControl.Text = ApplicationName.Normalize(picker.SelectedProcessName);
         }
     }
 

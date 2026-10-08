@@ -28,6 +28,17 @@
                      FontFamily="{DynamicResource LexonFontFamily}"
                      FontSize="{DynamicResource CaptionFontSize}"/>
 
+          <CheckBox Content="Ask before sending text to AI"
+                    IsChecked="{Binding ConfirmAiSends}"
+                    Margin="0,0,0,4"
+                    AutomationProperties.Name="Ask before sending text to AI"
+                    AutomationProperties.HelpText="Names the provider and whether the send is a selection prefetch, a rewrite, or the words around the caret. Allowing a kind of send skips the question next time. Turning this off sends without asking. Turning it back on asks again."/>
+          <TextBlock Text="Names the provider and whether the send is a selection prefetch, a rewrite, or the words around the caret. Allowing a kind of send skips the question next time."
+                     TextWrapping="Wrap" Margin="0,4,0,12"
+                     Foreground="{DynamicResource TextSecondaryBrush}"
+                     FontFamily="{DynamicResource LexonFontFamily}"
+                     FontSize="{DynamicResource CaptionFontSize}"/>
+
           <TextBlock Text="Blocked apps" TextWrapping="Wrap" Margin="0,0,0,4"
                      Foreground="{DynamicResource TextBrush}"
                      FontFamily="{DynamicResource LexonFontFamily}"

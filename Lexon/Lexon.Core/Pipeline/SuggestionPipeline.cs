@@ -18,6 +18,7 @@ public class SuggestionPipeline : ISuggestionPipeline
     private bool _isEnabled = true;
     private string _sortMode = "Relevant";
     private Func<string?, bool>? _allowsLearnedWords;
+    private Func<string?, string?, bool>? _allowCloudSend;
     private int _aiEpoch;
     private CancellationTokenSource _epochCts = new();
 
@@ -46,6 +47,14 @@ public class SuggestionPipeline : ISuggestionPipeline
     /// <summary>
     /// When set, learned-only vocabulary is omitted for apps this returns false for.
     /// </summary>
+    /// <summary>
+    /// When this returns false, a cloud provider is skipped and no text is sent.
+    /// </summary>
+    public void SetCloudSendAllowed(Func<string?, string?, bool>? allowCloudSend)
+    {
+        _allowCloudSend = allowCloudSend;
+    }
+
     public void SetLearnedWordsAllowed(Func<string?, bool> allowsLearnedWords)
     {
         _allowsLearnedWords = allowsLearnedWords;
@@ -315,8 +324,15 @@ public class SuggestionPipeline : ISuggestionPipeline
             return true;
         }
 
-        return !policy.SuggestionsWhileTyping
-            && CloudAiNames.RequiresTypingConsent(provider.Name, provider.NetworkEndpoint);
+        if (!policy.SuggestionsWhileTyping
+            && CloudAiNames.RequiresTypingConsent(provider.Name, provider.NetworkEndpoint))
+        {
+            return true;
+        }
+
+        return _allowCloudSend != null
+            && CloudAiNames.RequiresTypingConsent(provider.Name, provider.NetworkEndpoint)
+            && !_allowCloudSend(provider.Name, provider.NetworkEndpoint);
     }
 
     private bool LearnedWordsAllowed(TextContext context)

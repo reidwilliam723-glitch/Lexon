@@ -2,6 +2,17 @@
 
 All notable changes to Lexon will be documented in this file.
 
+## [1.10.3] - 2026-10-08
+
+### Privacy
+- Before text goes to a cloud provider, Lexon names the provider and what is included: the selection before a rewrite (prefetch), the selection for a rewrite, or the words around the caret. Send this time, always allow that kind of send, or don't send. Ask before sending text to AI is on by default.
+
+### Settings
+- Apps brings blocked apps, writing tone, grammar, and learned words together for one app. Privacy, App tone, and Writing still edit the same lists.
+
+### Suggestions
+- Settings → Appearance → Accept suggestion with chooses Tab (the default), Enter, Right arrow, or Numbers only. Space still only types a space. 1, 2, and 3 still insert the numbered rows. Enter is not sent to the app while the list is open.
+
 ## [1.10.2] - 2026-10-08
 
 ### Suggestions

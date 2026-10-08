@@ -129,6 +129,16 @@ internal sealed class SettingsPagesHost : IDisposable
             services.Pages.Add(Writing);
         }
 
+        if (services.ProcessPicker != null)
+        {
+            Apps = new AppsSettingsViewModel(services.Settings, services.Persist, services.ProcessPicker);
+            Apps.Attach(Privacy, AppTone, Writing);
+            Apps.PropertyChanged += OnSettingsPropertyChanged;
+            Apps.UserEdited += () => OnPageUserEdited(Apps);
+            AppsPage = new AppsPage(Apps);
+            services.Pages.Add(Apps);
+        }
+
         Retarget(owner);
         _persistTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(100) };
         _persistTimer.Tick += (_, _) =>
@@ -155,6 +165,8 @@ internal sealed class SettingsPagesHost : IDisposable
 
     public WritingViewModel? Writing { get; }
 
+    public AppsSettingsViewModel? Apps { get; }
+
     public GeneralPage GeneralPage { get; }
 
     public AiPage? AiPage { get; }
@@ -166,6 +178,8 @@ internal sealed class SettingsPagesHost : IDisposable
     public AppTonePage? AppTonePage { get; }
 
     public WritingPage? WritingPage { get; }
+
+    public AppsPage? AppsPage { get; }
 
     public ClipboardHwndListener Clipboard => _clipboard;
 
@@ -267,6 +281,12 @@ internal sealed class SettingsPagesHost : IDisposable
         Writing?.RefreshLearning();
     }
 
+    public void ShowApps(System.Windows.Controls.ContentControl content)
+    {
+        content.Content = AppsPage;
+        ReloadPage(Apps);
+    }
+
     public void Dispose()
     {
         if (_disposed)
@@ -294,6 +314,7 @@ internal sealed class SettingsPagesHost : IDisposable
         AppTone?.Load();
         Writing?.Load();
         Writing?.RefreshLearning();
+        Apps?.Load();
         _services.ApplyLive?.Invoke();
         _services.AfterSettingsImport?.Invoke();
     }
@@ -335,6 +356,11 @@ internal sealed class SettingsPagesHost : IDisposable
             Writing?.RefreshLearning();
         }
 
+        if (Apps is { IsDirty: false })
+        {
+            Apps.Load();
+        }
+
         if (_services.Pages.Any(static p => p.IsDirty))
         {
             FlushPendingSaves();
@@ -368,6 +394,9 @@ internal sealed class SettingsPagesHost : IDisposable
                 break;
             case WritingViewModel writing:
                 writing.Load();
+                break;
+            case AppsSettingsViewModel apps:
+                apps.Load();
                 break;
         }
     }

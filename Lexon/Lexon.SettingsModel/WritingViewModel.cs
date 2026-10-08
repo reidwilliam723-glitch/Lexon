@@ -222,6 +222,16 @@ public sealed class WritingViewModel : INotifyPropertyChanged, IOwnedSettingsPag
         }
     }
 
+    public void AcceptExternalMutes(IReadOnlyList<string> grammarMuted, IReadOnlyList<string> learnedMuted)
+    {
+        _mutedAppsText = BlockedAppList.FormatCsv(grammarMuted);
+        _learnedMutedAppsText = BlockedAppList.FormatCsv(learnedMuted);
+        _settings.GrammarMutedApps = grammarMuted.ToList();
+        _settings.LearnedWordsMutedApps = learnedMuted.ToList();
+        OnPropertyChanged(nameof(MutedAppsText));
+        OnPropertyChanged(nameof(LearnedMutedAppsText));
+    }
+
     public bool EnableRewriteHotkey
     {
         get => _enableRewriteHotkey;

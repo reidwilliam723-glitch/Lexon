@@ -11,15 +11,23 @@ Right-click the Lexon icon next to the clock:
 - **Toggle** — turn assistance off/on (or **double-press Ctrl**)
 - **Exit** — quit Lexon
 
+## Privacy
+
+Before a cloud provider receives text, Lexon asks and names the provider. The message says whether that is the selected text before you choose a rewrite, the selected text for a rewrite, or the words around the caret. You can allow that kind of send next time. Local-only mode and blocked apps still skip the send. The question is under **Settings → Privacy → Ask before sending text to AI**.
+
+## Apps
+
+**Settings → Apps** sets, for one app, whether Lexon is blocked, which writing tone to use, and whether grammar or learned words are offered. Those are the same lists as Privacy, App tone, and Writing.
+
 ## Word suggestions
 
 1. Type in almost any text box.
 2. A small popup lists completions.
 3. **1**, **2**, or **3** inserts that row. The number is shown on the left. The number pad works too.
 4. **Up / Down** moves the highlight.
-5. **Tab** inserts the highlighted word (adds a space).
+5. The key you choose in **Settings → Appearance → Accept suggestion with** inserts the highlighted word (adds a space). **Tab** is the default. The other choices are **Enter**, **Right arrow**, and **Numbers only**.
 6. **Esc** hides the list.
-7. **Space** does **not** accept a suggestion (it just types a space).
+7. **Space** does **not** accept a suggestion (it just types a space). **1**, **2**, and **3** still insert the numbered rows, including when the accept key is **Numbers only**.
 
 After you finish a word, the next-word chips also use **1**, **2**, and **3**. While the word list is open, those keys accept the list instead.
 
@@ -27,15 +35,16 @@ If the list covers your text, press Esc, then keep typing.
 
 ## Spelling
 
-Common typos (like `teh` → `the`) show in the **word** popup. **Tab** accepts.
+Common typos (like `teh` → `the`) show in the **word** popup. The accept key confirms them.
 
 ## Grammar
 
 Grammar fixes (like `he are` → `he is`) appear in a **separate** popup labeled **Grammar**, on the other side of the line from word suggestions.
 
-- **Tab** accepts the grammar fix when that popup is showing (it takes priority over the word list).
+- The accept key confirms the grammar fix when that popup is showing (it takes priority over the word list).
 - **Up / Down** still move the word list when both are visible.
-- After you pause (~1.5 seconds), the grammar popup may appear again. **Tab** still accepts.
+- After you pause (~1.5 seconds), the grammar popup may appear again. The accept key still confirms it.
+- Choosing **Enter** accepts the suggestion and does not pass Enter on to the app while the list is open, so a chat message is not sent as well.
 - **Ctrl+Alt+G** (if enabled in Settings) opens a full issues list.
 
 Grammar can be turned off in Settings: **Automatically suggest grammar fixes**.

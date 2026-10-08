@@ -9,7 +9,9 @@ public sealed class PrivacySettingsViewModel : INotifyPropertyChanged, IOwnedSet
     public static readonly string[] OwnedKeyList =
     [
         AppSettings.LocalModeKey,
-        AppSettings.BlockedApplicationsKey
+        AppSettings.BlockedApplicationsKey,
+        AppSettings.ConfirmAiSendsKey,
+        AppSettings.AiSendAllowedScopesKey
     ];
 
     private readonly AppSettings _settings;
@@ -21,6 +23,8 @@ public sealed class PrivacySettingsViewModel : INotifyPropertyChanged, IOwnedSet
     private readonly Action? _refresh;
     private readonly Func<AppSettings>? _liveSnapshot;
     private bool _localOnly;
+    private bool _confirmAiSends = true;
+    private List<string> _allowedScopes = [];
     private string _blockedAppsText = string.Empty;
     private bool _isDirty;
 
@@ -103,6 +107,35 @@ public sealed class PrivacySettingsViewModel : INotifyPropertyChanged, IOwnedSet
         }
     }
 
+    public bool ConfirmAiSends
+    {
+        get => _confirmAiSends;
+        set
+        {
+            if (_confirmAiSends == value)
+            {
+                return;
+            }
+
+            _confirmAiSends = value;
+            if (_persist.IsLoading)
+            {
+                OnPropertyChanged();
+                return;
+            }
+
+            _settings.ConfirmAiSends = value;
+            if (value)
+            {
+                _allowedScopes = [];
+                _settings.AiSendAllowedScopes = [];
+            }
+
+            MarkDirtyAndSchedule();
+            OnPropertyChanged();
+        }
+    }
+
     public void Load()
     {
         _persist.IsLoading = true;
@@ -110,6 +143,8 @@ public sealed class PrivacySettingsViewModel : INotifyPropertyChanged, IOwnedSet
         {
             _refresh?.Invoke();
             _localOnly = _settings.LocalMode;
+            _confirmAiSends = _settings.ConfirmAiSends;
+            _allowedScopes = _settings.AiSendAllowedScopes?.ToList() ?? [];
             // Keep the typed text when its parsed list matches the profile so
             // an activate-reload does not reformat trailing commas or casing.
             var fromProfile = _settings.BlockedApplications ?? [];
@@ -121,6 +156,7 @@ public sealed class PrivacySettingsViewModel : INotifyPropertyChanged, IOwnedSet
 
             _isDirty = false;
             OnPropertyChanged(nameof(LocalOnly));
+            OnPropertyChanged(nameof(ConfirmAiSends));
             OnPropertyChanged(nameof(BlockedAppsText));
         }
         finally
@@ -133,6 +169,8 @@ public sealed class PrivacySettingsViewModel : INotifyPropertyChanged, IOwnedSet
     {
         target.LocalMode = _localOnly;
         target.BlockedApplications = BlockedAppList.Parse(_blockedAppsText);
+        target.ConfirmAiSends = _confirmAiSends;
+        target.AiSendAllowedScopes = _allowedScopes.ToList();
     }
 
     public void MarkClean() => _isDirty = false;
@@ -158,6 +196,13 @@ public sealed class PrivacySettingsViewModel : INotifyPropertyChanged, IOwnedSet
             MarkDirtyAndSchedule();
         }
 
+        OnPropertyChanged(nameof(BlockedAppsText));
+    }
+
+    public void AcceptExternalBlocked(IReadOnlyList<string> apps)
+    {
+        _blockedAppsText = BlockedAppList.FormatCsv(apps);
+        _settings.BlockedApplications = apps.ToList();
         OnPropertyChanged(nameof(BlockedAppsText));
     }
 

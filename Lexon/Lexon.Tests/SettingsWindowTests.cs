@@ -27,7 +27,7 @@ public class SettingsWindowTests
         _sta.Run(() =>
         {
             var window = Show(FullServices(out _));
-            Assert.Equal(["General", "AI", "Privacy", "Appearance", "App tone", "Writing"], window.TabNames);
+            Assert.Equal(["General", "AI", "Privacy", "Appearance", "App tone", "Writing", "Apps"], window.TabNames);
             Assert.DoesNotContain("Controls", window.TabNames);
             Assert.True(window.IsGeneralPageVisible);
             window.Destroy();
