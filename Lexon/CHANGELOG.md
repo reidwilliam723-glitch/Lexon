@@ -2,6 +2,11 @@
 
 All notable changes to Lexon will be documented in this file.
 
+## [1.9.3] - 2026-10-08
+
+### Writing
+- WhatsApp suggestions follow the typed text across the compose line and use the text line height. They no longer snap to the left edge of the box on each new word.
+
 ## [1.9.2] - 2026-10-08
 
 ### Writing
