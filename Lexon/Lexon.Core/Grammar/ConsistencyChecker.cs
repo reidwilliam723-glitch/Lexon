@@ -156,8 +156,7 @@ public static class ConsistencyChecker
 
     private static bool IsTermLike(List<(string Form, int Count, int First)> forms)
     {
-        // Prefer flagging names/products (mixed case or hyphen) or known variants.
-        if (forms.Any(f => f.Form.Contains('-') || f.Form.Any(char.IsUpper) && f.Form.Any(char.IsLower)))
+        if (forms.Any(f => f.Form.Contains('-')))
         {
             return true;
         }
@@ -168,9 +167,41 @@ public static class ConsistencyChecker
             return true;
         }
 
-        // Same letters, different casing only — require at least one form twice or length >= 5.
-        return forms.Any(f => f.Count >= 2) || folded.Length >= 5;
+        // Case-only differences: internal capitals (LexFlow, iPhone) or ALL-CAPS vs mixed/lower.
+        // A plain first-letter capital (Apple/apple, March/march) is not a spelling variant.
+        if (forms.Any(f => HasInternalCapital(f.Form)))
+        {
+            return true;
+        }
+
+        var hasAllCaps = forms.Any(f => IsAllCaps(f.Form));
+        var hasNonAllCaps = forms.Any(f => !IsAllCaps(f.Form));
+        return hasAllCaps && hasNonAllCaps;
     }
+
+    private static bool HasInternalCapital(string value)
+    {
+        var seenLetter = false;
+        foreach (var ch in value)
+        {
+            if (!char.IsLetter(ch))
+            {
+                continue;
+            }
+
+            if (seenLetter && char.IsUpper(ch) && value.Any(char.IsLower))
+            {
+                return true;
+            }
+
+            seenLetter = true;
+        }
+
+        return false;
+    }
+
+    private static bool IsAllCaps(string value)
+        => value.Any(char.IsLetter) && value.Where(char.IsLetter).All(char.IsUpper);
 
     private static bool IsSentenceOpener(string text, int index)
     {

@@ -42,6 +42,15 @@ public class ConsistencyCheckerTests
     }
 
     [Theory]
+    [InlineData("I ate an apple. Then Apple released a phone.")]
+    [InlineData("In March we march.")]
+    [InlineData("Project Atlas is on track. project atlas will ship.")]
+    public void DoesNotFlagOrdinaryCapitalization(string text)
+    {
+        Assert.Empty(ConsistencyChecker.Find(text));
+    }
+
+    [Theory]
     [InlineData("Meeting notes are ready. The meeting starts at 3.")]
     [InlineData("The report is ready. Report shows growth this quarter.")]
     [InlineData("He wrote: \"Meeting notes are ready.\" Later the meeting started.")]
