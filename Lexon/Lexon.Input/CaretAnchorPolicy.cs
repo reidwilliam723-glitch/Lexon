@@ -7,7 +7,46 @@ namespace Lexon.Input;
 public static class CaretAnchorPolicy
 {
     public static bool FreezeOverlayWhileWordContinues(string? processName)
-        => WebEditorSupport.IsCodeEditorShell(processName);
+        => WebEditorSupport.IsCodeEditorShell(processName)
+           || WebEditorSupport.IsWhatsApp(processName);
+
+    /// <summary>
+    /// Prefer a caret that sits inside the compose box. A point in the
+    /// transcript is ignored. With no usable caret, anchor at the start of
+    /// the current word along the compose box.
+    /// </summary>
+    public static (int X, int Y)? ChooseComposerAnchor(
+        int left,
+        int top,
+        int right,
+        int bottom,
+        int charsBeforeWord,
+        params (int X, int Y)[] candidates)
+    {
+        if (right <= left || bottom <= top)
+        {
+            return null;
+        }
+
+        foreach (var candidate in candidates)
+        {
+            if (candidate.X >= left - 12 && candidate.X <= right + 12
+                && candidate.Y >= top - 12 && candidate.Y <= bottom + 12)
+            {
+                return candidate;
+            }
+        }
+
+        var width = EstimateCharWidth(bottom - top);
+        var x = left + 8 + Math.Max(0, charsBeforeWord) * width;
+        var limit = Math.Max(left + 8, right - 8);
+        if (x > limit)
+        {
+            x = limit;
+        }
+
+        return (x, top);
+    }
 
     public static bool IsDummy(int x, int y)
         => (x == 100 && y == 100) || (x == 200 && y == 200) || (x == 0 && y == 0);

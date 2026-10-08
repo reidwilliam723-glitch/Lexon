@@ -21,13 +21,21 @@ internal static class UiaScreenAnchor
     public static bool TryGetWordAnchor(string? currentWord, out int x, out int y)
         => TryGetWordAnchor(currentWord, IntPtr.Zero, out x, out y);
 
-    public static bool TryGetWordAnchor(string? currentWord, IntPtr contentHwnd, out int x, out int y)
+    public static bool TryGetWordAnchor(
+        string? currentWord,
+        IntPtr contentHwnd,
+        out int x,
+        out int y,
+        bool constrainToComposer = false,
+        int charsBeforeWord = 0)
     {
         x = 0;
         y = 0;
         try
         {
-            var result = StaInvoker.Invoke(() => TryGetWordAnchorSta(currentWord, contentHwnd), timeoutMs: 800);
+            var result = StaInvoker.Invoke(
+                () => TryGetWordAnchorSta(currentWord, contentHwnd, constrainToComposer, charsBeforeWord),
+                timeoutMs: 800);
             if (result is not { } point)
             {
                 return false;
@@ -46,31 +54,16 @@ internal static class UiaScreenAnchor
         return false;
     }
 
-    private static (int X, int Y, int LineHeight)? TryGetWordAnchorSta(string? currentWord, IntPtr contentHwnd)
+    private static (int X, int Y, int LineHeight)? TryGetWordAnchorSta(
+        string? currentWord,
+        IntPtr contentHwnd,
+        bool constrainToComposer,
+        int charsBeforeWord)
     {
         var hwnd = GetForegroundWindow();
         if (GetWindowClassName(hwnd).Equals("LexonSuggestionOverlay", StringComparison.Ordinal)
             || GetWindowClassName(hwnd).Equals("LexonGrammarOverlay", StringComparison.Ordinal))
         {
-            return null;
-        }
-
-        var element = FindFocusedTextElement(contentHwnd != IntPtr.Zero ? contentHwnd : hwnd);
-        if (element == null)
-        {
-            DiagnosticLog.WritePlacement("UIA no focused TextPattern");
-            return null;
-        }
-
-        if (!element.TryGetCurrentPattern(TextPattern.Pattern, out var raw) || raw is not TextPattern text)
-        {
-            return null;
-        }
-
-        var caret = GetCaretRange(text);
-        if (caret == null)
-        {
-            DiagnosticLog.WritePlacement("UIA GetSelection empty");
             return null;
         }
 
@@ -81,25 +74,170 @@ internal static class UiaScreenAnchor
             GetWindowRect(contentHwnd, out content);
         }
 
-        if (!string.IsNullOrEmpty(currentWord)
-            && TryWordStart(caret, currentWord, out var wordRect)
-            && IsPlausibleGlyphRect(wordRect, window, allowWide: true)
-            && TryMapToScreen(wordRect, hwnd, window, out var wordScreen)
-            && IsInsideWindow(wordScreen.X, wordScreen.Y, content))
+        (int X, int Y, int LineHeight)? caretScreen = null;
+        var element = FindFocusedTextElement(contentHwnd != IntPtr.Zero ? contentHwnd : hwnd);
+        if (element != null
+            && element.TryGetCurrentPattern(TextPattern.Pattern, out var raw)
+            && raw is TextPattern text)
         {
-            return wordScreen;
+            var caret = GetCaretRange(text);
+            if (caret == null)
+            {
+                DiagnosticLog.WritePlacement("UIA GetSelection empty");
+            }
+            else if (!string.IsNullOrEmpty(currentWord)
+                && TryWordStart(caret, currentWord, out var wordRect)
+                && IsPlausibleGlyphRect(wordRect, window, allowWide: true)
+                && TryMapToScreen(wordRect, hwnd, window, out var wordScreen)
+                && IsInsideWindow(wordScreen.X, wordScreen.Y, content))
+            {
+                caretScreen = wordScreen;
+            }
+            else if (TryCaretRect(caret, currentWord, out var caretRect)
+                && IsPlausibleGlyphRect(caretRect, window, allowWide: false)
+                && TryMapToScreen(caretRect, hwnd, window, out var mappedCaret)
+                && IsInsideWindow(mappedCaret.X, mappedCaret.Y, content))
+            {
+                caretScreen = mappedCaret;
+            }
+            else
+            {
+                DiagnosticLog.WritePlacement("UIA rect rejected (document-sized or outside window)");
+            }
+        }
+        else
+        {
+            DiagnosticLog.WritePlacement("UIA no focused TextPattern");
         }
 
-        if (TryCaretRect(caret, currentWord, out var caretRect)
-            && IsPlausibleGlyphRect(caretRect, window, allowWide: false)
-            && TryMapToScreen(caretRect, hwnd, window, out var caretScreen)
-            && IsInsideWindow(caretScreen.X, caretScreen.Y, content))
+        if (!constrainToComposer)
         {
             return caretScreen;
         }
 
-        DiagnosticLog.WritePlacement("UIA rect rejected (document-sized or outside window)");
-        return null;
+        if (!TryFindComposer(hwnd, window, out var composer))
+        {
+            return null;
+        }
+
+        var chosen = caretScreen is { } hit
+            ? CaretAnchorPolicy.ChooseComposerAnchor(
+                (int)composer.X,
+                (int)composer.Y,
+                (int)(composer.X + composer.Width),
+                (int)(composer.Y + composer.Height),
+                charsBeforeWord,
+                (hit.X, hit.Y))
+            : CaretAnchorPolicy.ChooseComposerAnchor(
+                (int)composer.X,
+                (int)composer.Y,
+                (int)(composer.X + composer.Width),
+                (int)(composer.Y + composer.Height),
+                charsBeforeWord);
+        if (chosen == null)
+        {
+            return null;
+        }
+
+        var line = Math.Clamp((int)Math.Round(composer.Height), 14, 64);
+        return (chosen.Value.X, chosen.Value.Y, line);
+    }
+
+    private static long _composerTicks;
+    private static IntPtr _composerHwnd;
+    private static Rect _composerRect;
+
+    private static bool TryFindComposer(IntPtr hwnd, RECT window, out Rect composer)
+    {
+        var now = Environment.TickCount64;
+        if (_composerHwnd == hwnd && now - _composerTicks < 500 && _composerRect.Height > 0)
+        {
+            composer = _composerRect;
+            return true;
+        }
+
+        try
+        {
+            var focused = AutomationElement.FocusedElement;
+            for (var depth = 0; depth < 8 && focused != null; depth++)
+            {
+                if (IsComposerEdit(focused, window, out composer))
+                {
+                    RememberComposer(hwnd, composer);
+                    return true;
+                }
+
+                var parent = TreeWalker.ControlViewWalker.GetParent(focused);
+                if (parent != null)
+                {
+                    var childEdit = parent.FindFirst(
+                        TreeScope.Children,
+                        new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.Edit));
+                    if (childEdit != null && IsComposerEdit(childEdit, window, out composer))
+                    {
+                        RememberComposer(hwnd, composer);
+                        return true;
+                    }
+                }
+
+                focused = parent;
+            }
+        }
+        catch
+        {
+            // Accessibility tree may be mid-update.
+        }
+
+        if (_composerHwnd == hwnd && _composerRect.Height > 0)
+        {
+            composer = _composerRect;
+            return true;
+        }
+
+        composer = Rect.Empty;
+        return false;
+    }
+
+    private static void RememberComposer(IntPtr hwnd, Rect composer)
+    {
+        _composerHwnd = hwnd;
+        _composerRect = composer;
+        _composerTicks = Environment.TickCount64;
+    }
+
+    private static bool IsComposerEdit(AutomationElement node, RECT window, out Rect rect)
+    {
+        rect = Rect.Empty;
+        try
+        {
+            if (node.Current.ControlType != ControlType.Edit)
+            {
+                return false;
+            }
+
+            rect = node.Current.BoundingRectangle;
+            if (rect.IsEmpty || double.IsNaN(rect.X) || double.IsNaN(rect.Y))
+            {
+                return false;
+            }
+
+            if (rect.Height < 16 || rect.Height > 180 || rect.Width < 40)
+            {
+                return false;
+            }
+
+            var windowHeight = window.bottom - window.top;
+            if (windowHeight > 80 && rect.Height > windowHeight * 0.35)
+            {
+                return false;
+            }
+
+            return IsInsideWindow((int)Math.Round(rect.X), (int)Math.Round(rect.Y), window);
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     private static AutomationElement? FindFocusedTextElement(IntPtr hwnd)

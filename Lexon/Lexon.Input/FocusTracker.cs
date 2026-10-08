@@ -431,26 +431,45 @@ public class FocusTracker : IFocusTracker
             var focusWindow = guiInfo.hwndFocus != IntPtr.Zero ? guiInfo.hwndFocus : caretWindow;
             var omniboxCaret = guiInfo.hwndCaret != IntPtr.Zero && IsLikelyEditorClass(guiInfo.hwndCaret);
 
+            var whatsApp = WebEditorSupport.IsWhatsApp(processName);
+            if (whatsApp
+                && UiaScreenAnchor.TryGetWordAnchor(
+                    currentWord,
+                    content,
+                    out var composerX,
+                    out var composerY,
+                    constrainToComposer: true,
+                    charsBeforeWord: CharsBeforeCurrentWord(hWnd, currentWord))
+                && Accept(composerX, composerY))
+            {
+                return Finish(composerX, composerY, UiaScreenAnchor.LastLineHeight, "whatsapp-composer");
+            }
+
             if (!codeEditor
+                && !whatsApp
                 && UiaScreenAnchor.TryGetWordAnchor(currentWord, content, out var uiaX, out var uiaY)
                 && Accept(uiaX, uiaY))
             {
                 return Finish(uiaX, uiaY, UiaScreenAnchor.LastLineHeight, "uia");
             }
 
-            if (AccessibleCaret.TryGetTopLeft(content, out var accX, out var accY, out var accH) && Accept(accX, accY))
+            if (!whatsApp
+                && AccessibleCaret.TryGetTopLeft(content, out var accX, out var accY, out var accH)
+                && Accept(accX, accY))
             {
                 return Finish(accX, accY, accH, "msaa-caret");
             }
 
-            if (content != hWnd
+            if (!whatsApp
+                && content != hWnd
                 && AccessibleCaret.TryGetTopLeft(hWnd, out accX, out accY, out accH)
                 && Accept(accX, accY))
             {
                 return Finish(accX, accY, accH, "msaa-caret-frame");
             }
 
-            if (!codeEditor && !omniboxCaret
+            if (!whatsApp
+                && !codeEditor && !omniboxCaret
                 && TryChromeRenderCaret(hWnd, caretWindow, currentWord, out var chromeCaret)
                 && Accept(chromeCaret.X, chromeCaret.Y))
             {
@@ -479,7 +498,7 @@ public class FocusTracker : IFocusTracker
                 : (webDoc || codeEditor ? content : caretWindow);
             var hasCaretRect = guiInfo.rcCaretBottom > guiInfo.rcCaretTop
                 || guiInfo.rcCaretRight > guiInfo.rcCaretLeft;
-            if (hasCaretRect && !(codeEditor && guiInfo.hwndCaret == IntPtr.Zero) && !omniboxCaret)
+            if (!whatsApp && hasCaretRect && !(codeEditor && guiInfo.hwndCaret == IntPtr.Zero) && !omniboxCaret)
             {
                 var point = new POINT
                 {
@@ -495,7 +514,7 @@ public class FocusTracker : IFocusTracker
             }
 
             var gotCaretPos = GetCaretPos(out var caretPos);
-            var trustCaretPos = gotCaretPos && guiInfo.hwndCaret != IntPtr.Zero && !omniboxCaret;
+            var trustCaretPos = !whatsApp && gotCaretPos && guiInfo.hwndCaret != IntPtr.Zero && !omniboxCaret;
             if (trustCaretPos)
             {
                 ShiftLeftByWordWidth(mapWindow, focusWindow, currentWord, ref caretPos);
@@ -765,6 +784,30 @@ public class FocusTracker : IFocusTracker
 
         var buffer = new StringBuilder(256);
         return GetClassName(hWnd, buffer, buffer.Capacity) > 0 ? buffer.ToString() : "<unknown>";
+    }
+
+    private int CharsBeforeCurrentWord(IntPtr hWnd, string? currentWord)
+    {
+        string text;
+        lock (_bufferLock)
+        {
+            text = GetOrCreateTextBuffer(hWnd).ToString();
+        }
+
+        if (text.Length == 0)
+        {
+            return 0;
+        }
+
+        var lineStart = Math.Max(text.LastIndexOf('\n'), text.LastIndexOf('\r'));
+        var line = lineStart >= 0 ? text[(lineStart + 1)..] : text;
+        var word = currentWord ?? string.Empty;
+        if (word.Length > 0 && line.EndsWith(word, StringComparison.OrdinalIgnoreCase))
+        {
+            return line.Length - word.Length;
+        }
+
+        return Math.Max(0, line.Length - word.Length);
     }
 
     private int GetCurrentWordStartIndex(string? currentWord)

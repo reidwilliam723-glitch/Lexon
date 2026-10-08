@@ -14,6 +14,9 @@ public class WebEditorSupportTests
         Assert.False(WebEditorSupport.IsWebDocumentEditor("Cursor", "Lexon.cs", "Chrome_WidgetWin_1"));
         Assert.True(WebEditorSupport.IsCodeEditorShell("Cursor.exe"));
         Assert.False(WebEditorSupport.IsBrowserProcess("notepad"));
+        Assert.True(WebEditorSupport.IsWhatsApp("WhatsApp.exe"));
+        Assert.True(WebEditorSupport.IsWhatsApp("WhatsApp.Root"));
+        Assert.False(WebEditorSupport.IsWhatsApp("chrome.exe"));
     }
 
     [Fact]

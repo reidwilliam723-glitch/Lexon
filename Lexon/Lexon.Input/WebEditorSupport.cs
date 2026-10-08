@@ -33,6 +33,17 @@ public static class WebEditorSupport
            && (className.Contains("Chrome", StringComparison.OrdinalIgnoreCase)
                || className.Contains("Mozilla", StringComparison.OrdinalIgnoreCase));
 
+    /// <summary>
+    /// WhatsApp Desktop is an Electron window. Its accessibility caret often
+    /// points at a message bubble instead of the compose box.
+    /// </summary>
+    public static bool IsWhatsApp(string? processName)
+    {
+        var name = Path.GetFileNameWithoutExtension(processName ?? string.Empty);
+        return name.Equals("WhatsApp", StringComparison.OrdinalIgnoreCase)
+            || name.Equals("WhatsApp.Root", StringComparison.OrdinalIgnoreCase);
+    }
+
     public static bool IsCodeEditorShell(string? processName)
     {
         var name = Path.GetFileNameWithoutExtension(processName ?? string.Empty)
