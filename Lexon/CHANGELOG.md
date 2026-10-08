@@ -2,13 +2,14 @@
 
 All notable changes to Lexon will be documented in this file.
 
-## [Unreleased]
+## [1.9.2] - 2026-10-08
 
 ### Writing
 - Consistency checks ignore sentence-start capitals and ordinary first-letter case (`Apple`/`apple`). A known typo can no longer be suggested as the preferred spelling when it overlaps a spelling fix.
 - Spelling protection uses the text context already in hand, and foreign-language detection only scans the last 600 characters.
 - Per-app terminology rows for the same app are merged. A term cannot contain `|`.
 - The default writing mode is used first until you pick another mode; the menu then remembers that choice.
+- In WhatsApp, suggestions stay on the compose box. A caret reported on a message in the chat is ignored.
 
 ## [1.9.1] - 2026-10-07
 
