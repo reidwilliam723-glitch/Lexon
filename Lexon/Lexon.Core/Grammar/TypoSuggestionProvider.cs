@@ -21,8 +21,8 @@ public sealed class TypoSuggestionProvider : ISuggestionProvider
         var word = context.CurrentWord ?? string.Empty;
         if (word.Length < 2
             || ScriptLanguageGuard.ShouldSkipSpelling(word, context.FullText)
-            || IsProtectedWord?.Invoke(word) == true
-            || !CommonMisspellings.TryCorrect(word, out var correction))
+            || !CommonMisspellings.TryCorrect(word, out var correction)
+            || IsProtectedWord?.Invoke(word) == true)
         {
             return Task.FromResult(Enumerable.Empty<Suggestion>());
         }

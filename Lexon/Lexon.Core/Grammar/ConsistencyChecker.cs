@@ -57,7 +57,11 @@ public static class ConsistencyChecker
             return [];
         }
 
-        var tokens = new List<(int Start, string Value)>();
+        // Voters decide the preferred spelling. Capitalized sentence/quote/bullet openers
+        // ("Report shows...") are capitalized by position, so they never vote and are only
+        // checked afterwards against non-case differences (hyphens, regional variants).
+        var voters = new List<(int Start, string Value)>();
+        var openers = new List<(int Start, string Value)>();
         foreach (Match match in Token.Matches(text))
         {
             if (match.Length < 3 || StopWords.Contains(match.Value))
@@ -65,16 +69,23 @@ public static class ConsistencyChecker
                 continue;
             }
 
-            tokens.Add((match.Index, match.Value));
+            if (IsInitialCapOnly(match.Value) && IsSentenceOpener(text, match.Index))
+            {
+                openers.Add((match.Index, match.Value));
+            }
+            else
+            {
+                voters.Add((match.Index, match.Value));
+            }
         }
 
-        if (tokens.Count < 2)
+        if (voters.Count + openers.Count < 2)
         {
             return [];
         }
 
         var groups = new Dictionary<string, List<(int Start, string Value)>>(StringComparer.Ordinal);
-        foreach (var token in tokens)
+        foreach (var token in voters)
         {
             var key = FamilyKey(Fold(token.Value));
             if (!groups.TryGetValue(key, out var list))
@@ -87,7 +98,7 @@ public static class ConsistencyChecker
         }
 
         var results = new List<GrammarMatch>();
-        foreach (var group in groups.Values)
+        foreach (var (key, group) in groups)
         {
             var forms = group
                 .GroupBy(t => t.Value, StringComparer.Ordinal)
@@ -96,40 +107,46 @@ public static class ConsistencyChecker
                 .ThenBy(x => x.First)
                 .ToList();
 
-            if (forms.Count < 2)
-            {
-                continue;
-            }
-
-            // Ignore pure ALL-CAPS acronyms vs lowercase common words unless both recur.
-            if (!IsTermLike(forms))
-            {
-                continue;
-            }
-
             var preferred = forms[0].Form;
-            foreach (var occurrence in group)
-            {
-                if (occurrence.Value.Equals(preferred, StringComparison.Ordinal))
-                {
-                    continue;
-                }
 
-                results.Add(new GrammarMatch(
-                    occurrence.Start,
-                    occurrence.Value.Length,
-                    occurrence.Value,
-                    preferred,
-                    $"Inconsistent spelling — also used as \"{preferred}\"",
-                    GrammarRuleCategory.Consistency));
+            if (forms.Count >= 2 && IsTermLike(forms))
+            {
+                foreach (var occurrence in group)
+                {
+                    if (!occurrence.Value.Equals(preferred, StringComparison.Ordinal))
+                    {
+                        results.Add(Flag(occurrence.Start, occurrence.Value, preferred));
+                    }
+                }
+            }
+
+            // Openers are flagged only when they differ by more than case (hyphen / regional variant).
+            foreach (var opener in openers)
+            {
+                if (FamilyKey(Fold(opener.Value)) == key
+                    && !opener.Value.Equals(preferred, StringComparison.OrdinalIgnoreCase))
+                {
+                    results.Add(Flag(opener.Start, opener.Value, CapitalizeFirst(preferred)));
+                }
             }
         }
 
         return results
+            .GroupBy(m => m.Start)
+            .Select(g => g.First())
             .OrderBy(m => m.Start)
             .Take(12)
             .ToList();
     }
+
+    private static GrammarMatch Flag(int start, string original, string preferred)
+        => new(
+            start,
+            original.Length,
+            original,
+            preferred,
+            $"Inconsistent spelling — also used as \"{preferred}\"",
+            GrammarRuleCategory.Consistency);
 
     private static bool IsTermLike(List<(string Form, int Count, int First)> forms)
     {
@@ -148,6 +165,31 @@ public static class ConsistencyChecker
         // Same letters, different casing only — require at least one form twice or length >= 5.
         return forms.Any(f => f.Count >= 2) || folded.Length >= 5;
     }
+
+    private static bool IsSentenceOpener(string text, int index)
+    {
+        var i = index - 1;
+        var sawNewline = false;
+        var sawOpeningMark = false;
+        while (i >= 0 && (char.IsWhiteSpace(text[i]) || IsOpeningMark(text[i])))
+        {
+            sawNewline |= text[i] == '\n' || text[i] == '\r';
+            sawOpeningMark |= IsOpeningMark(text[i]);
+            i--;
+        }
+
+        return i < 0 || sawNewline || sawOpeningMark || text[i] is '.' or '!' or '?';
+    }
+
+    // Opening quotes/brackets and list bullets: a capital right after these starts a phrase.
+    private static bool IsOpeningMark(char c)
+        => c is '"' or '\u201C' or '\u2018' or '\'' or '(' or '[' or '{' or '\u00AB' or '-' or '*' or '\u2022' or '\u2013' or '\u2014';
+
+    private static bool IsInitialCapOnly(string value)
+        => value.Length > 1 && char.IsUpper(value[0]) && value.Skip(1).All(c => !char.IsUpper(c));
+
+    private static string CapitalizeFirst(string value)
+        => value.Length == 0 ? value : char.ToUpperInvariant(value[0]) + value[1..];
 
     private static string Fold(string value)
         => value.ToLowerInvariant().Replace("-", string.Empty, StringComparison.Ordinal);

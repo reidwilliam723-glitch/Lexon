@@ -40,4 +40,30 @@ public class ConsistencyCheckerTests
         var matches = ConsistencyChecker.Find("GitHub and GitHub again look fine.");
         Assert.DoesNotContain(matches, m => m.Category == GrammarRuleCategory.Consistency);
     }
+
+    [Theory]
+    [InlineData("Meeting notes are ready. The meeting starts at 3.")]
+    [InlineData("The report is ready. Report shows growth this quarter.")]
+    [InlineData("He wrote: \"Meeting notes are ready.\" Later the meeting started.")]
+    [InlineData("She said (Thanks for the update) and then thanks again.")]
+    [InlineData("- Report due friday\n- the report is late")]
+    [InlineData("\u201CInvoice sent,\u201D she said. Please check the invoice.")]
+    public void DoesNotFlagSentenceOrQuoteOpeners(string text)
+    {
+        Assert.Empty(ConsistencyChecker.Find(text));
+    }
+
+    [Theory]
+    [InlineData("We use the e-mail system. Please email me tomorrow.", "email", "e-mail")]
+    [InlineData("Email is fast. We use e-mail daily and e-mail again.", "Email", "E-mail")]
+    [InlineData("I love the color of the sky. The colour is great.", "colour", "color")]
+    [InlineData("We love LexFlow. Try Lexflow today.", "Lexflow", "LexFlow")]
+    [InlineData("I bought an iPhone. The Iphone is great.", "Iphone", "iPhone")]
+    public void FlagsRealSpellingVariants(string text, string original, string replacement)
+    {
+        var matches = ConsistencyChecker.Find(text);
+        Assert.Contains(matches, m =>
+            m.Original.Equals(original, StringComparison.Ordinal)
+            && m.Replacement.Equals(replacement, StringComparison.Ordinal));
+    }
 }
