@@ -2,6 +2,14 @@
 
 All notable changes to Lexon will be documented in this file.
 
+## [1.10.1] - 2026-10-08
+
+### Settings
+- Fixed: Settings tab labels use the theme text colour as soon as the window opens.
+
+### Privacy
+- Fixed: a suggestion that is already open is dismissed when focus moves into a password field, and accepting it does not type into that field.
+
 ## [1.10.0] - 2026-10-08
 
 ### Settings

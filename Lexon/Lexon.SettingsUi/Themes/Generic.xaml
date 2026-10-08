@@ -348,7 +348,10 @@
           <Border x:Name="bd" Background="{TemplateBinding Background}" CornerRadius="6"
                   Padding="{TemplateBinding Padding}"
                   BorderThickness="0,0,0,2" BorderBrush="Transparent">
-            <ContentPresenter/>
+            <TextBlock Text="{TemplateBinding Content}"
+                       Foreground="{TemplateBinding Foreground}"
+                       VerticalAlignment="Center"
+                       TextTrimming="CharacterEllipsis"/>
           </Border>
           <ControlTemplate.Triggers>
             <Trigger Property="IsMouseOver" Value="True">

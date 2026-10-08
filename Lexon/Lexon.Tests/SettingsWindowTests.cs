@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Interop;
+using System.Windows.Media;
 using Lexon.Core.Theming;
 using Lexon.Profiles;
 using Lexon.Settings;
@@ -118,6 +119,38 @@ public class SettingsWindowTests
     }
 
     [Fact]
+    public void TabLabels_UseThemeColourBeforeTheyAreClicked()
+    {
+        _sta.Run(() =>
+        {
+            var app = WpfBootstrap.EnsureApplication();
+            var window = new SettingsWindow(null, FullServices(out _))
+            {
+                Left = -20000,
+                Top = -20000,
+                ShowInTaskbar = false
+            };
+            var themes = new ThemeManager(new EncryptedStorage(Path.Combine(Path.GetTempPath(), "LexonTabColor" + Guid.NewGuid().ToString("N"))));
+            var dark = themes.AvailableThemes.Single(theme => theme.Name == "Dark");
+            WpfThemeBridge.ApplyTo(app, dark);
+            window.Show();
+            window.UpdateLayout();
+
+            var labels = FindTabLabels(window);
+            Assert.Equal(window.TabNames.Count, labels.Count);
+            var text = (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(dark.Colors.Text)!;
+            var primary = (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(dark.Colors.Primary)!;
+            Assert.Equal(primary, ((SolidColorBrush)labels[0].Foreground).Color);
+            for (var i = 1; i < labels.Count; i++)
+            {
+                Assert.Equal(text, ((SolidColorBrush)labels[i].Foreground).Color);
+            }
+
+            window.Destroy();
+        });
+    }
+
+    [Fact]
     public void OffScreenBounds_AreClampedOntoAWorkArea()
     {
         var work = new[] { new Rect(0, 0, 1920, 1080) };
@@ -216,6 +249,31 @@ public class SettingsWindowTests
         Assert.Equal(SettingsSurface.SettingsForm, second);
         Assert.Equal(SettingsSurface.SettingsForm, router.Resolve(SettingsEntryPoint.ShowEvent));
         Assert.False(router.ShouldWarmWpf);
+    }
+
+    private static List<TextBlock> FindTabLabels(DependencyObject root)
+    {
+        var found = new List<TextBlock>();
+        var count = VisualTreeHelper.GetChildrenCount(root);
+        for (var i = 0; i < count; i++)
+        {
+            var child = VisualTreeHelper.GetChild(root, i);
+            if (child is NavItem item)
+            {
+                item.ApplyTemplate();
+                found.AddRange(FindTabLabels(item));
+            }
+            else if (child is TextBlock block && block.TemplatedParent is NavItem)
+            {
+                found.Add(block);
+            }
+            else
+            {
+                found.AddRange(FindTabLabels(child));
+            }
+        }
+
+        return found;
     }
 
     private static SettingsWindow Show(GallerySettingsServices services)

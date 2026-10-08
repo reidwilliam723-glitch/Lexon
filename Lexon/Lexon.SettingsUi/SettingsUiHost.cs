@@ -196,6 +196,17 @@ public static class SettingsUiHost
         SystemParameters.StaticPropertyChanged += _systemParametersHandler;
     }
 
+    private static void PrepareForWindow()
+    {
+        if (_themes != null)
+        {
+            Warm(_themes);
+            return;
+        }
+
+        WpfBootstrap.EnsureApplication();
+    }
+
     private static void Pump()
     {
         var dispatcher = System.Windows.Threading.Dispatcher.CurrentDispatcher;
@@ -204,6 +215,7 @@ public static class SettingsUiHost
 
     public static SettingsWindow EnsureSettings(GallerySettingsServices services)
     {
+        PrepareForWindow();
         if (_settings != null)
         {
             _settings.RetargetHost();
@@ -218,6 +230,7 @@ public static class SettingsUiHost
 
     public static ControlGalleryWindow EnsureGallery(GallerySettingsServices? services = null)
     {
+        PrepareForWindow();
         if (_gallery != null)
         {
             return _gallery;

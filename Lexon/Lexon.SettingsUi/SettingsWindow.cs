@@ -175,9 +175,13 @@ public sealed class SettingsWindow : Window
         AutomationProperties.SetName(item, name);
         item.Checked += (_, _) =>
         {
+            ApplyTabForeground(item);
             show();
             FocusActivePage();
         };
+        item.Unchecked += (_, _) => ApplyTabForeground(item);
+        item.Loaded += (_, _) => ApplyTabForeground(item);
+        ApplyTabForeground(item);
         if (name == "AI")
         {
             item.Unchecked += (_, _) => _host.Ai?.OnTabLeft();
@@ -185,6 +189,13 @@ public sealed class SettingsWindow : Window
 
         nav.Children.Add(item);
         _tabs.Add(item);
+    }
+
+    private static void ApplyTabForeground(NavItem item)
+    {
+        item.SetResourceReference(
+            ForegroundProperty,
+            item.IsChecked == true ? "PrimaryBrush" : "TextBrush");
     }
 
     private void OnPreviewKeyDown(object sender, KeyEventArgs e)

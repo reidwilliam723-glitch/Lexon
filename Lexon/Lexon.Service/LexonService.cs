@@ -345,7 +345,9 @@ public class LexonService
 
         _currentContext = context;
 
-        if (_privacyGuard.IsApplicationBlocked(context.ApplicationName))
+        // A suggestion opened in a normal field must not stay clickable after
+        // focus moves into a password or other secure field.
+        if (_privacyGuard.ShouldBlockAssistance(context))
         {
             HideSuggestions();
             return;
@@ -1320,6 +1322,13 @@ public class LexonService
     private void OnSuggestionSelected(object? sender, Overlay.Interfaces.SuggestionSelectedEventArgs e)
     {
         var liveContext = _focusTracker.GetCurrentContext();
+        if (_focusTracker.IsCurrentFieldSecure() || _privacyGuard.ShouldBlockAssistance(liveContext))
+        {
+            _currentContext = liveContext;
+            HideSuggestions();
+            return;
+        }
+
         var suggestionText = e.SelectedSuggestion.Text ?? string.Empty;
         var beforeCaret = SuggestionInsertion.TextBeforeCaret(liveContext.FullText, liveContext.CursorPosition);
         var typedBuffer = _focusTracker.GetTypedBufferText();

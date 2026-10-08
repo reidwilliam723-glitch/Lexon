@@ -405,6 +405,7 @@ static class Program
         {
             try
             {
+                SettingsUiHost.Warm(_composition.ThemeManager);
                 SettingsUiHost.EnsureSettings(CreateSettingsServices());
             }
             catch (Exception ex)
