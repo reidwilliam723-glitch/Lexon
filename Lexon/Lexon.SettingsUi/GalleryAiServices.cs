@@ -6,13 +6,29 @@ namespace Lexon.SettingsUi;
 public sealed class GalleryClipboardWatch : IClipboardWatch
 {
     private readonly ClipboardHwndListener _listener;
-    private readonly Window _window;
+    private Window _window;
 
     public GalleryClipboardWatch(ClipboardHwndListener listener, Window window)
     {
         _listener = listener ?? throw new ArgumentNullException(nameof(listener));
         _window = window ?? throw new ArgumentNullException(nameof(window));
         _listener.ClipboardUpdated += (_, _) => Updated?.Invoke(this, EventArgs.Empty);
+    }
+
+    public void Retarget(Window window)
+    {
+        ArgumentNullException.ThrowIfNull(window);
+        var wasListening = _listener.IsListening;
+        if (wasListening)
+        {
+            _listener.Detach();
+        }
+
+        _window = window;
+        if (wasListening)
+        {
+            _listener.Attach(_window);
+        }
     }
 
     public event EventHandler? Updated;

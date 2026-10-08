@@ -2,6 +2,13 @@
 
 All notable changes to Lexon will be documented in this file.
 
+## [1.10.0] - 2026-10-08
+
+### Settings
+- Settings now opens as its own window: General, AI, Privacy, Appearance, App tone, and Writing. The classic Settings form is still available with `--classic-settings`, and Lexon falls back to it if the new window fails to open.
+- Fixed: switching to the AI tab no longer reloads over an unsaved provider or key.
+- The Settings window adds About, which opens the existing About dialog. Ctrl+Tab and Ctrl+Shift+Tab move between pages. Esc closes an open dropdown and leaves the window open.
+
 ## [1.9.3] - 2026-10-08
 
 ### Writing

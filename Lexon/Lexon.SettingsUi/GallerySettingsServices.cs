@@ -72,4 +72,6 @@ public sealed class GallerySettingsServices
     public Action<Window>? AttachOwner { get; init; }
 
     public IList<IOwnedSettingsPage> Pages { get; } = [];
+
+    internal SettingsPagesHost? BoundHost { get; set; }
 }

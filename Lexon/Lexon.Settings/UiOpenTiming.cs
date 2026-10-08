@@ -42,6 +42,21 @@ internal static class UiOpenTiming
             form.Hide();
             Log($"SettingsForm warm Show: {warmShow.ElapsedMilliseconds} ms");
 
+            var beforeWpf = Process.GetCurrentProcess().WorkingSet64;
+            var persist = new Lexon.SettingsModel.PersistScheduler(() => { });
+            var services = new GallerySettingsServices(
+                new Lexon.SettingsModel.AppSettings(),
+                new WindowsStartupRegistration(),
+                persist,
+                persist.Flush);
+            var (coldSettings, warmSettings) = SettingsUiHost.MeasureSettingsOpen(themes, services);
+            var afterWpf = Process.GetCurrentProcess().WorkingSet64;
+            Log($"WPF settings cold (first Show): {coldSettings} ms");
+            Log($"WPF settings warm (second Show): {warmSettings} ms");
+            Log($"Working set before WPF settings: {beforeWpf / (1024 * 1024)} MB");
+            Log($"Working set after WPF settings: {afterWpf / (1024 * 1024)} MB");
+            Log($"Working set delta: {(afterWpf - beforeWpf) / (1024 * 1024)} MB");
+
             var (coldWpf, warmWpf) = SettingsUiHost.MeasureGalleryOpen(themes);
             Log($"WPF gallery cold (first Show): {coldWpf} ms");
             Log($"WPF gallery warm (second Show): {warmWpf} ms");

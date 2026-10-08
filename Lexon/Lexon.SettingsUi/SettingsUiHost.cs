@@ -12,6 +12,7 @@ namespace Lexon.SettingsUi;
 public static class SettingsUiHost
 {
     private static ControlGalleryWindow? _gallery;
+    private static SettingsWindow? _settings;
     private static ThemeManager? _themes;
     private static bool _themeHooked;
     private static PropertyChangedEventHandler? _systemParametersHandler;
@@ -25,9 +26,40 @@ public static class SettingsUiHost
         HookSystemParameters(app);
     }
 
+    public static Action<Window>? ShowAbout { get; set; }
+
+    internal static Func<ThemeManager?, GallerySettingsServices, SettingsWindow>? SettingsFactory { get; set; }
+
+    public static void ShowSettings(ThemeManager themes, GallerySettingsServices services)
+    {
+        Warm(themes);
+        if (_gallery is { IsVisible: true })
+        {
+            _gallery.FlushPendingSaves();
+            _gallery.Hide();
+        }
+
+        var window = EnsureSettings(services);
+        ElementHost.EnableModelessKeyboardInterop(window);
+        if (window.WindowState == WindowState.Minimized)
+        {
+            window.WindowState = WindowState.Normal;
+        }
+
+        window.Show();
+        window.Activate();
+        window.NotifyShown();
+    }
+
     public static void ShowGallery(ThemeManager themes, GallerySettingsServices? services = null)
     {
         Warm(themes);
+        if (_settings is { IsVisible: true })
+        {
+            _settings.FlushPendingSaves();
+            _settings.Hide();
+        }
+
         var window = EnsureGallery(services);
         ElementHost.EnableModelessKeyboardInterop(window);
         if (window.WindowState == WindowState.Minimized)
@@ -56,12 +88,31 @@ public static class SettingsUiHost
 
         try
         {
+            _settings?.Destroy();
+            _settings = null;
             Application.Current?.Shutdown();
         }
         catch
         {
             // The tray message loop owns process lifetime.
         }
+    }
+
+    public static (long ColdMs, long WarmMs) MeasureSettingsOpen(ThemeManager themes, GallerySettingsServices services)
+    {
+        var cold = System.Diagnostics.Stopwatch.StartNew();
+        ShowSettings(themes, services);
+        Pump();
+        cold.Stop();
+
+        EnsureSettings(services).Hide();
+        Pump();
+
+        var warm = System.Diagnostics.Stopwatch.StartNew();
+        ShowSettings(themes, services);
+        Pump();
+        warm.Stop();
+        return (cold.ElapsedMilliseconds, warm.ElapsedMilliseconds);
     }
 
     public static (long ColdMs, long WarmMs) MeasureGalleryOpen(ThemeManager themes)
@@ -149,6 +200,20 @@ public static class SettingsUiHost
     {
         var dispatcher = System.Windows.Threading.Dispatcher.CurrentDispatcher;
         dispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.Loaded);
+    }
+
+    public static SettingsWindow EnsureSettings(GallerySettingsServices services)
+    {
+        if (_settings != null)
+        {
+            _settings.RetargetHost();
+            return _settings;
+        }
+
+        _settings = SettingsFactory != null
+            ? SettingsFactory(_themes, services)
+            : new SettingsWindow(_themes, services, ShowAbout);
+        return _settings;
     }
 
     public static ControlGalleryWindow EnsureGallery(GallerySettingsServices? services = null)

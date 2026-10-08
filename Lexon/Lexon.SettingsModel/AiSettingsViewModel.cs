@@ -386,7 +386,15 @@ public sealed class AiSettingsViewModel : INotifyPropertyChanged, IOwnedSettings
     /// </summary>
     public void OnTabSelected()
     {
-        Load();
+        if (IsDirty)
+        {
+            _localOnly = _readLocalOnly();
+        }
+        else
+        {
+            Load();
+        }
+
         if (_localOnly)
         {
             _session.Connection.EnterLocalOnly();

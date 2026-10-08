@@ -21,6 +21,8 @@ Lexon installs for your user account only, so it does not ask for an administrat
 
 Lexon stays running in the tray. There is no big main window on purpose.
 
+To open the previous Settings window instead, start Lexon with `--classic-settings`.
+
 ## 3. Confirm it works
 
 1. Open **Notepad**.

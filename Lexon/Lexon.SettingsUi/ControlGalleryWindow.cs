@@ -39,7 +39,7 @@ public sealed class ControlGalleryWindow : Window
     private AppearanceSettingsViewModel? _appearanceVm;
     private AppToneViewModel? _appToneVm;
     private WritingViewModel? _writingVm;
-    private DispatcherTimer? _persistTimer;
+    private SettingsPagesHost? _host;
 
     public ControlGalleryWindow(ThemeManager? themes = null, GallerySettingsServices? services = null)
     {
@@ -58,120 +58,26 @@ public sealed class ControlGalleryWindow : Window
         IsVisibleChanged += OnIsVisibleChanged;
         Activated += OnActivated;
         Deactivated += OnDeactivated;
-        Closed += (_, _) =>
-        {
-            FlushPendingSaves();
-            _aiVm?.Dispose();
-            _clipboard.Dispose();
-        };
+        Closed += (_, _) => _host?.Release();
 
         if (services != null)
         {
-            Func<AppSettings> liveSnapshot = services.LiveSnapshot
-                ?? (() => OwnedSettingsWriter.BuildLiveSnapshot(services.Profile ?? new Profile(), services.Pages));
-
-            _generalVm = new GeneralSettingsViewModel(
-                services.Settings,
-                services.Startup,
-                services.Persist,
-                services.SettingsBackup,
-                services.FileDialogs,
-                services.Messages,
-                OnSettingsImported);
-            _generalVm.OpenFullScreenChanged += OnOpenFullScreenChanged;
-            _generalVm.PropertyChanged += OnSettingsPropertyChanged;
-            _generalVm.UserEdited += () => OnPageUserEdited(_generalVm);
-            _generalPage = new GeneralPage(_generalVm);
-            services.Pages.Add(_generalVm);
-
-            if (services.AiPolicy != null
-                && services.AiSession != null
-                && services.UrlLauncher != null
-                && services.DelayScheduler != null)
-            {
-                var clipboardWatch = services.ClipboardWatch ?? new GalleryClipboardWatch(_clipboard, this);
-                _aiVm = new AiSettingsViewModel(
-                    services.Settings,
-                    services.Persist,
-                    services.AiSession,
-                    services.AiPolicy,
-                    clipboardWatch,
-                    services.UrlLauncher,
-                    services.DelayScheduler,
-                    () => liveSnapshot().LocalMode,
-                    liveSnapshot,
-                    action => Dispatcher.BeginInvoke(action));
-                _aiVm.PropertyChanged += OnSettingsPropertyChanged;
-                _aiVm.UserEdited += () => OnPageUserEdited(_aiVm);
-                _aiPage = new AiPage(_aiVm);
-                services.Pages.Add(_aiVm);
-            }
-
-            if (services.AiPolicy != null && services.ProcessPicker != null && services.ActivityViewer != null)
-            {
-                _privacyVm = new PrivacySettingsViewModel(
-                    services.Settings,
-                    services.Persist,
-                    services.AiPolicy,
-                    services.ProcessPicker,
-                    services.ActivityViewer,
-                    services.Reload,
-                    liveSnapshot,
-                    services.Messages);
-                _privacyVm.PropertyChanged += OnSettingsPropertyChanged;
-                _privacyVm.UserEdited += () => OnPageUserEdited(_privacyVm);
-                if (_aiVm != null)
-                {
-                    _privacyVm.LocalOnlyChanged += local => _aiVm.OnLocalOnlyChanged(local);
-                }
-
-                _privacyPage = new PrivacyPage(_privacyVm);
-                services.Pages.Add(_privacyVm);
-            }
-
-            if (services.ThemeSwitcher != null)
-            {
-                _appearanceVm = new AppearanceSettingsViewModel(services.Settings, services.Persist, services.ThemeSwitcher);
-                _appearanceVm.PropertyChanged += OnSettingsPropertyChanged;
-                _appearanceVm.UserEdited += () => OnPageUserEdited(_appearanceVm);
-                _appearancePage = new AppearancePage(_appearanceVm);
-                services.Pages.Add(_appearanceVm);
-            }
-
-            if (services.ProcessPicker != null)
-            {
-                _appToneVm = new AppToneViewModel(services.Settings, services.Persist, services.ProcessPicker);
-                _appToneVm.PropertyChanged += OnSettingsPropertyChanged;
-                _appToneVm.UserEdited += () => OnPageUserEdited(_appToneVm);
-                _appTonePage = new AppTonePage(_appToneVm);
-                services.Pages.Add(_appToneVm);
-            }
-
-            if (services.WritingDialogs != null && services.FileDialogs != null && services.Messages != null)
-            {
-                _writingVm = new WritingViewModel(
-                    services.Settings,
-                    services.Persist,
-                    services.Personalization,
-                    services.WritingDialogs,
-                    services.FileDialogs,
-                    services.Messages);
-                _writingVm.PropertyChanged += OnSettingsPropertyChanged;
-                _writingVm.UserEdited += () => OnPageUserEdited(_writingVm);
-                _writingPage = new WritingPage(_writingVm);
-                services.Pages.Add(_writingVm);
-            }
-
-            services.AttachOwner?.Invoke(this);
-            _persistTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(100) };
-            _persistTimer.Tick += (_, _) =>
-            {
-                services.Persist.TryFlushDue(DateTime.UtcNow);
-                if (!services.Persist.HasPending)
-                {
-                    _persistTimer.Stop();
-                }
-            };
+            _host = SettingsPagesHost.GetOrCreate(services, this);
+            _host.AddRef();
+            _host.Retarget(this);
+            _host.OpenFullScreenChanged += OnOpenFullScreenChanged;
+            _generalVm = _host.General;
+            _generalPage = _host.GeneralPage;
+            _aiVm = _host.Ai;
+            _aiPage = _host.AiPage;
+            _privacyVm = _host.Privacy;
+            _privacyPage = _host.PrivacyPage;
+            _appearanceVm = _host.Appearance;
+            _appearancePage = _host.AppearancePage;
+            _appToneVm = _host.AppTone;
+            _appTonePage = _host.AppTonePage;
+            _writingVm = _host.Writing;
+            _writingPage = _host.WritingPage;
         }
 
         Content = Build();
@@ -214,7 +120,7 @@ public sealed class ControlGalleryWindow : Window
 
     internal AiSettingsViewModel? AiViewModel => _aiVm;
 
-    internal ClipboardHwndListener ClipboardListener => _clipboard;
+    internal ClipboardHwndListener ClipboardListener => _host?.Clipboard ?? _clipboard;
 
     internal AppearanceSettingsViewModel? AppearanceViewModel => _appearanceVm;
 
@@ -280,30 +186,19 @@ public sealed class ControlGalleryWindow : Window
         }
     }
 
-    internal void NotifyShown()
-    {
-        ReloadCleanPages();
-        if (IsVisible)
-        {
-            _persistTimer?.Start();
-        }
-    }
+    internal void NotifyShown() => _host?.NotifyShown();
 
-    internal void FlushPendingSaves()
-    {
-        _persistTimer?.Stop();
-        _services?.Save();
-    }
+    internal void FlushPendingSaves() => _host?.FlushPendingSaves();
 
     /// <summary>
     /// Test seam for activate: reload clean pages from the profile.
     /// </summary>
-    internal void NotifyActivated() => ReloadCleanPages();
+    internal void NotifyActivated() => _host?.NotifyActivated();
 
     /// <summary>
     /// Test seam for deactivate: flush pending dirty pages immediately.
     /// </summary>
-    internal void NotifyDeactivated() => FlushPendingSaves();
+    internal void NotifyDeactivated() => _host?.NotifyDeactivated();
 
     private void OnActivated(object? sender, EventArgs e) => NotifyActivated();
 
@@ -586,17 +481,7 @@ public sealed class ControlGalleryWindow : Window
     }
 
     private void OnIsVisibleChanged(object sender, DependencyPropertyChangedEventArgs e)
-    {
-        if (IsVisible)
-        {
-            ReloadCleanPages();
-            _persistTimer?.Start();
-            return;
-        }
-
-        _aiVm?.OnWindowHidden();
-        FlushPendingSaves();
-    }
+        => _host?.OnVisible(IsVisible);
 
     private void ShowControlsContent()
     {
@@ -608,227 +493,59 @@ public sealed class ControlGalleryWindow : Window
 
     private void ShowGeneralContent()
     {
-        if (_contentHost != null)
+        if (_contentHost != null && _host != null)
         {
-            _contentHost.Content = _generalPage;
+            _host.ShowGeneral(_contentHost);
         }
-
-        ReloadPage(_generalVm);
     }
 
     private void ShowAiContent()
     {
-        if (_contentHost != null)
+        if (_contentHost != null && _host != null)
         {
-            _contentHost.Content = _aiPage;
+            _host.ShowAi(_contentHost);
         }
-
-        _services?.Reload();
-        _aiVm?.OnTabSelected();
     }
 
     private void ShowAppearanceContent()
     {
-        if (_contentHost != null)
+        if (_contentHost != null && _host != null)
         {
-            _contentHost.Content = _appearancePage;
+            _host.ShowAppearance(_contentHost);
         }
-
-        ReloadPage(_appearanceVm);
     }
 
     private void ShowPrivacyContent()
     {
-        if (_contentHost != null)
+        if (_contentHost != null && _host != null)
         {
-            _contentHost.Content = _privacyPage;
+            _host.ShowPrivacy(_contentHost);
         }
-
-        ReloadPage(_privacyVm);
     }
 
     private void ShowAppToneContent()
     {
-        if (_contentHost != null)
+        if (_contentHost != null && _host != null)
         {
-            _contentHost.Content = _appTonePage;
+            _host.ShowAppTone(_contentHost);
         }
-
-        ReloadPage(_appToneVm);
     }
 
     private void ShowWritingContent()
     {
-        if (_contentHost != null)
+        if (_contentHost != null && _host != null)
         {
-            _contentHost.Content = _writingPage;
-        }
-
-        ReloadPage(_writingVm);
-        _writingVm?.RefreshLearning();
-    }
-
-    private void OnSettingsImported()
-    {
-        if (_services == null)
-        {
-            return;
-        }
-
-        _services.Reload();
-        _generalVm?.Load();
-        _aiVm?.Load();
-        _privacyVm?.Load();
-        _appearanceVm?.Load();
-        _appToneVm?.Load();
-        _writingVm?.Load();
-        _writingVm?.RefreshLearning();
-        _services.ApplyLive?.Invoke();
-        _services.AfterSettingsImport?.Invoke();
-    }
-
-    private void ReloadCleanPages()
-    {
-        if (_services == null)
-        {
-            return;
-        }
-
-        _services.Reload();
-        if (_generalVm is { IsDirty: false })
-        {
-            _generalVm.Load();
-        }
-
-        if (_aiVm is { IsDirty: false })
-        {
-            // Activate reload: Load only (probes only when stored values changed).
-            _aiVm.Load();
-        }
-
-        if (_privacyVm is { IsDirty: false })
-        {
-            _privacyVm.Load();
-        }
-
-        if (_appearanceVm is { IsDirty: false })
-        {
-            _appearanceVm.Load();
-        }
-
-        if (_appToneVm is { IsDirty: false })
-        {
-            _appToneVm.Load();
-        }
-
-        if (_writingVm is { IsDirty: false })
-        {
-            _writingVm.Load();
-        }
-        else
-        {
-            _writingVm?.RefreshLearning();
-        }
-
-        // Dirty pages only exist if a prior flush failed; keep values and retry.
-        if (_services.Pages.Any(static p => p.IsDirty))
-        {
-            FlushPendingSaves();
-        }
-    }
-
-    private void ReloadPage(IOwnedSettingsPage? page)
-    {
-        if (_services == null || page == null)
-        {
-            return;
-        }
-
-        if (page.IsDirty)
-        {
-            return;
-        }
-
-        _services.Reload();
-        switch (page)
-        {
-            case GeneralSettingsViewModel general:
-                general.Load();
-                break;
-            case AiSettingsViewModel ai:
-                ai.Load();
-                break;
-            case AppearanceSettingsViewModel appearance:
-                appearance.Load();
-                break;
-            case PrivacySettingsViewModel privacy:
-                privacy.Load();
-                break;
-            case AppToneViewModel appTone:
-                appTone.Load();
-                break;
-            case WritingViewModel writing:
-                writing.Load();
-                break;
+            _host.ShowWriting(_contentHost);
         }
     }
 
     private void OnOpenFullScreenChanged(bool open)
     {
+        if (!IsVisible)
+        {
+            return;
+        }
+
         WindowState = open ? WindowState.Maximized : WindowState.Normal;
-    }
-
-    private void OnPageUserEdited(IOwnedSettingsPage page)
-    {
-        if (_services == null || _services.Persist.IsLoading)
-        {
-            return;
-        }
-
-        // AI publishes its own policy; other pages apply live effects immediately
-        // with the dirty snapshot (new value already overlaid).
-        if (page is not AiSettingsViewModel)
-        {
-            _services.ApplyLive?.Invoke();
-        }
-
-        if (IsVisible)
-        {
-            _persistTimer?.Start();
-        }
-    }
-
-    private void OnSettingsPropertyChanged(object? sender, PropertyChangedEventArgs e)
-    {
-        if (_services == null || _services.Persist.IsLoading)
-        {
-            return;
-        }
-
-        if (e.PropertyName == nameof(GeneralSettingsViewModel.StatusMessage)
-            || e.PropertyName == nameof(WritingViewModel.StyleSummary)
-            || e.PropertyName == nameof(WritingViewModel.SelectedAdaptationIndex)
-            || e.PropertyName == nameof(WritingViewModel.CanUndoAdaptation)
-            || e.PropertyName == nameof(AiSettingsViewModel.StatusActiveLine)
-            || e.PropertyName == nameof(AiSettingsViewModel.StatusDetail)
-            || e.PropertyName == nameof(AiSettingsViewModel.StatusKind)
-            || e.PropertyName == nameof(AiSettingsViewModel.IsWaitingForClipboard)
-            || e.PropertyName == nameof(AiSettingsViewModel.Heading)
-            || e.PropertyName == nameof(AiSettingsViewModel.ShowKeyBox)
-            || e.PropertyName == nameof(AiSettingsViewModel.ShowGetKeyButton)
-            || e.PropertyName == nameof(AiSettingsViewModel.ShowModel)
-            || e.PropertyName == nameof(AiSettingsViewModel.AiFlagsEnabled)
-            || e.PropertyName == nameof(AiSettingsViewModel.ShowProviderCombo)
-            || e.PropertyName == nameof(AiSettingsViewModel.ShowMoreProvidersLink)
-            || e.PropertyName == nameof(AiSettingsViewModel.AdvancedVisible))
-        {
-            return;
-        }
-
-        // Live effects are applied from UserEdited (dirty already true).
-        if (IsVisible)
-        {
-            _persistTimer?.Start();
-        }
     }
 }

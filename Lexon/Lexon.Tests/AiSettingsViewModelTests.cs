@@ -572,6 +572,64 @@ public class AiSettingsViewModelTests
         Assert.False(env.Clipboard.Watching);
     }
 
+    [Fact]
+    public async Task OnTabSelected_WhenDirty_KeepsUnsavedProviderAndKey()
+    {
+        var settings = new AppSettings { AIProvider = "None", APIKey = string.Empty, AIKeyValidated = true };
+        var env = Create(settings);
+        env.Vm.OnTabSelected();
+        env.Vm.ShowMoreProviders();
+        env.Vm.ProviderIndex = IndexOf("OpenAI");
+        env.Vm.ApiKeyText = FakeKey;
+        env.ProbeResult = AiProbeResult.Ok("ok");
+        await env.FlushProbeAsync();
+        Assert.True(env.Vm.IsDirty);
+
+        settings.AIProvider = "None";
+        settings.APIKey = string.Empty;
+        env.Vm.OnTabSelected();
+
+        Assert.Equal(FakeKey, env.Vm.ApiKeyText);
+        Assert.Equal("OpenAI", env.Session.ActiveProvider);
+        Assert.NotEqual(AiConnectionState.LocalOnlyOff, env.Session.Connection.State);
+    }
+
+    [Fact]
+    public void OnTabSelected_WhenClean_ReloadsFromSettings()
+    {
+        var settings = new AppSettings { AIProvider = "None", AIKeyValidated = true };
+        var env = Create(settings);
+        env.Vm.Load();
+        Assert.False(env.Vm.IsDirty);
+
+        settings.AIProvider = "Gemini";
+        settings.APIKey = "AIza" + new string('k', 35);
+        settings.AIKeyValidated = true;
+        env.Vm.OnTabSelected();
+
+        Assert.Contains("Gemini", env.Vm.Heading, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(settings.APIKey, env.Session.ActiveApiKey);
+    }
+
+    [Fact]
+    public void OnTabSelected_LocalOnly_EntersLocalOnly_WhenCleanOrDirty()
+    {
+        var clean = Create(new AppSettings { AIProvider = "None" }, localOnly: true);
+        clean.Vm.OnTabSelected();
+        Assert.Equal(AiConnectionState.LocalOnlyOff, clean.Session.Connection.State);
+
+        var dirty = Create(new AppSettings { AIProvider = "None" });
+        dirty.Vm.Load();
+        dirty.Vm.AiSuggestionsWhileTyping = true;
+        Assert.True(dirty.Vm.IsDirty);
+        dirty.Vm.ApiKeyText = "sk-unsaved-key";
+        dirty.ReadLocalOnly = () => true;
+        dirty.Vm.OnTabSelected();
+
+        Assert.Equal("sk-unsaved-key", dirty.Vm.ApiKeyText);
+        Assert.Equal(AiConnectionState.LocalOnlyOff, dirty.Session.Connection.State);
+    }
+
     private static int IndexOf(string name)
         => Array.FindIndex(AiProviderCatalog.AllProviders, p => p.Equals(name, StringComparison.OrdinalIgnoreCase));
 

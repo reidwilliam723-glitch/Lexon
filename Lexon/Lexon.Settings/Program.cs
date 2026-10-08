@@ -33,6 +33,8 @@ static class Program
     private static bool _restartedAfterCrash;
     private static bool _suppressQuickPause;
     private static bool _enableUiGallery;
+    private static bool _classicSettings;
+    private static SettingsRouter _router = new(false, false);
     private static GallerySettingsServices? _galleryServices;
 
     /// <summary>
@@ -67,6 +69,8 @@ static class Program
         VelopackApp.Build().Run();
 
         _enableUiGallery = args.Any(argument => argument.Equals("--ui-gallery", StringComparison.OrdinalIgnoreCase));
+        _classicSettings = args.Any(argument => argument.Equals("--classic-settings", StringComparison.OrdinalIgnoreCase));
+        _router = new SettingsRouter(_classicSettings, _enableUiGallery);
 
         _restartedAfterCrash = args.Any(argument => argument.Equals("--after-crash", StringComparison.OrdinalIgnoreCase));
 
@@ -299,7 +303,7 @@ static class Program
                 {
                     if (_showSettingsEvent.WaitOne(250) && !_shuttingDown)
                     {
-                        _trayManager?.InvokeOnUiThread(() => OnSettingsRequested(null, EventArgs.Empty));
+                        _trayManager?.InvokeOnUiThread(() => OpenSettings(SettingsEntryPoint.ShowEvent));
                     }
                 }
                 catch
@@ -386,31 +390,7 @@ static class Program
 
         // Swallow Ctrl+Shift+S so the foreground app does not also receive it.
         e.EventArgs.Handled = true;
-        InvokeOnUiThread(() =>
-        {
-            if (_enableUiGallery && _composition != null)
-            {
-                try
-                {
-                    SettingsUiHost.ShowGallery(_composition.ThemeManager, CreateGalleryServices());
-                }
-                catch (Exception ex)
-                {
-                    using var owner = new Form { TopMost = true, ShowInTaskbar = false };
-                    owner.Show();
-                    MessageBox.Show(
-                        owner,
-                        $"Could not open the control gallery.\n\n{ex.GetType().Name}: {ex.Message}",
-                        "Lexon",
-                        MessageBoxButtons.OK,
-                        MessageBoxIcon.Error);
-                }
-
-                return;
-            }
-
-            OnSettingsRequested(null, EventArgs.Empty);
-        });
+        InvokeOnUiThread(() => OpenSettings(SettingsEntryPoint.Shortcut));
     }
 
     private static void WarmSettingsOnIdle(object? sender, EventArgs e)
@@ -421,16 +401,28 @@ static class Program
             return;
         }
 
-        if (_enableUiGallery && _composition != null)
+        if (_router.ShouldWarmWpf && _composition != null)
         {
-            SettingsUiHost.ShowGallery(_composition.ThemeManager, CreateGalleryServices());
+            try
+            {
+                SettingsUiHost.EnsureSettings(CreateSettingsServices());
+            }
+            catch (Exception ex)
+            {
+                _router.RecordWpfFailure();
+                _crashReporter?.LogCrash(ex, "Settings window");
+                EnsureSettingsForm();
+            }
+
             return;
         }
 
         EnsureSettingsForm();
     }
 
-    private static GallerySettingsServices CreateGalleryServices()
+    private static GallerySettingsServices CreateGalleryServices() => CreateSettingsServices();
+
+    private static GallerySettingsServices CreateSettingsServices()
     {
         if (_galleryServices != null)
         {
@@ -558,7 +550,36 @@ static class Program
     }
 
     private static void OnSettingsRequested(object? sender, EventArgs e)
+        => OpenSettings(SettingsEntryPoint.Tray);
+
+    private static void OpenSettings(SettingsEntryPoint entry)
     {
+        if (_composition == null)
+        {
+            return;
+        }
+
+        var target = _router.Resolve(entry);
+        if (target == SettingsSurface.SettingsWindow)
+        {
+            try
+            {
+                SettingsUiHost.ShowAbout = window =>
+                {
+                    using var about = new AboutForm();
+                    about.ShowDialog(WpfDialogOwner.From(window));
+                };
+                SettingsUiHost.ShowSettings(_composition.ThemeManager, CreateSettingsServices());
+                return;
+            }
+            catch (Exception ex)
+            {
+                _router.RecordWpfFailure();
+                _crashReporter?.LogCrash(ex, "Settings window");
+                ShowSettingsError(ex);
+            }
+        }
+
         try
         {
             EnsureSettingsForm();
@@ -566,15 +587,20 @@ static class Program
         }
         catch (Exception ex)
         {
-            using var owner = new Form { TopMost = true, ShowInTaskbar = false };
-            owner.Show();
-            MessageBox.Show(
-                owner,
-                $"Could not open Settings.\n\n{ex.GetType().Name}: {ex.Message}",
-                "Lexon",
-                MessageBoxButtons.OK,
-                MessageBoxIcon.Error);
+            ShowSettingsError(ex);
         }
+    }
+
+    private static void ShowSettingsError(Exception ex)
+    {
+        using var owner = new Form { TopMost = true, ShowInTaskbar = false };
+        owner.Show();
+        MessageBox.Show(
+            owner,
+            $"Could not open Settings.\n\n{ex.GetType().Name}: {ex.Message}",
+            "Lexon",
+            MessageBoxButtons.OK,
+            MessageBoxIcon.Error);
     }
 
     private static void OnExitRequested(object? sender, EventArgs e)
