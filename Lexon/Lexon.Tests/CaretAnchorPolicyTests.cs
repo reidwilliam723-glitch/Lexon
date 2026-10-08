@@ -9,7 +9,7 @@ public class CaretAnchorPolicyTests
     public void FreezesOverlayInCursorNotChrome()
     {
         Assert.True(CaretAnchorPolicy.FreezeOverlayWhileWordContinues("Cursor.exe"));
-        Assert.True(CaretAnchorPolicy.FreezeOverlayWhileWordContinues("WhatsApp.exe"));
+        Assert.False(CaretAnchorPolicy.FreezeOverlayWhileWordContinues("WhatsApp.exe"));
         Assert.False(CaretAnchorPolicy.FreezeOverlayWhileWordContinues("chrome"));
     }
 
@@ -29,15 +29,18 @@ public class CaretAnchorPolicyTests
     }
 
     [Fact]
-    public void WhatsAppAnchorStaysInsideTheComposer()
+    public void WhatsAppAnchorFollowsTypedTextOnTheTextLine()
     {
-        var inside = CaretAnchorPolicy.ChooseComposerAnchor(100, 700, 500, 760, 0, (40, 200), (180, 720));
-        Assert.Equal((180, 720), inside);
+        var first = CaretAnchorPolicy.PlaceInComposer(100, 700, 500, 760, charsBeforeWord: 0);
+        var next = CaretAnchorPolicy.PlaceInComposer(100, 700, 500, 760, charsBeforeWord: 6);
+        Assert.NotNull(first);
+        Assert.NotNull(next);
+        Assert.True(next.Value.X > first.Value.X);
+        Assert.Equal(CaretAnchorPolicy.ComposerTextLineHeight, first.Value.LineHeight);
+        Assert.True(first.Value.Y > 700);
+        Assert.True(first.Value.Y < 760 - 10);
 
-        var fallback = CaretAnchorPolicy.ChooseComposerAnchor(100, 700, 500, 760, 6, (40, 200));
-        Assert.NotNull(fallback);
-        Assert.True(fallback.Value.X > 100);
-        Assert.Equal(700, fallback.Value.Y);
-        Assert.True(fallback.Value.X < 500);
+        var pulledLeft = CaretAnchorPolicy.PlaceInComposer(100, 700, 500, 760, charsBeforeWord: 6, trackedCaretX: 108);
+        Assert.Equal(next.Value.X, pulledLeft!.Value.X);
     }
 }

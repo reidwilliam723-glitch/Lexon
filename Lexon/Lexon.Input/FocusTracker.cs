@@ -439,7 +439,8 @@ public class FocusTracker : IFocusTracker
                     out var composerX,
                     out var composerY,
                     constrainToComposer: true,
-                    charsBeforeWord: CharsBeforeCurrentWord(hWnd, currentWord))
+                    charsBeforeWord: CharsBeforeCurrentWord(hWnd, currentWord),
+                    trackedCaretX: _hasEstimate ? _estimateX : 0)
                 && Accept(composerX, composerY))
             {
                 return Finish(composerX, composerY, UiaScreenAnchor.LastLineHeight, "whatsapp-composer");

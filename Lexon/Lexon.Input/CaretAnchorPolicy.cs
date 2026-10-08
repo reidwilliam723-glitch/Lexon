@@ -7,45 +7,50 @@ namespace Lexon.Input;
 public static class CaretAnchorPolicy
 {
     public static bool FreezeOverlayWhileWordContinues(string? processName)
-        => WebEditorSupport.IsCodeEditorShell(processName)
-           || WebEditorSupport.IsWhatsApp(processName);
+        => WebEditorSupport.IsCodeEditorShell(processName);
+
+    public const int ComposerTextLineHeight = 22;
 
     /// <summary>
-    /// Prefer a caret that sits inside the compose box. A point in the
-    /// transcript is ignored. With no usable caret, anchor at the start of
-    /// the current word along the compose box.
+    /// Place the overlay on the text line inside the compose box.
+    /// Horizontal position follows how much has been typed, so a new word
+    /// continues to the right. A caret reported at the left edge of the
+    /// field is ignored. The line height is the text line, not the control.
     /// </summary>
-    public static (int X, int Y)? ChooseComposerAnchor(
+    public static (int X, int Y, int LineHeight)? PlaceInComposer(
         int left,
         int top,
         int right,
         int bottom,
         int charsBeforeWord,
-        params (int X, int Y)[] candidates)
+        int trackedCaretX = 0)
     {
         if (right <= left || bottom <= top)
         {
             return null;
         }
 
-        foreach (var candidate in candidates)
+        var line = ComposerTextLineHeight;
+        var textTop = bottom - line - 6;
+        if (textTop < top)
         {
-            if (candidate.X >= left - 12 && candidate.X <= right + 12
-                && candidate.Y >= top - 12 && candidate.Y <= bottom + 12)
-            {
-                return candidate;
-            }
+            textTop = top;
         }
 
-        var width = EstimateCharWidth(bottom - top);
-        var x = left + 8 + Math.Max(0, charsBeforeWord) * width;
-        var limit = Math.Max(left + 8, right - 8);
+        var charWidth = EstimateCharWidth(line);
+        var x = left + 12 + Math.Max(0, charsBeforeWord) * charWidth;
+        if (charsBeforeWord < 1 && trackedCaretX > left + 24 && trackedCaretX < right)
+        {
+            x = trackedCaretX;
+        }
+
+        var limit = Math.Max(left + 12, right - 12);
         if (x > limit)
         {
             x = limit;
         }
 
-        return (x, top);
+        return (x, textTop, line);
     }
 
     public static bool IsDummy(int x, int y)

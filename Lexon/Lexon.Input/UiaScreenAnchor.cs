@@ -27,14 +27,15 @@ internal static class UiaScreenAnchor
         out int x,
         out int y,
         bool constrainToComposer = false,
-        int charsBeforeWord = 0)
+        int charsBeforeWord = 0,
+        int trackedCaretX = 0)
     {
         x = 0;
         y = 0;
         try
         {
             var result = StaInvoker.Invoke(
-                () => TryGetWordAnchorSta(currentWord, contentHwnd, constrainToComposer, charsBeforeWord),
+                () => TryGetWordAnchorSta(currentWord, contentHwnd, constrainToComposer, charsBeforeWord, trackedCaretX),
                 timeoutMs: 800);
             if (result is not { } point)
             {
@@ -58,7 +59,8 @@ internal static class UiaScreenAnchor
         string? currentWord,
         IntPtr contentHwnd,
         bool constrainToComposer,
-        int charsBeforeWord)
+        int charsBeforeWord,
+        int trackedCaretX)
     {
         var hwnd = GetForegroundWindow();
         if (GetWindowClassName(hwnd).Equals("LexonSuggestionOverlay", StringComparison.Ordinal)
@@ -120,27 +122,19 @@ internal static class UiaScreenAnchor
             return null;
         }
 
-        var chosen = caretScreen is { } hit
-            ? CaretAnchorPolicy.ChooseComposerAnchor(
-                (int)composer.X,
-                (int)composer.Y,
-                (int)(composer.X + composer.Width),
-                (int)(composer.Y + composer.Height),
-                charsBeforeWord,
-                (hit.X, hit.Y))
-            : CaretAnchorPolicy.ChooseComposerAnchor(
-                (int)composer.X,
-                (int)composer.Y,
-                (int)(composer.X + composer.Width),
-                (int)(composer.Y + composer.Height),
-                charsBeforeWord);
+        var chosen = CaretAnchorPolicy.PlaceInComposer(
+            (int)composer.X,
+            (int)composer.Y,
+            (int)(composer.X + composer.Width),
+            (int)(composer.Y + composer.Height),
+            charsBeforeWord,
+            trackedCaretX);
         if (chosen == null)
         {
             return null;
         }
 
-        var line = Math.Clamp((int)Math.Round(composer.Height), 14, 64);
-        return (chosen.Value.X, chosen.Value.Y, line);
+        return (chosen.Value.X, chosen.Value.Y, chosen.Value.LineHeight);
     }
 
     private static long _composerTicks;
