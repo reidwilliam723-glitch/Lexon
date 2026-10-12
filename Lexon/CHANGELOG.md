@@ -2,6 +2,13 @@
 
 All notable changes to Lexon will be documented in this file.
 
+## [1.10.4] - 2026-10-12
+
+### Settings
+- An edit made on the Apps page and an unsaved edit on Privacy, App tone or Writing for the same list are no longer lost.
+- Closing Settings without moving or resizing it no longer rewrites your profile.
+- Fixed: with `--ui-gallery`, the control gallery shows the settings tabs again.
+
 ## [1.10.3] - 2026-10-08
 
 ### Privacy

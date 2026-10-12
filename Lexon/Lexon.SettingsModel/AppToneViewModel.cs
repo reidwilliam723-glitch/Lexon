@@ -18,6 +18,7 @@ public sealed class AppToneViewModel : INotifyPropertyChanged, IOwnedSettingsPag
     private int _selectedRowIndex = -1;
     private int _selectedToneIndex;
     private bool _isDirty;
+    private OverlappingEditGuard? _overlap;
 
     public AppToneViewModel(AppSettings settings, PersistScheduler persist, IProcessPicker picker)
     {
@@ -87,6 +88,11 @@ public sealed class AppToneViewModel : INotifyPropertyChanged, IOwnedSettingsPag
 
     public bool CanRemove => _selectedRowIndex >= 0 && _selectedRowIndex < _rows.Count;
 
+    public void UseOverlapGuard(OverlappingEditGuard guard)
+    {
+        _overlap = guard;
+    }
+
     public void Load()
     {
         _persist.IsLoading = true;
@@ -132,6 +138,11 @@ public sealed class AppToneViewModel : INotifyPropertyChanged, IOwnedSettingsPag
 
     public void AddRunningApp()
     {
+        if (!_persist.IsLoading)
+        {
+            _overlap?.BeforeEdit(this);
+        }
+
         if (!Enum.TryParse<AppWritingCategory>(ToneLabels[_selectedToneIndex], ignoreCase: true, out var category))
         {
             return;
@@ -153,6 +164,16 @@ public sealed class AppToneViewModel : INotifyPropertyChanged, IOwnedSettingsPag
 
     public void RemoveSelected()
     {
+        if (!CanRemove)
+        {
+            return;
+        }
+
+        if (!_persist.IsLoading)
+        {
+            _overlap?.BeforeEdit(this);
+        }
+
         if (!CanRemove)
         {
             return;

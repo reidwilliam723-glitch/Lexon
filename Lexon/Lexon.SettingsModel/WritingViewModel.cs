@@ -66,6 +66,7 @@ public sealed class WritingViewModel : INotifyPropertyChanged, IOwnedSettingsPag
     private string _mutedAppsText = string.Empty;
     private bool _useLearnedWords = true;
     private string _learnedMutedAppsText = string.Empty;
+    private OverlappingEditGuard? _overlap;
     private bool _enableRewriteHotkey = true;
     private bool _enableGrammarHotkey = true;
     private int _writingModeIndex;
@@ -180,6 +181,16 @@ public sealed class WritingViewModel : INotifyPropertyChanged, IOwnedSettingsPag
                 return;
             }
 
+            if (!_persist.IsLoading)
+            {
+                _overlap?.BeforeEdit(this);
+            }
+
+            if (_mutedAppsText == value)
+            {
+                return;
+            }
+
             _mutedAppsText = value ?? string.Empty;
             if (_persist.IsLoading)
             {
@@ -204,6 +215,16 @@ public sealed class WritingViewModel : INotifyPropertyChanged, IOwnedSettingsPag
         get => _learnedMutedAppsText;
         set
         {
+            if (_learnedMutedAppsText == value)
+            {
+                return;
+            }
+
+            if (!_persist.IsLoading)
+            {
+                _overlap?.BeforeEdit(this);
+            }
+
             if (_learnedMutedAppsText == value)
             {
                 return;
@@ -317,6 +338,11 @@ public sealed class WritingViewModel : INotifyPropertyChanged, IOwnedSettingsPag
 
     public bool CanUndoAdaptation =>
         _personalization != null && _selectedAdaptationIndex >= 0 && _selectedAdaptationIndex < _adaptations.Count;
+
+    public void UseOverlapGuard(OverlappingEditGuard guard)
+    {
+        _overlap = guard;
+    }
 
     public void Load()
     {

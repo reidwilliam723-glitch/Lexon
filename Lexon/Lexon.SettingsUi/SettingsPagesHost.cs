@@ -139,6 +139,7 @@ internal sealed class SettingsPagesHost : IDisposable
             services.Pages.Add(Apps);
         }
 
+        InstallOverlapGuard();
         Retarget(owner);
         _persistTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(100) };
         _persistTimer.Tick += (_, _) =>
@@ -364,6 +365,63 @@ internal sealed class SettingsPagesHost : IDisposable
         if (_services.Pages.Any(static p => p.IsDirty))
         {
             FlushPendingSaves();
+        }
+    }
+
+    private void InstallOverlapGuard()
+    {
+        var pages = new List<IOwnedSettingsPage>();
+        if (Privacy != null)
+        {
+            pages.Add(Privacy);
+        }
+
+        if (AppTone != null)
+        {
+            pages.Add(AppTone);
+        }
+
+        if (Writing != null)
+        {
+            pages.Add(Writing);
+        }
+
+        if (Apps != null)
+        {
+            pages.Add(Apps);
+        }
+
+        if (pages.Count < 2)
+        {
+            return;
+        }
+
+        var guard = new OverlappingEditGuard(pages, FlushEarlierOverlapping, ReloadPage);
+        Privacy?.UseOverlapGuard(guard);
+        AppTone?.UseOverlapGuard(guard);
+        Writing?.UseOverlapGuard(guard);
+        Apps?.UseOverlapGuard(guard);
+    }
+
+    private void FlushEarlierOverlapping(IReadOnlyList<IOwnedSettingsPage> earlier)
+    {
+        _persistTimer.Stop();
+        var profile = _services.Profile;
+        if (profile == null)
+        {
+            return;
+        }
+
+        OwnedSettingsWriter.Flush(profile, earlier.ToArray());
+        _services.Reload();
+        _services.ApplyLive?.Invoke();
+        try
+        {
+            _ = profile.SaveAsync();
+        }
+        catch
+        {
+            // In-memory profiles have no storage.
         }
     }
 

@@ -28,6 +28,7 @@ public sealed class AppsSettingsViewModel : INotifyPropertyChanged, IOwnedSettin
     private bool _grammar = true;
     private bool _learnedWords = true;
     private bool _loading = true;
+    private OverlappingEditGuard? _overlap;
     private bool _isDirty;
 
     public AppsSettingsViewModel(AppSettings settings, PersistScheduler persist, IProcessPicker picker)
@@ -96,6 +97,16 @@ public sealed class AppsSettingsViewModel : INotifyPropertyChanged, IOwnedSettin
                 return;
             }
 
+            if (!_loading)
+            {
+                _overlap?.BeforeEdit(this);
+            }
+
+            if (_toneIndex == index)
+            {
+                return;
+            }
+
             _toneIndex = index;
             OnPropertyChanged();
             ApplySelected();
@@ -119,6 +130,11 @@ public sealed class AppsSettingsViewModel : INotifyPropertyChanged, IOwnedSettin
         _privacy = privacy;
         _tone = tone;
         _writing = writing;
+    }
+
+    public void UseOverlapGuard(OverlappingEditGuard guard)
+    {
+        _overlap = guard;
     }
 
     public void Load()
@@ -201,6 +217,16 @@ public sealed class AppsSettingsViewModel : INotifyPropertyChanged, IOwnedSettin
 
     private void SetFlag(ref bool field, bool value)
     {
+        if (field == value)
+        {
+            return;
+        }
+
+        if (!_loading)
+        {
+            _overlap?.BeforeEdit(this);
+        }
+
         if (field == value)
         {
             return;

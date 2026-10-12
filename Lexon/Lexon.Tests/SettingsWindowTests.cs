@@ -4,6 +4,7 @@ using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Interop;
 using System.Windows.Media;
+using Lexon.Core.Interfaces;
 using Lexon.Core.Theming;
 using Lexon.Profiles;
 using Lexon.Settings;
@@ -22,7 +23,7 @@ public class SettingsWindowTests
     public SettingsWindowTests(WpfStaFixture sta) => _sta = sta;
 
     [Fact]
-    public void ShowsSixTabsInOrder_WithoutControls()
+    public void ShowsTabsInOrder_WithoutControls()
     {
         _sta.Run(() =>
         {
@@ -30,6 +31,80 @@ public class SettingsWindowTests
             Assert.Equal(["General", "AI", "Privacy", "Appearance", "App tone", "Writing", "Apps"], window.TabNames);
             Assert.DoesNotContain("Controls", window.TabNames);
             Assert.True(window.IsGeneralPageVisible);
+            window.Destroy();
+        });
+    }
+
+    [Fact]
+    public void GalleryWithSharedServices_ShowsSettingsTabs_OnOneHost()
+    {
+        _sta.Run(() =>
+        {
+            var services = FullServices(out _);
+            var window = new SettingsWindow(null, services);
+            var host = services.BoundHost;
+            var gallery = new ControlGalleryWindow(null, services);
+            Assert.Same(host, services.BoundHost);
+            Assert.Same(window.GeneralViewModel, gallery.GeneralViewModel);
+            Assert.True(gallery.HasPrivacyTab);
+            Assert.True(gallery.HasAppsTab);
+            Assert.Equal(8, gallery.GalleryTabCount);
+            window.Destroy();
+            gallery.Close();
+        });
+    }
+
+    [Fact]
+    public void ShowGallery_WhileSettingsIsVisible_FlushesAndHidesIt()
+    {
+        _sta.Run(() =>
+        {
+            var services = FullServices(out var profile);
+            var themes = new ThemeManager(new CountingStorage());
+            var settings = SettingsUiHost.EnsureSettings(services);
+            settings.Left = -20000;
+            settings.Top = -20000;
+            settings.ShowInTaskbar = false;
+            SettingsUiHost.ShowSettings(themes, services);
+            services.BoundHost!.General.CheckForUpdates = false;
+            Assert.True(settings.IsVisible);
+            Assert.True(services.BoundHost.General.IsDirty);
+
+            SettingsUiHost.ShowGallery(themes, services);
+
+            Assert.False(settings.IsVisible);
+            Assert.False(services.BoundHost.General.IsDirty);
+            Assert.False(profile.GetSetting(AppSettings.EnableAutoUpdatesKey, true));
+            var gallery = SettingsUiHost.EnsureGallery(services);
+            Assert.True(gallery.IsVisible);
+            Assert.True(gallery.HasPrivacyTab);
+            Assert.Same(settings.GeneralViewModel, gallery.GeneralViewModel);
+            gallery.Hide();
+        });
+    }
+
+    [Fact]
+    public void Hide_WithoutMoveOrResize_DoesNotSave_AndAResizeSavesOnce()
+    {
+        _sta.Run(() =>
+        {
+            var storage = new CountingStorage();
+            var services = FullServices(out var profile);
+            profile.SetStorage(storage);
+            var window = Show(services);
+            profile.SetSetting(
+                SettingsWindowPlacement.Key,
+                SettingsWindowPlacement.Format(new Rect(window.Left, window.Top, window.Width, window.Height)));
+            storage.Saves = 0;
+
+            window.Close();
+
+            Assert.Equal(0, storage.Saves);
+            window.Show();
+            window.Width += 40;
+            window.Close();
+            Assert.Equal(1, storage.Saves);
+            Assert.Contains("|", profile.GetSetting(SettingsWindowPlacement.Key, string.Empty));
             window.Destroy();
         });
     }
@@ -335,6 +410,26 @@ public class SettingsWindowTests
 
     [DllImport("user32.dll")]
     private static extern IntPtr GetWindow(IntPtr hWnd, uint uCmd);
+
+    private sealed class CountingStorage : IStorage
+    {
+        public int Saves { get; set; }
+
+        public Task SaveAsync<T>(string key, T data, CancellationToken cancellationToken = default)
+        {
+            Saves++;
+            return Task.CompletedTask;
+        }
+
+        public Task<T?> LoadAsync<T>(string key, CancellationToken cancellationToken = default)
+            => Task.FromResult<T?>(default);
+
+        public Task DeleteAsync(string key, CancellationToken cancellationToken = default)
+            => Task.CompletedTask;
+
+        public Task<bool> ExistsAsync(string key, CancellationToken cancellationToken = default)
+            => Task.FromResult(false);
+    }
 
     private sealed class NoStartup : IStartupRegistration
     {

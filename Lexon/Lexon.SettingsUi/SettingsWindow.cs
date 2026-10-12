@@ -278,7 +278,13 @@ public sealed class SettingsWindow : Window
             return;
         }
 
-        profile.SetSetting(SettingsWindowPlacement.Key, SettingsWindowPlacement.Format(bounds));
+        var formatted = SettingsWindowPlacement.Format(bounds);
+        if (string.Equals(profile.GetSetting(SettingsWindowPlacement.Key, string.Empty), formatted, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        profile.SetSetting(SettingsWindowPlacement.Key, formatted);
         try
         {
             _ = profile.SaveAsync();

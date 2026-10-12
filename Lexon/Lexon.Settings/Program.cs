@@ -158,7 +158,7 @@ static class Program
             if (_enableUiGallery)
             {
                 _trayManager.ControlGalleryRequested += (_, _) =>
-                    InvokeOnUiThread(() => SettingsUiHost.ShowGallery(_composition!.ThemeManager));
+                    InvokeOnUiThread(() => SettingsUiHost.ShowGallery(_composition!.ThemeManager, CreateSettingsServices()));
                 _trayManager.ShowControlGalleryItem();
             }
             UpdateChecker.BusyChanged += busy => _trayManager?.SetUpdatesBusy(busy);
@@ -401,24 +401,17 @@ static class Program
             return;
         }
 
-        if (_router.ShouldWarmWpf && _composition != null)
+        if (_composition == null)
         {
-            try
-            {
-                SettingsUiHost.Warm(_composition.ThemeManager);
-                SettingsUiHost.EnsureSettings(CreateSettingsServices());
-            }
-            catch (Exception ex)
-            {
-                _router.RecordWpfFailure();
-                _crashReporter?.LogCrash(ex, "Settings window");
-                EnsureSettingsForm();
-            }
-
             return;
         }
 
-        EnsureSettingsForm();
+        SettingsOpenFlow.Open(
+            _router,
+            SettingsEntryPoint.Warm,
+            WarmWpfSettings,
+            EnsureSettingsForm,
+            ex => _crashReporter?.LogCrash(ex, "Settings window"));
     }
 
     private static GallerySettingsServices CreateGalleryServices() => CreateSettingsServices();
@@ -560,27 +553,53 @@ static class Program
             return;
         }
 
-        var target = _router.Resolve(entry);
-        if (target == SettingsSurface.SettingsWindow)
-        {
-            try
+        SettingsOpenFlow.Open(
+            _router,
+            entry,
+            ShowWpfSettings,
+            ShowClassicSettings,
+            ex =>
             {
-                SettingsUiHost.ShowAbout = window =>
-                {
-                    using var about = new AboutForm();
-                    about.ShowDialog(WpfDialogOwner.From(window));
-                };
-                SettingsUiHost.ShowSettings(_composition.ThemeManager, CreateSettingsServices());
-                return;
-            }
-            catch (Exception ex)
-            {
-                _router.RecordWpfFailure();
                 _crashReporter?.LogCrash(ex, "Settings window");
                 ShowSettingsError(ex);
-            }
-        }
+            });
+    }
 
+    private static void WarmWpfSettings()
+    {
+        ThrowIfWpfForced();
+        SettingsUiHost.ShowAbout = window =>
+        {
+            using var about = new AboutForm();
+            about.ShowDialog(WpfDialogOwner.From(window));
+        };
+        SettingsUiHost.Warm(_composition!.ThemeManager);
+        SettingsUiHost.EnsureSettings(CreateSettingsServices());
+    }
+
+    private static void ShowWpfSettings()
+    {
+        ThrowIfWpfForced();
+        SettingsUiHost.ShowAbout = window =>
+        {
+            using var about = new AboutForm();
+            about.ShowDialog(WpfDialogOwner.From(window));
+        };
+        SettingsUiHost.ShowSettings(_composition!.ThemeManager, CreateSettingsServices());
+    }
+
+    private static void ThrowIfWpfForced()
+    {
+#if DEBUG
+        if (string.Equals(Environment.GetEnvironmentVariable("LEXON_FORCE_WPF_FAILURE"), "1", StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException("LEXON_FORCE_WPF_FAILURE");
+        }
+#endif
+    }
+
+    private static void ShowClassicSettings()
+    {
         try
         {
             EnsureSettingsForm();

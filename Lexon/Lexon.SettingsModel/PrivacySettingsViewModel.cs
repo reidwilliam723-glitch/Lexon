@@ -27,6 +27,7 @@ public sealed class PrivacySettingsViewModel : INotifyPropertyChanged, IOwnedSet
     private List<string> _allowedScopes = [];
     private string _blockedAppsText = string.Empty;
     private bool _isDirty;
+    private OverlappingEditGuard? _overlap;
 
     public PrivacySettingsViewModel(
         AppSettings settings,
@@ -94,6 +95,16 @@ public sealed class PrivacySettingsViewModel : INotifyPropertyChanged, IOwnedSet
                 return;
             }
 
+            if (!_persist.IsLoading)
+            {
+                _overlap?.BeforeEdit(this);
+            }
+
+            if (_blockedAppsText == value)
+            {
+                return;
+            }
+
             _blockedAppsText = value ?? string.Empty;
             if (_persist.IsLoading)
             {
@@ -134,6 +145,11 @@ public sealed class PrivacySettingsViewModel : INotifyPropertyChanged, IOwnedSet
             MarkDirtyAndSchedule();
             OnPropertyChanged();
         }
+    }
+
+    public void UseOverlapGuard(OverlappingEditGuard guard)
+    {
+        _overlap = guard;
     }
 
     public void Load()
@@ -181,6 +197,11 @@ public sealed class PrivacySettingsViewModel : INotifyPropertyChanged, IOwnedSet
         if (string.IsNullOrEmpty(picked))
         {
             return;
+        }
+
+        if (!_persist.IsLoading)
+        {
+            _overlap?.BeforeEdit(this);
         }
 
         var current = BlockedAppList.Parse(_blockedAppsText);

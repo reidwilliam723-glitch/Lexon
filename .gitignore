@@ -29,6 +29,9 @@ Run/
 *.sln.docstates
 launchSettings.json
 
+# Local UI timing runs
+Lexon/ui-timing.txt
+
 # Test / coverage output
 [Tt]est[Rr]esult*/
 coverage*.json
