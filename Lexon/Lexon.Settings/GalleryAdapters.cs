@@ -3,6 +3,7 @@ using Lexon.Core;
 using Lexon.Core.Expansion;
 using Lexon.Core.Interfaces;
 using Lexon.Core.Learning;
+using Lexon.Core.Models;
 using Lexon.Core.Pipeline;
 using Lexon.Core.Theming;
 using Lexon.Profiles;
@@ -105,7 +106,7 @@ internal sealed class PersonalizationServiceAdapter : IPersonalizationService
         => _personalization?.ImportLearningData(json) ?? false;
 }
 
-internal sealed class WritingDialogsAdapter : IWritingDialogs
+internal sealed class WritingDialogsAdapter : IWritingDialogs, IWritingStatsReader, ILearnedWordCatalog
 {
     private readonly PersonalizationManager? _personalization;
     private readonly TextExpansionManager? _expansions;
@@ -125,6 +126,39 @@ internal sealed class WritingDialogsAdapter : IWritingDialogs
     }
 
     public Func<IWin32Window?>? Owner { get; set; }
+
+    public WritingStatsSnapshot? Read()
+    {
+        if (_personalization == null || _expansions == null)
+        {
+            return null;
+        }
+
+        return WritingStatsAggregator.Build(_personalization, _expansions, null);
+    }
+
+    public IReadOnlyList<string> Words => _pipeline?.GetLearnedWords() ?? [];
+
+    public void Add(string word) => _pipeline?.AddExplicitLearnedWord(word);
+
+    public void Remove(IReadOnlyList<string> words)
+    {
+        if (_pipeline == null)
+        {
+            return;
+        }
+
+        foreach (var word in words)
+        {
+            _pipeline.RemoveLearnedWord(word);
+        }
+    }
+
+    public void NeverLearn(string word) => _pipeline?.NeverLearnWord(word);
+
+    public void UndoLast() => _pipeline?.UndoLastLearn();
+
+    public void Clear() => _pipeline?.ClearLearnedWords();
 
     public void ShowWritingStats()
     {

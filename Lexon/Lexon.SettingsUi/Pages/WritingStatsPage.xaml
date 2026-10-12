@@ -1,0 +1,120 @@
+<UserControl x:Class="Lexon.SettingsUi.WritingStatsPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:Lexon.SettingsUi">
+  <ScrollViewer HorizontalScrollBarVisibility="Disabled"
+                VerticalScrollBarVisibility="Auto"
+                Focusable="False">
+    <StackPanel Margin="16">
+      <Button Content="Back to Writing"
+              HorizontalAlignment="Left"
+              Margin="0,0,0,12"
+              Click="OnBack"
+              Style="{DynamicResource SubtleButton}"
+              AutomationProperties.Name="Back to Writing"/>
+      <local:SectionHeader Title="Writing statistics" Margin="0,0,0,12" IsTabStop="False"/>
+      <TextBlock Text="Totals Lexon has helped with."
+                 TextWrapping="Wrap" Margin="0,0,0,12"
+                 Foreground="{DynamicResource TextSecondaryBrush}"
+                 FontFamily="{DynamicResource LexonFontFamily}"
+                 FontSize="{DynamicResource CaptionFontSize}"/>
+
+      <TextBlock Text="{Binding Unavailable}"
+                 TextWrapping="Wrap" Margin="0,0,0,12"
+                 Foreground="{DynamicResource TextBrush}"
+                 FontFamily="{DynamicResource LexonFontFamily}"
+                 FontSize="{DynamicResource BodyFontSize}">
+        <TextBlock.Style>
+          <Style TargetType="TextBlock">
+            <Setter Property="Visibility" Value="Collapsed"/>
+            <Style.Triggers>
+              <DataTrigger Binding="{Binding IsAvailable}" Value="False">
+                <Setter Property="Visibility" Value="Visible"/>
+              </DataTrigger>
+            </Style.Triggers>
+          </Style>
+        </TextBlock.Style>
+      </TextBlock>
+
+      <StackPanel>
+        <StackPanel.Style>
+          <Style TargetType="StackPanel">
+            <Setter Property="Visibility" Value="Visible"/>
+            <Style.Triggers>
+              <DataTrigger Binding="{Binding IsAvailable}" Value="False">
+                <Setter Property="Visibility" Value="Collapsed"/>
+              </DataTrigger>
+            </Style.Triggers>
+          </Style>
+        </StackPanel.Style>
+
+        <local:Card IsTabStop="False" Margin="0,0,0,12">
+          <StackPanel>
+            <local:SectionHeader Title="Suggestions" Margin="0,0,0,8" IsTabStop="False"/>
+            <DockPanel Margin="0,4">
+              <TextBlock Text="Suggestions you've accepted" Foreground="{DynamicResource TextBrush}"
+                         FontFamily="{DynamicResource LexonFontFamily}" FontSize="{DynamicResource BodyFontSize}"/>
+              <TextBlock Text="{Binding Accepted}" HorizontalAlignment="Right"
+                         Foreground="{DynamicResource TextBrush}" FontWeight="SemiBold"
+                         FontFamily="{DynamicResource LexonFontFamily}" FontSize="{DynamicResource BodyFontSize}"/>
+            </DockPanel>
+          </StackPanel>
+        </local:Card>
+
+        <local:Card IsTabStop="False" Margin="0,0,0,12">
+          <StackPanel>
+            <local:SectionHeader Title="Text expansions" Margin="0,0,0,8" IsTabStop="False"/>
+            <DockPanel Margin="0,4,0,8">
+              <TextBlock Text="Times used" Foreground="{DynamicResource TextBrush}"
+                         FontFamily="{DynamicResource LexonFontFamily}" FontSize="{DynamicResource BodyFontSize}"/>
+              <TextBlock Text="{Binding ExpansionUses}" HorizontalAlignment="Right"
+                         Foreground="{DynamicResource TextBrush}" FontWeight="SemiBold"
+                         FontFamily="{DynamicResource LexonFontFamily}" FontSize="{DynamicResource BodyFontSize}"/>
+            </DockPanel>
+            <ItemsControl ItemsSource="{Binding TopExpansions}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <TextBlock Text="{Binding}" Margin="0,2" TextWrapping="Wrap"
+                             Foreground="{DynamicResource TextBrush}"
+                             FontFamily="{DynamicResource LexonFontFamily}"
+                             FontSize="{DynamicResource BodyFontSize}"/>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+        </local:Card>
+
+        <local:Card IsTabStop="False" Margin="0,0,0,12">
+          <StackPanel>
+            <local:SectionHeader Title="Productivity" Margin="0,0,0,8" IsTabStop="False"/>
+            <DockPanel Margin="0,4">
+              <TextBlock Text="Keystrokes you've saved" Foreground="{DynamicResource TextBrush}"
+                         FontFamily="{DynamicResource LexonFontFamily}" FontSize="{DynamicResource BodyFontSize}"/>
+              <TextBlock Text="{Binding KeystrokesSaved}" HorizontalAlignment="Right"
+                         Foreground="{DynamicResource TextBrush}" FontWeight="SemiBold"
+                         FontFamily="{DynamicResource LexonFontFamily}" FontSize="{DynamicResource BodyFontSize}"/>
+            </DockPanel>
+            <DockPanel Margin="0,4">
+              <TextBlock Text="Estimated time saved" Foreground="{DynamicResource TextBrush}"
+                         FontFamily="{DynamicResource LexonFontFamily}" FontSize="{DynamicResource BodyFontSize}"/>
+              <TextBlock Text="{Binding TimeSaved}" HorizontalAlignment="Right"
+                         Foreground="{DynamicResource TextBrush}" FontWeight="SemiBold"
+                         FontFamily="{DynamicResource LexonFontFamily}" FontSize="{DynamicResource BodyFontSize}"/>
+            </DockPanel>
+            <TextBlock Text="Time saved is estimated at 200 milliseconds per inserted character."
+                       TextWrapping="Wrap" Margin="0,8,0,0"
+                       Foreground="{DynamicResource TextSecondaryBrush}"
+                       FontFamily="{DynamicResource LexonFontFamily}"
+                       FontSize="{DynamicResource CaptionFontSize}"/>
+          </StackPanel>
+        </local:Card>
+      </StackPanel>
+
+      <Button Content="Refresh"
+              HorizontalAlignment="Left"
+              Click="OnRefresh"
+              Style="{DynamicResource SecondaryButton}"
+              AutomationProperties.Name="Refresh writing statistics"/>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

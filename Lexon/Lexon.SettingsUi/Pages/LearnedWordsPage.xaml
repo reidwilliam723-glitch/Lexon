@@ -1,0 +1,84 @@
+<UserControl x:Class="Lexon.SettingsUi.LearnedWordsPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:Lexon.SettingsUi">
+  <DockPanel Margin="16">
+    <Button DockPanel.Dock="Top"
+            Content="Back to Writing"
+            HorizontalAlignment="Left"
+            Margin="0,0,0,12"
+            Click="OnBack"
+            Style="{DynamicResource SubtleButton}"
+            AutomationProperties.Name="Back to Writing"/>
+    <local:SectionHeader DockPanel.Dock="Top" Title="Learned words" Margin="0,0,0,8" IsTabStop="False"/>
+    <TextBlock DockPanel.Dock="Top"
+               Text="Words you have typed often enough to be suggested. Dictionary words are not listed here."
+               TextWrapping="Wrap" Margin="0,0,0,12"
+               Foreground="{DynamicResource TextSecondaryBrush}"
+               FontFamily="{DynamicResource LexonFontFamily}"
+               FontSize="{DynamicResource CaptionFontSize}"/>
+
+    <DockPanel DockPanel.Dock="Bottom" Margin="0,12,0,0" LastChildFill="False">
+      <TextBox x:Name="AddBox"
+               Width="220"
+               Margin="0,0,8,0"
+               Text="{Binding AddText, UpdateSourceTrigger=PropertyChanged}"
+               AutomationProperties.Name="Add a custom word"/>
+      <Button Content="Add"
+              Margin="0,0,8,0"
+              Click="OnAdd"
+              Style="{DynamicResource SecondaryButton}"
+              AutomationProperties.Name="Add learned word"/>
+      <Button Content="Clear all"
+              Click="OnClear"
+              Style="{DynamicResource SecondaryButton}"
+              AutomationProperties.Name="Clear all learned words"/>
+    </DockPanel>
+
+    <Grid>
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="*"/>
+        <ColumnDefinition Width="Auto"/>
+      </Grid.ColumnDefinitions>
+      <DockPanel Grid.Column="0" Margin="0,0,12,0">
+        <TextBlock DockPanel.Dock="Top"
+                   Text="Find learned words"
+                   Margin="0,0,0,4"
+                   Foreground="{DynamicResource TextBrush}"
+                   FontFamily="{DynamicResource LexonFontFamily}"
+                   FontSize="{DynamicResource BodyFontSize}"/>
+        <TextBox DockPanel.Dock="Top"
+                 Margin="0,0,0,8"
+                 Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                 AutomationProperties.Name="Find learned words"
+                 AutomationProperties.HelpText="Search every learned word."/>
+        <ListBox x:Name="WordList"
+                 ItemsSource="{Binding VisibleWords}"
+                 SelectionMode="Extended"
+                 SelectionChanged="OnSelectionChanged"
+                 AutomationProperties.Name="Learned words"/>
+      </DockPanel>
+      <StackPanel Grid.Column="1">
+        <Button x:Name="DeleteButton"
+                Content="Delete"
+                Margin="0,0,0,8"
+                IsEnabled="False"
+                Click="OnDelete"
+                Style="{DynamicResource SecondaryButton}"
+                AutomationProperties.Name="Delete selected learned words"/>
+        <Button x:Name="NeverButton"
+                Content="Never learn"
+                Margin="0,0,0,8"
+                IsEnabled="False"
+                Click="OnNever"
+                Style="{DynamicResource SecondaryButton}"
+                AutomationProperties.Name="Never learn selected word"
+                AutomationProperties.HelpText="Applies to one selected word."/>
+        <Button Content="Undo last"
+                Click="OnUndo"
+                Style="{DynamicResource SecondaryButton}"
+                AutomationProperties.Name="Undo last learned word"/>
+      </StackPanel>
+    </Grid>
+  </DockPanel>
+</UserControl>

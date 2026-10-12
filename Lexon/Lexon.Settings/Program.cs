@@ -476,6 +476,8 @@ static class Program
                 ? new PersonalizationServiceAdapter(_composition.PersonalizationManager)
                 : null,
             WritingDialogs = writingDialogs,
+            WritingStats = writingDialogs,
+            LearnedWords = writingDialogs,
             FileDialogs = fileDialogs,
             Messages = messages,
             SettingsBackup = new SettingsBackupAdapter(_composition.Storage, profile),

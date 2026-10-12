@@ -2,6 +2,15 @@
 
 All notable changes to Lexon will be documented in this file.
 
+## [1.10.5] - 2026-10-12
+
+### Settings
+- View writing stats and Manage learned words open inside Settings. Back to Writing returns to that page.
+- Find learned words searches the whole list. You can delete several learned words at once. Never learn still applies to one word.
+
+### Suggestions
+- With the caret in the middle of a word, suggestions use the letters before the caret. Accepting one replaces the whole word.
+
 ## [1.10.4] - 2026-10-12
 
 ### Settings

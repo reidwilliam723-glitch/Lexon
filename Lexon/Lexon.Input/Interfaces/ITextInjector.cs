@@ -16,6 +16,16 @@ public interface ITextInjector
     void DeleteBackward(int count);
 
     /// <summary>
+    /// Deletes the specified number of characters after the caret.
+    /// </summary>
+    void DeleteForward(int count);
+
+    /// <summary>
+    /// Moves the caret right by <paramref name="count"/> characters.
+    /// </summary>
+    void MoveRight(int count);
+
+    /// <summary>
     /// Replaces old text with new text. Use
     /// <paramref name="selectionStillActive"/> when the target is still
     /// highlighted so a single Backspace deletes the selection instead of

@@ -444,9 +444,38 @@ public sealed class WritingViewModel : INotifyPropertyChanged, IOwnedSettingsPag
 
     public void MarkClean() => _isDirty = false;
 
-    public void ShowWritingStats() => _dialogs?.ShowWritingStats();
+    /// <summary>
+    /// When set, the Settings window shows stats in its own page.
+    /// Otherwise the classic dialog is used.
+    /// </summary>
+    public Action? OpenStatsInSettings { get; set; }
 
-    public void ShowLearnedWords() => _dialogs?.ShowLearnedWords();
+    /// <summary>
+    /// When set, the Settings window shows learned words in its own page.
+    /// </summary>
+    public Action? OpenLearnedWordsInSettings { get; set; }
+
+    public void ShowWritingStats()
+    {
+        if (OpenStatsInSettings != null)
+        {
+            OpenStatsInSettings();
+            return;
+        }
+
+        _dialogs?.ShowWritingStats();
+    }
+
+    public void ShowLearnedWords()
+    {
+        if (OpenLearnedWordsInSettings != null)
+        {
+            OpenLearnedWordsInSettings();
+            return;
+        }
+
+        _dialogs?.ShowLearnedWords();
+    }
 
     public void ShowTerminology()
     {

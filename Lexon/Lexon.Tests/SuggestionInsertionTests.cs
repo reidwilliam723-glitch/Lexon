@@ -169,4 +169,28 @@ public class SuggestionInsertionTests
     {
         Assert.Equal(expected, SuggestionInsertion.LastCompletedWord(text));
     }
+
+    [Fact]
+    public void SuggestionPrefix_UsesLettersBeforeTheCaret_NotTheLastTypedLetter()
+    {
+        var prefix = SuggestionInsertion.SuggestionPrefix("o", "hello", 2);
+
+        Assert.Equal("he", prefix);
+    }
+
+    [Fact]
+    public void SuggestionPrefix_WithoutEditorText_UsesTheTypedBuffer()
+    {
+        Assert.Equal("hel", SuggestionInsertion.SuggestionPrefix("hel", string.Empty, 0));
+    }
+
+    [Fact]
+    public void GetWordReplacement_ReplacesTheLettersAfterTheCaretAsWell()
+    {
+        var (backward, forward, insert) = SuggestionInsertion.GetWordReplacement("he", "llo", "hello");
+
+        Assert.Equal(0, backward);
+        Assert.Equal(3, forward);
+        Assert.Equal("llo", insert);
+    }
 }

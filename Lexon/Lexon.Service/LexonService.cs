@@ -826,12 +826,12 @@ public class LexonService
             return;
         }
 
-        var typedPrefix = SuggestionInsertion.CurrentToken(_focusTracker.GetTypedBufferText());
+        var typedPrefix = PrefixForSuggestions();
         if (typedPrefix.Length >= 1)
         {
             ShowInstantFilter(typedPrefix);
 
-            var bufferContext = ContextFromTypedBuffer(typedPrefix);
+            var bufferContext = ContextForSuggestionPrefix(typedPrefix);
             var quickSuggestions = (await _suggestionPipeline.GetSuggestionsAsync(
                 bufferContext,
                 _cancellationTokenSource?.Token ?? default)).ToList();
@@ -879,10 +879,10 @@ public class LexonService
             return;
         }
 
-        typedPrefix = SuggestionInsertion.CurrentToken(_focusTracker.GetTypedBufferText());
+        typedPrefix = PrefixForSuggestions();
         if (typedPrefix.Length > 0)
         {
-            _currentContext.CurrentWord = typedPrefix;
+            _currentContext = ContextForSuggestionPrefix(typedPrefix);
         }
 
         if (!HasInProgressWord())
@@ -923,6 +923,46 @@ public class LexonService
 
         var contextSnapshot = _currentContext;
         _ = MergeSupplementalSuggestionsAsync(generation, contextSnapshot);
+    }
+
+    private string PrefixForSuggestions()
+    {
+        TextContext live;
+        try
+        {
+            live = _focusTracker.GetCurrentContext();
+        }
+        catch
+        {
+            live = _currentContext;
+        }
+
+        return SuggestionInsertion.SuggestionPrefix(
+            _focusTracker.GetTypedBufferText(),
+            live.FullText,
+            live.CursorPosition);
+    }
+
+    private TextContext ContextForSuggestionPrefix(string prefix)
+    {
+        TextContext live;
+        try
+        {
+            live = _focusTracker.GetCurrentContext();
+        }
+        catch
+        {
+            return ContextFromTypedBuffer(prefix);
+        }
+
+        if (SuggestionInsertion.TryWordAtCaret(live.FullText, live.CursorPosition, out var before, out _)
+            && string.Equals(before, prefix, StringComparison.OrdinalIgnoreCase))
+        {
+            live.CurrentWord = before;
+            return _rewrite?.Enrich(live) ?? live;
+        }
+
+        return ContextFromTypedBuffer(prefix);
     }
 
     private TextContext ContextFromTypedBuffer(string prefix)
@@ -1370,6 +1410,7 @@ public class LexonService
         _currentContext = liveContext;
 
         int deleteCount;
+        var deleteForward = 0;
         string insertText;
         string undoOriginal;
         var isPrediction = string.Equals(e.SelectedSuggestion.Source, "Prediction", StringComparison.Ordinal);
@@ -1391,25 +1432,41 @@ public class LexonService
         }
         else
         {
-            var prefix = SuggestionInsertion.ResolveInProgressWord(
-                suggestionText,
-                typedBuffer,
-                beforeCaret,
-                _activeSuggestionPrefix,
-                liveContext.CurrentWord,
-                _currentContext.CurrentWord);
+            var afterCaret = string.Empty;
+            string prefix;
+            if (SuggestionInsertion.TryWordAtCaret(
+                    liveContext.FullText,
+                    liveContext.CursorPosition,
+                    out var liveBefore,
+                    out afterCaret))
+            {
+                prefix = liveBefore;
+            }
+            else
+            {
+                prefix = SuggestionInsertion.ResolveInProgressWord(
+                    suggestionText,
+                    typedBuffer,
+                    beforeCaret,
+                    _activeSuggestionPrefix,
+                    liveContext.CurrentWord,
+                    _currentContext.CurrentWord);
+            }
+
             if (!string.IsNullOrEmpty(prefix))
             {
                 _currentContext.CurrentWord = prefix;
             }
 
-            (deleteCount, insertText) = SuggestionInsertion.GetReplacement(prefix, suggestionText);
+            (deleteCount, deleteForward, insertText) = SuggestionInsertion.GetWordReplacement(prefix, afterCaret, suggestionText);
             if (!insertText.EndsWith(' '))
             {
                 insertText += " ";
             }
 
-            undoOriginal = deleteCount > 0 ? prefix : string.Empty;
+            undoOriginal = afterCaret.Length == 0
+                ? (deleteCount > 0 ? prefix : string.Empty)
+                : (deleteCount > 0 ? prefix[^deleteCount..] : string.Empty) + afterCaret;
         }
 
         DiagnosticLog.Write($"ACCEPT: computed deleteCount={deleteCount} insertText={DiagnosticLog.Escape(insertText)}");
@@ -1427,11 +1484,21 @@ public class LexonService
             null);
         if (!isPrediction && (webEditor || grammarFix))
         {
+            if (!grammarFix && deleteForward > 0)
+            {
+                _textInjector.MoveRight(deleteForward);
+            }
+
             ApplyWebEditorAccept(e.SelectedSuggestion, typedBuffer, beforeCaret);
         }
         else
         {
             _undoManager.RecordOperation(undoOriginal, insertText);
+
+            if (deleteForward > 0)
+            {
+                _textInjector.DeleteForward(deleteForward);
+            }
 
             if (deleteCount > 0)
             {

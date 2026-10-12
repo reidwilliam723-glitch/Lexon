@@ -41,6 +41,7 @@ public class TextInjector : ITextInjector
     private const uint KEYEVENTF_UNICODE = 0x0004;
     private const int VK_BACK = 0x08;
     private const int VK_DELETE = 0x2E;
+    private const int VK_RIGHT = 0x27;
     private const int VK_SHIFT = 0x10;
     private const int VK_CONTROL = 0x11;
     private const int VK_LEFT = 0x25;
@@ -208,6 +209,39 @@ public class TextInjector : ITextInjector
         else
         {
             DiagnosticLog.Write($"DeleteBackward: SendInput accepted all {sent} events");
+        }
+    }
+
+    public void DeleteForward(int count)
+    {
+        SendKey(VK_DELETE, count, "DeleteForward");
+    }
+
+    public void MoveRight(int count)
+    {
+        SendKey(VK_RIGHT, count, "MoveRight", extended: true);
+    }
+
+    private void SendKey(int virtualKey, int count, string name, bool extended = false)
+    {
+        if (count <= 0)
+        {
+            return;
+        }
+
+        DiagnosticLog.Write($"{name}: count={count}");
+        var inputs = new List<INPUT>();
+        for (var i = 0; i < count; i++)
+        {
+            inputs.Add(Key(virtualKey, down: true, extended));
+            inputs.Add(Key(virtualKey, down: false, extended));
+        }
+
+        var sent = SendInput((uint)inputs.Count, inputs.ToArray(), Marshal.SizeOf<INPUT>());
+        if (sent != inputs.Count)
+        {
+            var errorCode = Marshal.GetLastWin32Error();
+            DiagnosticLog.Write($"{name}: SendInput BLOCKED OR PARTIAL — requested={inputs.Count} actual={sent} Win32Error={errorCode}");
         }
     }
 

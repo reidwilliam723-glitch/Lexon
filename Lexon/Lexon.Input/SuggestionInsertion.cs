@@ -10,6 +10,82 @@ public static class SuggestionInsertion
     /// When the suggestion continues the current word, only the missing suffix is inserted
     /// so "hel" + "hello" becomes "hello" rather than "helhello".
     /// </summary>
+    /// <summary>
+    /// The letters of the word before the caret, and the letters of that same
+    /// word still after the caret. False when the caret is not inside a word.
+    /// </summary>
+    public static bool TryWordAtCaret(string? fullText, int caret, out string before, out string after)
+    {
+        before = string.Empty;
+        after = string.Empty;
+        if (string.IsNullOrEmpty(fullText))
+        {
+            return false;
+        }
+
+        if (caret < 0)
+        {
+            caret = 0;
+        }
+        else if (caret > fullText.Length)
+        {
+            caret = fullText.Length;
+        }
+
+        if (caret == 0 || IsWordSeparator(fullText[caret - 1]))
+        {
+            return false;
+        }
+
+        var start = caret;
+        while (start > 0 && !IsWordSeparator(fullText[start - 1]))
+        {
+            start--;
+        }
+
+        var end = caret;
+        while (end < fullText.Length && !IsWordSeparator(fullText[end]))
+        {
+            end++;
+        }
+
+        before = fullText[start..caret];
+        after = fullText[caret..end];
+        return before.Length > 0;
+    }
+
+    /// <summary>
+    /// Prefix to suggest from. The word at the caret wins over the keystroke
+    /// buffer, which only knows the last characters typed.
+    /// </summary>
+    public static string SuggestionPrefix(string? typedBuffer, string? fullText, int caret)
+    {
+        if (TryWordAtCaret(fullText, caret, out var before, out _))
+        {
+            return before;
+        }
+
+        return CurrentToken(typedBuffer);
+    }
+
+    /// <summary>
+    /// Replacement for a word the caret sits inside. Letters after the caret
+    /// are deleted as well, so the suggestion replaces the whole word.
+    /// </summary>
+    public static (int DeleteBackward, int DeleteForward, string InsertText) GetWordReplacement(
+        string? beforeCaret,
+        string? afterCaret,
+        string? suggestion)
+    {
+        var (backward, insert) = GetReplacement(beforeCaret, suggestion);
+        if (string.IsNullOrEmpty(suggestion))
+        {
+            return (0, 0, string.Empty);
+        }
+
+        return (backward, afterCaret?.Length ?? 0, insert);
+    }
+
     public static (int DeleteCount, string InsertText) GetReplacement(string? currentWord, string? suggestion)
     {
         suggestion ??= string.Empty;

@@ -51,6 +51,10 @@ public sealed class GallerySettingsServices
 
     public IWritingDialogs? WritingDialogs { get; init; }
 
+    public IWritingStatsReader? WritingStats { get; init; }
+
+    public ILearnedWordCatalog? LearnedWords { get; init; }
+
     public IFileDialogService? FileDialogs { get; init; }
 
     public IMessageService? Messages { get; init; }

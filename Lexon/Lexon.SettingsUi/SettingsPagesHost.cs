@@ -14,6 +14,11 @@ namespace Lexon.SettingsUi;
 internal sealed class SettingsPagesHost : IDisposable
 {
     private readonly GallerySettingsServices _services;
+    private System.Windows.Controls.ContentControl? _pageHost;
+    private WritingStatsPage? _statsPage;
+    private LearnedWordsPage? _learnedPage;
+    private WritingStatsPageModel? _statsModel;
+    private LearnedWordsPageModel? _learnedModel;
     private readonly DispatcherTimer _persistTimer;
     private readonly ClipboardHwndListener _clipboard = new();
     private readonly GalleryClipboardWatch? _ownedWatch;
@@ -127,6 +132,7 @@ internal sealed class SettingsPagesHost : IDisposable
             Writing.UserEdited += () => OnPageUserEdited(Writing);
             WritingPage = new WritingPage(Writing);
             services.Pages.Add(Writing);
+            AttachWritingDetailPages();
         }
 
         if (services.ProcessPicker != null)
@@ -246,12 +252,14 @@ internal sealed class SettingsPagesHost : IDisposable
 
     public void ShowGeneral(System.Windows.Controls.ContentControl content)
     {
+        _pageHost = content;
         content.Content = GeneralPage;
         ReloadPage(General);
     }
 
     public void ShowAi(System.Windows.Controls.ContentControl content)
     {
+        _pageHost = content;
         content.Content = AiPage;
         _services.Reload();
         Ai?.OnTabSelected();
@@ -259,24 +267,28 @@ internal sealed class SettingsPagesHost : IDisposable
 
     public void ShowPrivacy(System.Windows.Controls.ContentControl content)
     {
+        _pageHost = content;
         content.Content = PrivacyPage;
         ReloadPage(Privacy);
     }
 
     public void ShowAppearance(System.Windows.Controls.ContentControl content)
     {
+        _pageHost = content;
         content.Content = AppearancePage;
         ReloadPage(Appearance);
     }
 
     public void ShowAppTone(System.Windows.Controls.ContentControl content)
     {
+        _pageHost = content;
         content.Content = AppTonePage;
         ReloadPage(AppTone);
     }
 
     public void ShowWriting(System.Windows.Controls.ContentControl content)
     {
+        _pageHost = content;
         content.Content = WritingPage;
         ReloadPage(Writing);
         Writing?.RefreshLearning();
@@ -284,6 +296,7 @@ internal sealed class SettingsPagesHost : IDisposable
 
     public void ShowApps(System.Windows.Controls.ContentControl content)
     {
+        _pageHost = content;
         content.Content = AppsPage;
         ReloadPage(Apps);
     }
@@ -365,6 +378,50 @@ internal sealed class SettingsPagesHost : IDisposable
         if (_services.Pages.Any(static p => p.IsDirty))
         {
             FlushPendingSaves();
+        }
+    }
+
+    private void AttachWritingDetailPages()
+    {
+        if (Writing == null)
+        {
+            return;
+        }
+
+        if (_services.WritingStats != null)
+        {
+            _statsModel = new WritingStatsPageModel(_services.WritingStats, ReturnToWriting);
+            _statsPage = new WritingStatsPage(_statsModel);
+            Writing.OpenStatsInSettings = () =>
+            {
+                _statsModel.Refresh();
+                if (_pageHost != null && _statsPage != null)
+                {
+                    _pageHost.Content = _statsPage;
+                }
+            };
+        }
+
+        if (_services.LearnedWords != null)
+        {
+            _learnedModel = new LearnedWordsPageModel(_services.LearnedWords, _services.Messages, ReturnToWriting);
+            _learnedPage = new LearnedWordsPage(_learnedModel);
+            Writing.OpenLearnedWordsInSettings = () =>
+            {
+                _learnedModel.Refresh();
+                if (_pageHost != null && _learnedPage != null)
+                {
+                    _pageHost.Content = _learnedPage;
+                }
+            };
+        }
+    }
+
+    private void ReturnToWriting()
+    {
+        if (_pageHost != null)
+        {
+            ShowWriting(_pageHost);
         }
     }
 

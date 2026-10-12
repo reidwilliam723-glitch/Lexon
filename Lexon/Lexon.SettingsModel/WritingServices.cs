@@ -1,3 +1,5 @@
+using Lexon.Core.Models;
+
 namespace Lexon.SettingsModel;
 
 public sealed class AdaptationItem
@@ -22,6 +24,27 @@ public interface IPersonalizationService
     string ExportLearningData();
 
     bool ImportLearningData(string json);
+}
+
+public interface IWritingStatsReader
+{
+    /// <summary>Null when stats are not available because Lexon is not running.</summary>
+    WritingStatsSnapshot? Read();
+}
+
+public interface ILearnedWordCatalog
+{
+    IReadOnlyList<string> Words { get; }
+
+    void Add(string word);
+
+    void Remove(IReadOnlyList<string> words);
+
+    void NeverLearn(string word);
+
+    void UndoLast();
+
+    void Clear();
 }
 
 public interface IWritingDialogs
