@@ -28,7 +28,7 @@ public class SettingsWindowTests
         _sta.Run(() =>
         {
             var window = Show(FullServices(out _));
-            Assert.Equal(["General", "AI", "Privacy", "Appearance", "App tone", "Writing", "Apps"], window.TabNames);
+            Assert.Equal(["General", "AI", "Privacy", "Appearance", "App tone", "Writing", "Apps", "Check"], window.TabNames);
             Assert.DoesNotContain("Controls", window.TabNames);
             Assert.True(window.IsGeneralPageVisible);
             window.Destroy();
@@ -48,7 +48,7 @@ public class SettingsWindowTests
             Assert.Same(window.GeneralViewModel, gallery.GeneralViewModel);
             Assert.True(gallery.HasPrivacyTab);
             Assert.True(gallery.HasAppsTab);
-            Assert.Equal(8, gallery.GalleryTabCount);
+            Assert.Equal(9, gallery.GalleryTabCount);
             window.Destroy();
             gallery.Close();
         });

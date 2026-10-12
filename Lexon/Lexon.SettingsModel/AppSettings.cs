@@ -45,6 +45,11 @@ public sealed class AppSettings
     public const string DefaultWritingModeKey = "DefaultWritingMode";
     public const string UseLearnedWordsKey = "UseLearnedWords";
     public const string LearnedWordsMutedAppsKey = "LearnedWordsMutedApps";
+    public const string SpellingConventionKey = "SpellingConvention";
+    public const string QuietHoursEnabledKey = "QuietHoursEnabled";
+    public const string QuietHoursStartKey = "QuietHoursStart";
+    public const string QuietHoursEndKey = "QuietHoursEnd";
+    public const string EditHistoryEnabledKey = "EditHistoryEnabled";
 
     public bool MinimizeToTray { get; set; } = true;
     public bool EnableAutoUpdates { get; set; } = true;
@@ -83,6 +88,11 @@ public sealed class AppSettings
     public string DefaultWritingMode { get; set; } = "Plain language";
     public bool UseLearnedWords { get; set; } = true;
     public List<string> LearnedWordsMutedApps { get; set; } = [];
+    public string SpellingConvention { get; set; } = "US";
+    public bool QuietHoursEnabled { get; set; }
+    public string QuietHoursStart { get; set; } = "22:00";
+    public string QuietHoursEnd { get; set; } = "07:00";
+    public bool EditHistoryEnabled { get; set; } = true;
 
     public void Read(Profile profile)
     {
@@ -126,6 +136,11 @@ public sealed class AppSettings
         DefaultWritingMode = profile.GetSetting(DefaultWritingModeKey, "Plain language");
         UseLearnedWords = profile.GetSetting(UseLearnedWordsKey, true);
         LearnedWordsMutedApps = profile.GetSetting<List<string>>(LearnedWordsMutedAppsKey, []) ?? [];
+        SpellingConvention = profile.GetSetting(SpellingConventionKey, "US");
+        QuietHoursEnabled = profile.GetSetting(QuietHoursEnabledKey, false);
+        QuietHoursStart = profile.GetSetting(QuietHoursStartKey, "22:00");
+        QuietHoursEnd = profile.GetSetting(QuietHoursEndKey, "07:00");
+        EditHistoryEnabled = profile.GetSetting(EditHistoryEnabledKey, true);
     }
 
     public void Write(Profile profile)
@@ -168,7 +183,12 @@ public sealed class AppSettings
             AppTerminologyOverridesKey,
             DefaultWritingModeKey,
             UseLearnedWordsKey,
-            LearnedWordsMutedAppsKey);
+            LearnedWordsMutedAppsKey,
+            SpellingConventionKey,
+            QuietHoursEnabledKey,
+            QuietHoursStartKey,
+            QuietHoursEndKey,
+            EditHistoryEnabledKey);
     }
 
     /// <summary>
@@ -291,6 +311,21 @@ public sealed class AppSettings
                     break;
                 case LearnedWordsMutedAppsKey:
                     profile.SetSetting(key, LearnedWordsMutedApps);
+                    break;
+                case SpellingConventionKey:
+                    profile.SetSetting(key, SpellingConvention);
+                    break;
+                case QuietHoursEnabledKey:
+                    profile.SetSetting(key, QuietHoursEnabled);
+                    break;
+                case QuietHoursStartKey:
+                    profile.SetSetting(key, QuietHoursStart);
+                    break;
+                case QuietHoursEndKey:
+                    profile.SetSetting(key, QuietHoursEnd);
+                    break;
+                case EditHistoryEnabledKey:
+                    profile.SetSetting(key, EditHistoryEnabled);
                     break;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(keys), key, "Unknown settings key.");

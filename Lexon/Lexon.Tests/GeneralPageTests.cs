@@ -193,7 +193,7 @@ public class GeneralPageTests
             Assert.True(window.HasGeneralTab);
             Assert.False(window.HasAppearanceTab);
             Assert.False(window.HasPrivacyTab);
-            Assert.Equal(2, window.GalleryTabCount);
+            Assert.Equal(3, window.GalleryTabCount);
             Assert.False(window.IsGeneralPageVisible);
             var loadsBeforeSelect = startup.GetCalls;
 

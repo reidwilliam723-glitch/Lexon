@@ -154,7 +154,9 @@ public static class LexonServiceComposer
             app);
         var dictionary = new DictionarySuggestionProvider(storage)
         {
-            AllowsLearnedWords = AllowsLearned
+            AllowsLearnedWords = AllowsLearned,
+            ReadSpellingConvention = () => SpellingConventions.NormalizeChoice(
+                profile.GetSetting("SpellingConvention", SpellingConventions.US))
         };
         suggestionPipeline.AddProvider(dictionary);
         suggestionPipeline.SetLearnedWordsAllowed(AllowsLearned);

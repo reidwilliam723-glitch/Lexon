@@ -1,0 +1,80 @@
+<UserControl x:Class="Lexon.SettingsUi.CheckLexonPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:Lexon.SettingsUi">
+  <ScrollViewer HorizontalScrollBarVisibility="Disabled"
+                VerticalScrollBarVisibility="Auto"
+                Focusable="False">
+    <StackPanel Margin="16">
+      <local:SectionHeader Title="Check Lexon" Margin="0,0,0,12" IsTabStop="False"/>
+
+      <local:Card IsTabStop="False" Margin="0,0,0,12">
+        <StackPanel>
+          <TextBlock Text="{Binding RunningText}" TextWrapping="Wrap" Margin="0,0,0,4"/>
+          <TextBlock Text="{Binding EnabledText}" TextWrapping="Wrap" Margin="0,0,0,4"/>
+          <TextBlock Text="{Binding CurrentAppText}" TextWrapping="Wrap" Margin="0,0,0,4"/>
+          <TextBlock Text="{Binding CanInteractText}" TextWrapping="Wrap" Margin="0,0,0,12"/>
+          <Button Content="Refresh" HorizontalAlignment="Left" Margin="0,0,0,8"
+                  Click="OnRefresh" Style="{DynamicResource SecondaryButton}"
+                  AutomationProperties.Name="Refresh Lexon check"/>
+          <Button Content="Copy diagnostic report" HorizontalAlignment="Left"
+                  Click="OnCopy" Style="{DynamicResource SecondaryButton}"
+                  AutomationProperties.Name="Copy diagnostic report"
+                  AutomationProperties.HelpText="Copies whether Lexon is running and which app is focused. It does not include what you typed."/>
+          <TextBlock Text="The report names the focused app and the switches. It does not include what you typed or the window title."
+                     TextWrapping="Wrap" Margin="0,8,0,0"
+                     Foreground="{DynamicResource TextSecondaryBrush}"/>
+        </StackPanel>
+      </local:Card>
+
+      <local:Card IsTabStop="False" Margin="0,0,0,12">
+        <StackPanel>
+          <local:SectionHeader Title="Quiet hours" Margin="0,0,0,12" IsTabStop="False"/>
+          <CheckBox Content="Pause Lexon during quiet hours"
+                    IsChecked="{Binding QuietHoursEnabled}"
+                    AutomationProperties.Name="Pause Lexon during quiet hours"/>
+          <TextBlock Text="From" Margin="0,12,0,4"/>
+          <TextBox Text="{Binding QuietHoursStart, UpdateSourceTrigger=LostFocus}" Width="120" HorizontalAlignment="Left"/>
+          <TextBlock Text="Until" Margin="0,8,0,4"/>
+          <TextBox Text="{Binding QuietHoursEnd, UpdateSourceTrigger=LostFocus}" Width="120" HorizontalAlignment="Left"/>
+          <TextBlock Text="Use 24-hour times, such as 22:00 and 07:00. Overnight ranges are fine. Pause in this app, on the tray, still uses the blocked-app list on Privacy."
+                     TextWrapping="Wrap" Margin="0,8,0,0"
+                     Foreground="{DynamicResource TextSecondaryBrush}"/>
+        </StackPanel>
+      </local:Card>
+
+      <local:Card IsTabStop="False">
+        <StackPanel>
+          <local:SectionHeader Title="Recent edits" Margin="0,0,0,12" IsTabStop="False"/>
+          <CheckBox Content="Keep a local history of Lexon edits"
+                    IsChecked="{Binding EditHistoryEnabled}"
+                    AutomationProperties.Name="Keep a local history of Lexon edits"/>
+          <TextBlock Text="Stored on this PC only. Each row is the text Lexon replaced and the text it inserted."
+                     TextWrapping="Wrap" Margin="0,4,0,8"
+                     Foreground="{DynamicResource TextSecondaryBrush}"/>
+          <Button Content="Clear history" HorizontalAlignment="Left" Margin="0,0,0,8"
+                  Click="OnClear" Style="{DynamicResource SecondaryButton}"
+                  AutomationProperties.Name="Clear edit history"/>
+          <ItemsControl ItemsSource="{Binding HistoryRows}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate>
+                <Grid Margin="0,0,0,8">
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                  </Grid.ColumnDefinitions>
+                  <TextBlock Grid.Column="0" Text="{Binding Original}" TextWrapping="Wrap" Margin="0,0,8,0"/>
+                  <TextBlock Grid.Column="1" Text="{Binding Replacement}" TextWrapping="Wrap" Margin="0,0,8,0"/>
+                  <Button Grid.Column="2" Content="Undo" IsEnabled="{Binding CanUndo}" Click="OnUndo"
+                          Style="{DynamicResource SecondaryButton}"
+                          AutomationProperties.Name="Undo this edit"/>
+                </Grid>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+      </local:Card>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

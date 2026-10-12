@@ -672,7 +672,7 @@ public partial class SettingsForm : Form
             Hint(_chkUseLearnedWords, "Offer vocabulary Lexon learned from your typing. Turn this off to stop it in every app."),
             Caption("Don't use learned words in these apps"),
             Hint(_txtLearnedMutedApps, "Comma-separated process names. Learned words stay on in every other app."),
-            Hint(_btnTerminology, "Names and product terms protected from autocorrect and spelling."),
+            Hint(_btnTerminology, "Names and terms Lexon should keep. Use old => new for a preferred spelling or phrase."),
             Hint(_btnExportLearning, "Save learned vocabulary and style as a JSON file."),
             Hint(_btnImportLearning, "Restore learned vocabulary and style from a JSON file."),
             Caption("Detected writing style"),

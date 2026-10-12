@@ -1,6 +1,8 @@
 using System.Diagnostics;
 using Lexon.Service;
+using Lexon.Onboarding.Models;
 using Lexon.Onboarding.Wizard;
+using Lexon.Core.Grammar;
 using Lexon.Profiles;
 using Lexon.Core;
 using Lexon.Core.Interfaces;
@@ -36,6 +38,12 @@ static class Program
     private static bool _classicSettings;
     private static SettingsRouter _router = new(false, false);
     private static GallerySettingsServices? _galleryServices;
+    private static LocalEditHistory? _editHistory;
+    private static int _undoCount;
+    private static System.Windows.Forms.Timer? _quietTimer;
+    private static bool _showTutorial;
+    private static bool _pausedByQuietHours;
+    private static DateTime? _quietResumeOverrideUntil;
 
     /// <summary>
     ///  The main entry point for the application.
@@ -119,25 +127,19 @@ static class Program
 
             if (isFirstRun)
             {
-                // Show onboarding wizard
-                try
-                {
-                    using var wizard = new OnboardingWizard(_composition.Storage, _composition.Profile, _composition.ThemeManager);
-                    var result = wizard.ShowDialog();
-
-                    // If user cancels onboarding, exit the application
-                    if (result != DialogResult.OK)
+                _composition.Storage.SaveAsync(
+                    "onboarding_state",
+                    new OnboardingState
                     {
-                        return;
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _crashReporter.LogCrash(ex, "Failed during onboarding", isTerminating: true);
-                    ShowCrashMessageBox("Lexon failed during the onboarding wizard.", ex);
-                    return;
-                }
+                        HasCompletedOnboarding = true,
+                        OnboardingCompleted = DateTime.UtcNow
+                    }).GetAwaiter().GetResult();
+                _composition.Profile.SetSetting("CoachCompleted", true);
+                _composition.Profile.SetSetting("TutorialCompleted", false);
+                _ = _composition.Profile.SaveAsync();
             }
+
+            _showTutorial = !_composition.Profile.GetSetting("TutorialCompleted", !isFirstRun);
 
             _composition.Service.StartAsync().Wait();
 
@@ -152,6 +154,7 @@ static class Program
             _trayManager.AboutRequested += OnAboutRequested;
             _trayManager.UndoRequested += OnUndoRequested;
             _trayManager.PauseFifteenRequested += OnPauseFifteenRequested;
+            _trayManager.PauseUntilResumeRequested += OnPauseUntilResumeRequested;
             _trayManager.PauseThisAppRequested += OnPauseThisAppRequested;
             _composition.Service.BlockApplicationRequested += (_, app) => BlockApplication(app);
             _trayManager.ResumeRequested += OnResumeRequested;
@@ -163,8 +166,16 @@ static class Program
             }
             UpdateChecker.BusyChanged += busy => _trayManager?.SetUpdatesBusy(busy);
             _composition.KeyboardShortcutManager.ShortcutTriggered += OnShortcutTriggered;
+            _editHistory = new LocalEditHistory(EditHistoryPath());
+            _editHistory.Enabled = _composition.Profile.GetSetting(AppSettings.EditHistoryEnabledKey, true);
+            _editHistory.UndoAvailable = HistoryUndoMatches;
+            _editHistory.PerformUndo = () => _composition.UndoManager.Undo();
+            _undoCount = _composition.UndoManager.UndoCount;
             _composition.UndoManager.Changed += (_, _) =>
-                _trayManager.SetUndoAvailability(_composition.UndoManager.CanUndo, _composition.UndoManager.LastUndoLabel);
+            {
+                _trayManager?.SetUndoAvailability(_composition.UndoManager.CanUndo, _composition.UndoManager.LastUndoLabel);
+                RememberLatestEdit();
+            };
 
             StartShowSettingsWaiter();
             StartUpdateChecker();
@@ -175,6 +186,15 @@ static class Program
 
             MaybeShowWelcomeBalloon();
             Application.Idle += ShowCoachOnIdle;
+            if (_showTutorial)
+            {
+                Application.Idle += ShowTutorialOnIdle;
+            }
+
+            _quietTimer = new System.Windows.Forms.Timer { Interval = 30_000 };
+            _quietTimer.Tick += (_, _) => ApplyQuietHours();
+            _quietTimer.Start();
+            ApplyQuietHours();
 
             // Wire quick toggle to update tray status
             _composition.QuickToggleManager.ToggleStateChanged += (sender, isEnabled) =>
@@ -478,6 +498,16 @@ static class Program
             WritingDialogs = writingDialogs,
             WritingStats = writingDialogs,
             LearnedWords = writingDialogs,
+            LexonCheck = new RunningLexonCheck(_composition),
+            EditHistory = _editHistory,
+            ShowTutorial = _showTutorial,
+            TutorialFinished = () =>
+            {
+                _showTutorial = false;
+                _composition.Profile.SetSetting("TutorialCompleted", true);
+                _composition.Profile.SetSetting("CoachCompleted", true);
+                _ = _composition.Profile.SaveAsync();
+            },
             FileDialogs = fileDialogs,
             Messages = messages,
             SettingsBackup = new SettingsBackupAdapter(_composition.Storage, profile),
@@ -526,6 +556,10 @@ static class Program
         }
 
         _composition.PrivacyGuard.ReplaceBlockedApplications(snapshot.BlockedApplications);
+        if (_editHistory != null)
+        {
+            _editHistory.Enabled = snapshot.EditHistoryEnabled;
+        }
         _composition.SuggestionPipeline?.SetSortMode(snapshot.SuggestionSortMode);
         _composition.SuggestionOverlay?.SetPlacement(snapshot.SuggestionPlacement);
         if (_composition.EditConfirmation != null)
@@ -722,6 +756,7 @@ static class Program
         CancelTimedPause();
         if (minutes <= 0)
         {
+            _trayManager?.SetPaused(true, "Paused");
             return;
         }
 
@@ -739,8 +774,36 @@ static class Program
         _ => $"{minutes} minutes"
     };
 
+    private static void OnPauseUntilResumeRequested(object? sender, EventArgs e)
+    {
+        if (_composition == null)
+        {
+            return;
+        }
+
+        _suppressQuickPause = true;
+        try
+        {
+            _composition.QuickToggleManager.SetEnabled(false);
+        }
+        finally
+        {
+            _suppressQuickPause = false;
+        }
+
+        CancelTimedPause();
+        _trayManager?.SetPaused(true, "Paused");
+        _trayManager?.ShowStatusToast("Paused until you turn it back on", false);
+    }
+
     private static void OnResumeRequested(object? sender, EventArgs e)
     {
+        if (TryQuietWindow(out var quiet, out var end) && quiet)
+        {
+            _quietResumeOverrideUntil = end;
+        }
+
+        _pausedByQuietHours = false;
         CancelTimedPause();
         _composition?.QuickToggleManager.SetEnabled(true);
         _trayManager?.SetPaused(false);
@@ -814,6 +877,135 @@ static class Program
         _trayManager.ShowBalloonTip($"Lexon {AppVersion.Current}", text, ToolTipIcon.Info);
         _composition.Profile.SetSetting("LastWelcomeVersion", AppVersion.Current);
         _ = _composition.Profile.SaveAsync();
+    }
+
+    private static void ShowTutorialOnIdle(object? sender, EventArgs e)
+    {
+        Application.Idle -= ShowTutorialOnIdle;
+        if (_shuttingDown || !_showTutorial)
+        {
+            return;
+        }
+
+        OpenSettings(SettingsEntryPoint.Tray);
+    }
+
+    private static void RememberLatestEdit()
+    {
+        if (_composition == null || _editHistory == null)
+        {
+            return;
+        }
+
+        var count = _composition.UndoManager.UndoCount;
+        var grew = count > _undoCount;
+        _undoCount = count;
+        if (!grew)
+        {
+            return;
+        }
+
+        var operation = _composition.UndoManager.PeekUndo();
+        if (operation == null)
+        {
+            return;
+        }
+
+        var original = operation.DeletedText;
+        var replacement = operation.InsertedText;
+        var utc = operation.Timestamp;
+        InvokeOnUiThread(() => _editHistory?.Record(original, replacement, utc));
+    }
+
+    private static bool HistoryUndoMatches()
+    {
+        if (_composition == null || _editHistory == null || _editHistory.Entries.Count == 0)
+        {
+            return false;
+        }
+
+        var top = _composition.UndoManager.PeekUndo();
+        return top != null && top.Timestamp == _editHistory.Entries[0].Utc;
+    }
+
+    private static string EditHistoryPath()
+        => Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "Lexon",
+            "edit-history.json");
+
+    private static void ApplyQuietHours()
+    {
+        if (_composition == null || _shuttingDown)
+        {
+            return;
+        }
+
+        if (!TryQuietWindow(out var quiet, out _))
+        {
+            return;
+        }
+
+        if (_quietResumeOverrideUntil is DateTime until)
+        {
+            if (DateTime.Now < until)
+            {
+                quiet = false;
+            }
+            else
+            {
+                _quietResumeOverrideUntil = null;
+            }
+        }
+
+        if (quiet && _composition.QuickToggleManager.IsEnabled)
+        {
+            _suppressQuickPause = true;
+            try
+            {
+                _composition.QuickToggleManager.SetEnabled(false);
+            }
+            finally
+            {
+                _suppressQuickPause = false;
+            }
+
+            CancelTimedPause();
+            _pausedByQuietHours = true;
+            _trayManager?.SetPaused(true, "Quiet hours");
+            return;
+        }
+
+        if (!quiet && _pausedByQuietHours)
+        {
+            _pausedByQuietHours = false;
+            _composition.QuickToggleManager.SetEnabled(true);
+            _trayManager?.SetPaused(false);
+            UpdateTrayStatus(true);
+        }
+    }
+
+    private static bool TryQuietWindow(out bool quiet, out DateTime windowEnd)
+    {
+        quiet = false;
+        windowEnd = DateTime.Now;
+        if (_composition == null)
+        {
+            return false;
+        }
+
+        var enabled = _composition.Profile.GetSetting(AppSettings.QuietHoursEnabledKey, false);
+        var startText = _composition.Profile.GetSetting(AppSettings.QuietHoursStartKey, "22:00");
+        var endText = _composition.Profile.GetSetting(AppSettings.QuietHoursEndKey, "07:00");
+        if (!QuietHours.TryParse(startText, out var start) || !QuietHours.TryParse(endText, out var end))
+        {
+            return false;
+        }
+
+        var now = DateTime.Now;
+        quiet = QuietHours.IsQuiet(TimeOnly.FromDateTime(now), start, end, enabled);
+        windowEnd = QuietHours.WindowEnd(now, start, end);
+        return true;
     }
 
     private static void ShowCoachOnIdle(object? sender, EventArgs e)
@@ -950,6 +1142,66 @@ static class Program
         {
             // Default to enabled if Group Policy check fails
             return true;
+        }
+    }
+
+    private sealed class RunningLexonCheck : ILexonCheck
+    {
+        private readonly LexonServiceComposer.CompositionResult _composition;
+
+        public RunningLexonCheck(LexonServiceComposer.CompositionResult composition)
+        {
+            _composition = composition;
+        }
+
+        public LexonStatusSnapshot Capture()
+        {
+            TextContext context;
+            try
+            {
+                context = _composition.FocusTracker.GetCurrentContext();
+            }
+            catch
+            {
+                context = new TextContext();
+            }
+
+            var process = context.ApplicationName ?? string.Empty;
+            var secure = false;
+            var paused = false;
+            try
+            {
+                secure = _composition.PrivacyGuard.IsSecureField(context);
+                paused = _composition.PrivacyGuard.IsApplicationBlocked(process);
+            }
+            catch
+            {
+                // A check should still produce a report.
+            }
+
+            var quiet = false;
+            if (TryQuietWindow(out quiet, out _)
+                && _quietResumeOverrideUntil is DateTime until
+                && DateTime.Now < until)
+            {
+                quiet = false;
+            }
+
+            return new LexonStatusSnapshot
+            {
+                Version = AppVersion.Current,
+                IsRunning = true,
+                IsEnabled = _composition.QuickToggleManager.IsEnabled,
+                CurrentProcess = process,
+                FocusedWindow = !string.IsNullOrWhiteSpace(process),
+                SecureField = secure,
+                AppPaused = paused,
+                QuietHours = quiet,
+                Spelling = SpellingConventions.NormalizeChoice(
+                    _composition.Profile.GetSetting(AppSettings.SpellingConventionKey, SpellingConventions.US)),
+                HistoryEnabled = _editHistory?.Enabled ?? true,
+                HistoryCount = _editHistory?.Entries.Count ?? 0
+            };
         }
     }
 }

@@ -70,13 +70,28 @@
                      FontFamily="{DynamicResource LexonFontFamily}"
                      FontSize="{DynamicResource CaptionFontSize}"/>
 
+          <TextBlock Text="Spelling" TextWrapping="Wrap" Margin="0,0,0,4"
+                     Foreground="{DynamicResource TextBrush}"
+                     FontFamily="{DynamicResource LexonFontFamily}"
+                     FontSize="{DynamicResource BodyFontSize}"/>
+          <ComboBox ItemsSource="{x:Static model:WritingViewModel.SpellingLabels}"
+                    SelectedIndex="{Binding SpellingIndex}"
+                    HorizontalAlignment="Stretch" MinWidth="0"
+                    AutomationProperties.Name="Spelling"
+                    AutomationProperties.HelpText="US, UK, or South African English. South African uses UK spellings such as colour."/>
+          <TextBlock Text="US, UK, or South African English. South African uses UK spellings such as colour. Lexon does not guess the language."
+                     TextWrapping="Wrap" Margin="0,4,0,12"
+                     Foreground="{DynamicResource TextSecondaryBrush}"
+                     FontFamily="{DynamicResource LexonFontFamily}"
+                     FontSize="{DynamicResource CaptionFontSize}"/>
+
           <Button Content="Manage terminology…"
                   HorizontalAlignment="Left" Margin="0,0,0,4"
                   Click="OnTerminology"
                   Style="{DynamicResource SecondaryButton}"
                   AutomationProperties.Name="Manage terminology…"
-                  AutomationProperties.HelpText="Names and product terms protected from autocorrect and spelling."/>
-          <TextBlock Text="Names and product terms protected from autocorrect and spelling."
+                  AutomationProperties.HelpText="Names and terms Lexon should keep. Use old => new for a preferred spelling or phrase."/>
+          <TextBlock Text="Names and product terms protected from autocorrect. Write old => new for a preferred spelling, acronym, or phrase."
                      TextWrapping="Wrap" Margin="0,0,0,12"
                      Foreground="{DynamicResource TextSecondaryBrush}"
                      FontFamily="{DynamicResource LexonFontFamily}"

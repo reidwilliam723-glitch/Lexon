@@ -1,3 +1,4 @@
+using Lexon.Core.Grammar;
 using Lexon.Core.Interfaces;
 using Lexon.Core.Learning;
 using Lexon.Core.Models;
@@ -16,6 +17,7 @@ public class DictionarySuggestionProvider : ISuggestionProvider, ILearnableSugge
 
     private readonly IStorage _storage;
     private readonly Dictionary<char, string[]> _sortedLexicon = new();
+    private readonly List<string> _apostropheWords = new();
     private readonly Dictionary<char, string[]> _firstLetterCommon = new();
     private readonly HashSet<string> _lexiconWords = new(WordComparer);
     private readonly Dictionary<string, int> _frequencyRank = new(WordComparer);
@@ -40,6 +42,8 @@ public class DictionarySuggestionProvider : ISuggestionProvider, ILearnableSugge
     /// the user typed them are left out of suggestions. Null means they are included.
     /// </summary>
     public Func<string?, bool>? AllowsLearnedWords { get; set; }
+
+    public Func<string>? ReadSpellingConvention { get; set; }
 
     public DictionarySuggestionProvider(IStorage storage)
     {
@@ -69,6 +73,12 @@ public class DictionarySuggestionProvider : ISuggestionProvider, ILearnableSugge
             {
                 CollectPrefixMatches(prefix, matches, includeLearned);
             }
+        }
+
+        var convention = ReadSpellingConvention?.Invoke();
+        if (SpellingConventions.TryPreferred(prefix, convention, out var preferred))
+        {
+            matches.Add(preferred);
         }
 
         IEnumerable<Suggestion> suggestions = matches
@@ -368,6 +378,8 @@ public class DictionarySuggestionProvider : ISuggestionProvider, ILearnableSugge
             }
         }
 
+        CollectApostropheMatches(prefix, matches);
+
         if (includeLearned && _learnedByLetter.TryGetValue(letter, out var learned))
         {
             foreach (var word in learned)
@@ -382,6 +394,12 @@ public class DictionarySuggestionProvider : ISuggestionProvider, ILearnableSugge
 
     private double ScoreForWord(string word, string prefix)
     {
+        if (SpellingConventions.TryPreferred(prefix, ReadSpellingConvention?.Invoke(), out var preferred)
+            && word.Equals(preferred, StringComparison.OrdinalIgnoreCase))
+        {
+            return 0.97;
+        }
+
         if (_learnedWords.Contains(word))
         {
             return 0.94;
@@ -426,6 +444,10 @@ public class DictionarySuggestionProvider : ISuggestionProvider, ILearnableSugge
             }
 
             AddToLetterList(buckets, word);
+            if (word.Contains('\''))
+            {
+                _apostropheWords.Add(word);
+            }
         }
 
         foreach (var word in LoadEmbeddedLines("Lexon.Storage.Resources.english-words.txt"))
@@ -714,6 +736,25 @@ public class DictionarySuggestionProvider : ISuggestionProvider, ILearnableSugge
         return low;
     }
 
+    private void CollectApostropheMatches(string prefix, HashSet<string> matches)
+    {
+        if (prefix.IndexOf('\'') >= 0)
+        {
+            return;
+        }
+
+        foreach (var word in _apostropheWords)
+        {
+            if (StripApostrophes(word).StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+            {
+                matches.Add(word);
+            }
+        }
+    }
+
+    private static string StripApostrophes(string word)
+        => word.Replace("'", string.Empty, StringComparison.Ordinal);
+
     private static string Normalize(string? word)
     {
         if (string.IsNullOrWhiteSpace(word))
@@ -721,16 +762,36 @@ public class DictionarySuggestionProvider : ISuggestionProvider, ILearnableSugge
             return string.Empty;
         }
 
-        var trimmed = word.Trim().TrimStart('\uFEFF').ToLowerInvariant();
+        var trimmed = word.Trim().TrimStart('\uFEFF').ToLowerInvariant().Replace('\u2019', '\'');
+        var chars = new char[trimmed.Length];
+        var count = 0;
         foreach (var ch in trimmed)
         {
+            if (ch == '\'')
+            {
+                if (count == 0 || chars[count - 1] == '\'')
+                {
+                    return string.Empty;
+                }
+
+                chars[count++] = '\'';
+                continue;
+            }
+
             if (ch is < 'a' or > 'z')
             {
                 return string.Empty;
             }
+
+            chars[count++] = ch;
         }
 
-        return trimmed;
+        if (count == 0 || chars[count - 1] == '\'')
+        {
+            return string.Empty;
+        }
+
+        return new string(chars, 0, count);
     }
 
     private static List<string> LoadEmbeddedLines(string resourceName)

@@ -43,7 +43,8 @@ public class WritingViewModelTests
                 AppSettings.AppTerminologyOverridesKey,
                 AppSettings.DefaultWritingModeKey,
                 AppSettings.UseLearnedWordsKey,
-                AppSettings.LearnedWordsMutedAppsKey
+                AppSettings.LearnedWordsMutedAppsKey,
+                AppSettings.SpellingConventionKey
             },
             WritingViewModel.OwnedKeyList);
         Assert.True(vm.DocumentConsistencyChecking);

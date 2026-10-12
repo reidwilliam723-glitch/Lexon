@@ -1,4 +1,4 @@
-﻿the
+the
 of
 and
 to
@@ -148,6 +148,7 @@ jan
 good
 video
 well
+we'll
 where
 info
 rights
@@ -627,6 +628,7 @@ rss
 become
 interest
 id
+i'd
 child
 keep
 enter
@@ -1177,6 +1179,7 @@ contract
 button
 releases
 wed
+we'd
 homes
 super
 male
@@ -2125,7 +2128,7 @@ vehicles
 prevent
 theme
 rich
-im
+i'm
 campaign
 marine
 improvement
@@ -3556,6 +3559,7 @@ dear
 sufficient
 holdem
 shell
+she'll
 province
 catholic
 oak
@@ -3608,7 +3612,7 @@ insert
 baltimore
 gateway
 ky
-dont
+don't
 alumni
 drawing
 candidates
@@ -4248,6 +4252,7 @@ simulation
 layout
 initiatives
 ill
+i'll
 concentration
 classics
 lbs
@@ -4311,6 +4316,7 @@ def
 immigration
 destinations
 lets
+let's
 mutual
 pipeline
 necessarily
@@ -6055,7 +6061,7 @@ arch
 ni
 murphy
 thinks
-thats
+that's
 suggestion
 hdtv
 soldier
@@ -6959,6 +6965,7 @@ travelers
 forestry
 barriers
 cant
+can't
 jd
 rarely
 gpl
@@ -8119,6 +8126,7 @@ instrumental
 giants
 organizing
 shed
+she'd
 balloon
 moderators
 winston
@@ -8360,7 +8368,7 @@ surname
 theology
 nails
 evident
-whats
+what's
 rides
 rehab
 epic
@@ -9903,3 +9911,9 @@ waiter
 watermelon
 whichever
 whoever
+could've
+would've
+should've
+might've
+must've
+y'all

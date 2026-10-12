@@ -55,6 +55,14 @@ public sealed class GallerySettingsServices
 
     public ILearnedWordCatalog? LearnedWords { get; init; }
 
+    public ILexonCheck? LexonCheck { get; init; }
+
+    public IEditHistory? EditHistory { get; init; }
+
+    public bool ShowTutorial { get; set; }
+
+    public Action? TutorialFinished { get; init; }
+
     public IFileDialogService? FileDialogs { get; init; }
 
     public IMessageService? Messages { get; init; }

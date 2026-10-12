@@ -6827,7 +6827,7 @@ ainoi
 ains
 ainsell
 ainsells
-aint
+ain't
 ainu
 ainus
 aioli
@@ -19366,7 +19366,7 @@ arenoid
 arenose
 arenosity
 arenous
-arent
+aren't
 arenulous
 areocentric
 areographer
@@ -46546,6 +46546,7 @@ cansos
 canst
 canstick
 cant
+can't
 cantab
 cantabank
 cantabile
@@ -70515,7 +70516,7 @@ could
 couldest
 couldn
 couldna
-couldnt
+couldn't
 couldron
 couldst
 coulee
@@ -85095,7 +85096,7 @@ didle
 didler
 didn
 didna
-didnt
+didn't
 dido
 didodecahedral
 didodecahedron
@@ -90827,7 +90828,7 @@ does
 doeskin
 doeskins
 doesn
-doesnt
+doesn't
 doest
 doeth
 doeuvre
@@ -91473,7 +91474,7 @@ donship
 donsy
 donsie
 donsky
-dont
+don't
 donum
 donut
 donuts
@@ -131954,7 +131955,7 @@ hadjes
 hadji
 hadjis
 hadland
-hadnt
+hadn't
 hadramautian
 hadrom
 hadrome
@@ -134100,7 +134101,7 @@ haslock
 hasmonaean
 hasmonaeans
 hasn
-hasnt
+hasn't
 hasp
 hasped
 haspicol
@@ -134407,7 +134408,7 @@ havenful
 havening
 havenless
 havens
-havent
+haven't
 havenward
 haver
 haveral
@@ -135177,6 +135178,7 @@ hectostere
 hectowatt
 hecuba
 hed
+he'd
 heddle
 heddlemaker
 heddler
@@ -135649,6 +135651,7 @@ helixes
 helixin
 helizitic
 hell
+he'll
 helladian
 helladic
 helladotherium
@@ -137061,7 +137064,7 @@ hereon
 hereout
 hereright
 herero
-heres
+here's
 heresy
 heresiarch
 heresies
@@ -144582,7 +144585,7 @@ howling
 howlingly
 howlite
 howls
-hows
+how's
 howsabout
 howso
 howsoever
@@ -146281,6 +146284,7 @@ ictuate
 ictus
 ictuses
 id
+i'd
 yd
 ida
 idaean
@@ -147294,6 +147298,7 @@ ilka
 ilkane
 ilks
 ill
+i'll
 illabile
 illaborate
 illachrymable
@@ -147566,7 +147571,7 @@ ilot
 ilpirra
 ilth
 ilvaite
-im
+i'm
 ym
 ima
 image
@@ -157724,7 +157729,7 @@ iotized
 iotizing
 iou
 you
-youd
+you'd
 youden
 youdendrift
 youdith
@@ -157755,7 +157760,7 @@ youp
 youpon
 youpons
 your
-youre
+you're
 yourn
 yours
 yoursel
@@ -157790,7 +157795,7 @@ youths
 youthsome
 youthtide
 youthwort
-youve
+you've
 youward
 youwards
 youze
@@ -158747,7 +158752,7 @@ isms
 isn
 isnad
 isnardia
-isnt
+isn't
 iso
 isoabnormal
 isoagglutination
@@ -159578,7 +159583,7 @@ itineritis
 itineritive
 itinerous
 itys
-itll
+it'll
 itmo
 ito
 itoism
@@ -159720,7 +159725,7 @@ yuzluk
 iv
 iva
 ivan
-ive
+i've
 ivy
 ivybells
 ivyberry
@@ -170916,6 +170921,7 @@ letoff
 letorate
 letrist
 lets
+let's
 lett
 lettable
 letted
@@ -176594,7 +176600,7 @@ lxx
 m
 ma
 maad
-maam
+ma'am
 maamselle
 maana
 maar
@@ -196195,7 +196201,7 @@ mustify
 mustily
 mustiness
 musting
-mustnt
+mustn't
 musts
 mustulent
 musumee
@@ -197967,7 +197973,7 @@ needlings
 needment
 needments
 needn
-neednt
+needn't
 needs
 needsly
 needsome
@@ -210895,7 +210901,7 @@ ocyte
 ock
 ocker
 ockster
-oclock
+o'clock
 ocneria
 oconnell
 oconnor
@@ -287424,7 +287430,7 @@ shanny
 shannies
 shannon
 shansa
-shant
+shan't
 shantey
 shanteys
 shanti
@@ -287751,6 +287757,7 @@ shechemites
 shechita
 shechitah
 shed
+she'd
 shedable
 sheddable
 shedded
@@ -287939,6 +287946,7 @@ shelfroom
 shelfworn
 shelyak
 shell
+she'll
 shellac
 shellack
 shellacked
@@ -289001,7 +289009,7 @@ shoulders
 shouldest
 shouldn
 shouldna
-shouldnt
+shouldn't
 shouldst
 shoulerd
 shoupeltin
@@ -320656,7 +320664,7 @@ thatd
 thatll
 thatn
 thatness
-thats
+that's
 thaught
 thaumantian
 thaumantias
@@ -320837,17 +320845,17 @@ thegnship
 thegnworthy
 they
 theyaou
-theyd
+they'd
 theiform
 theileria
-theyll
+they'll
 thein
 theine
 theines
 theinism
 theins
 their
-theyre
+they're
 theirn
 theirs
 theirselves
@@ -320859,7 +320867,7 @@ theistic
 theistical
 theistically
 theists
-theyve
+they've
 thelalgia
 thelemite
 thelephora
@@ -362952,7 +362960,7 @@ washwomen
 washwork
 wasir
 wasn
-wasnt
+wasn't
 wasoga
 wasp
 waspen
@@ -363695,6 +363703,7 @@ wecche
 wecht
 wechts
 wed
+we'd
 wedana
 wedbed
 wedbedrip
@@ -364012,6 +364021,7 @@ welkin
 welkinlike
 welkins
 well
+we'll
 wellacquainted
 welladay
 welladays
@@ -364185,7 +364195,7 @@ werejaguar
 wereleopard
 werelion
 weren
-werent
+weren't
 weretiger
 werewall
 werewolf
@@ -364326,7 +364336,7 @@ wettings
 wettish
 wettishness
 wetumpka
-weve
+we've
 wevet
 wewenoc
 wezen
@@ -364462,7 +364472,7 @@ whatnot
 whatnots
 whatre
 whatreck
-whats
+what's
 whatsis
 whatso
 whatsoeer
@@ -364682,7 +364692,7 @@ whereon
 whereout
 whereover
 wherere
-wheres
+where's
 whereso
 wheresoeer
 wheresoever
@@ -367086,6 +367096,7 @@ wonning
 wonnot
 wons
 wont
+won't
 wonted
 wontedly
 wontedness
@@ -367749,7 +367760,7 @@ would
 wouldest
 woulding
 wouldn
-wouldnt
+wouldn't
 wouldst
 woulfe
 wound
@@ -370103,3 +370114,9 @@ zwinglianist
 zwitter
 zwitterion
 zwitterionic
+could've
+would've
+should've
+might've
+must've
+y'all

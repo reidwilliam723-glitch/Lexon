@@ -71,6 +71,10 @@ public sealed class SettingsWindow : Window
         };
         Closed += (_, _) => _host.Release();
         Content = Build();
+        if (_services.ShowTutorial)
+        {
+            AttachTutorial();
+        }
     }
 
     internal IReadOnlyList<string> TabNames => _tabs.Select(tab => (string)tab.Content).ToList();
@@ -108,6 +112,88 @@ public sealed class SettingsWindow : Window
         {
             _tabs[index].IsChecked = true;
         }
+    }
+
+    private void AttachTutorial()
+    {
+        var steps = new[]
+        {
+            "Lexon sits in the tray and offers suggestions as you type. Accept one with the key you chose (Tab by default). Ctrl+Shift+Z undoes the last change.",
+            "Writing is where spelling lives: US, UK, or South African English. South African uses UK spellings such as colour. Terminology keeps names, acronyms, and phrases. Write old => new when you want one form every time.",
+            "Privacy is where you pause Lexon in particular apps. The tray command Pause in this app adds the focused app to that list. Check shows whether Lexon is running and can work in the current app, plus quiet hours and a local history of edits.",
+            "You can skip this. Lexon keeps running either way."
+        };
+        var index = 0;
+        var grid = new Grid();
+        if (Content is UIElement page)
+        {
+            Content = null;
+            grid.Children.Add(page);
+        }
+
+        var shade = new Border
+        {
+            Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromArgb(160, 0, 0, 0)),
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch
+        };
+        var card = new Border
+        {
+            MaxWidth = 460,
+            Padding = new Thickness(20),
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+            CornerRadius = new CornerRadius(8)
+        };
+        card.SetResourceReference(Border.BackgroundProperty, "BackgroundBrush");
+        var body = new TextBlock { TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 8, 0, 16) };
+        body.SetResourceReference(TextBlock.ForegroundProperty, "TextBrush");
+        var title = new TextBlock { Text = "Welcome to Lexon", FontSize = 18 };
+        title.SetResourceReference(TextBlock.ForegroundProperty, "TextBrush");
+        var next = new Button { Content = "Next", Margin = new Thickness(8, 0, 0, 0), MinWidth = 88 };
+        next.SetResourceReference(StyleProperty, "SecondaryButton");
+        var skip = new Button { Content = "Skip", MinWidth = 88 };
+        skip.SetResourceReference(StyleProperty, "SecondaryButton");
+        var buttons = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right };
+        buttons.Children.Add(skip);
+        buttons.Children.Add(next);
+        var stack = new StackPanel();
+        stack.Children.Add(title);
+        stack.Children.Add(body);
+        stack.Children.Add(buttons);
+        card.Child = stack;
+        var layer = new Grid();
+        layer.Children.Add(shade);
+        layer.Children.Add(card);
+        grid.Children.Add(layer);
+        Content = grid;
+
+        void ShowStep()
+        {
+            body.Text = steps[index];
+            next.Content = index == steps.Length - 1 ? "Done" : "Next";
+        }
+
+        void Finish()
+        {
+            grid.Children.Remove(layer);
+            _services.ShowTutorial = false;
+            _services.TutorialFinished?.Invoke();
+        }
+
+        skip.Click += (_, _) => Finish();
+        next.Click += (_, _) =>
+        {
+            if (index >= steps.Length - 1)
+            {
+                Finish();
+                return;
+            }
+
+            index++;
+            ShowStep();
+        };
+        ShowStep();
     }
 
     private UIElement Build()
@@ -148,6 +234,8 @@ public sealed class SettingsWindow : Window
         {
             AddTab(nav, "Apps", () => _host.ShowApps(_content));
         }
+
+        AddTab(nav, "Check", () => _host.ShowCheck(_content));
 
         var about = new Button
         {

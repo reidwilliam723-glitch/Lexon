@@ -18,6 +18,7 @@ public class SystemTrayManager : IDisposable
     private ToolStripMenuItem _statusMenuItem = null!;
     private ToolStripMenuItem _toggleMenuItem = null!;
     private ToolStripMenuItem _pauseFifteenItem = null!;
+    private ToolStripMenuItem _pauseUntilItem = null!;
     private ToolStripMenuItem _resumeItem = null!;
     private ToolStripMenuItem _pauseAppItem = null!;
     private ToolStripMenuItem _undoItem = null!;
@@ -38,6 +39,7 @@ public class SystemTrayManager : IDisposable
     public event EventHandler? AboutRequested;
     public event EventHandler? UndoRequested;
     public event EventHandler? PauseFifteenRequested;
+    public event EventHandler? PauseUntilResumeRequested;
     public event EventHandler? PauseThisAppRequested;
     public event EventHandler? ResumeRequested;
     public event EventHandler? ControlGalleryRequested;
@@ -66,6 +68,8 @@ public class SystemTrayManager : IDisposable
 
         _pauseFifteenItem = new ToolStripMenuItem("Pause for 15 minutes");
         _pauseFifteenItem.Click += (_, _) => PauseFifteenRequested?.Invoke(this, EventArgs.Empty);
+        _pauseUntilItem = new ToolStripMenuItem("Pause until I turn it back on");
+        _pauseUntilItem.Click += (_, _) => PauseUntilResumeRequested?.Invoke(this, EventArgs.Empty);
         _resumeItem = new ToolStripMenuItem("Resume now");
         _resumeItem.Visible = false;
         _resumeItem.Click += (_, _) => ResumeRequested?.Invoke(this, EventArgs.Empty);
@@ -90,6 +94,7 @@ public class SystemTrayManager : IDisposable
         _contextMenu.Items.Add(new ToolStripSeparator());
         _contextMenu.Items.Add(_toggleMenuItem);
         _contextMenu.Items.Add(_pauseFifteenItem);
+        _contextMenu.Items.Add(_pauseUntilItem);
         _contextMenu.Items.Add(_resumeItem);
         _contextMenu.Items.Add(_pauseAppItem);
         _contextMenu.Items.Add(_undoItem);
@@ -148,6 +153,7 @@ public class SystemTrayManager : IDisposable
         {
             _paused = paused;
             _pauseFifteenItem.Visible = !paused;
+            _pauseUntilItem.Visible = !paused;
             _resumeItem.Visible = paused;
             _toggleMenuItem.Text = paused || statusIsInactive()
                 ? "Enable Lexon"

@@ -25,6 +25,84 @@ public static class TerminologyList
         return ContainsIgnoreCase(globalTerms, key) || ContainsIgnoreCase(appTerms, key);
     }
 
+    public static bool TryPreferredWord(string? word, IEnumerable<string>? terms, out string replacement)
+    {
+        replacement = string.Empty;
+        var key = Normalize(word);
+        if (key.Length == 0 || terms == null)
+        {
+            return false;
+        }
+
+        foreach (var term in terms)
+        {
+            if (!TrySplitPreferred(term, out var from, out var to))
+            {
+                continue;
+            }
+
+            if (from.Equals(key, StringComparison.OrdinalIgnoreCase)
+                && !to.Equals(key, StringComparison.OrdinalIgnoreCase))
+            {
+                replacement = to;
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public static bool TryPreferredPhrase(string? textBeforeCaret, IEnumerable<string>? terms, out string replacement)
+        => TryPreferredPhrase(textBeforeCaret, terms, out replacement, out _);
+
+    public static bool TryPreferredPhrase(
+        string? textBeforeCaret,
+        IEnumerable<string>? terms,
+        out string replacement,
+        out int matchedLength)
+    {
+        replacement = string.Empty;
+        matchedLength = 0;
+        if (string.IsNullOrWhiteSpace(textBeforeCaret) || terms == null)
+        {
+            return false;
+        }
+
+        var haystack = textBeforeCaret.TrimEnd();
+        foreach (var term in terms)
+        {
+            if (!TrySplitPreferred(term, out var from, out var to) || !from.Contains(' '))
+            {
+                continue;
+            }
+
+            if (haystack.EndsWith(from, StringComparison.OrdinalIgnoreCase))
+            {
+                replacement = to;
+                matchedLength = from.Length;
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public static bool TrySplitPreferred(string? entry, out string from, out string to)
+    {
+        from = string.Empty;
+        to = string.Empty;
+        var text = Normalize(entry);
+        var arrow = text.IndexOf("=>", StringComparison.Ordinal);
+        if (arrow <= 0 || arrow >= text.Length - 2)
+        {
+            return false;
+        }
+
+        from = text[..arrow].Trim();
+        to = text[(arrow + 2)..].Trim();
+        return from.Length > 0 && to.Length > 0;
+    }
+
     public static List<string> ParseGlobal(IEnumerable<string>? fromSettings)
     {
         var result = new List<string>();
@@ -168,6 +246,13 @@ public static class TerminologyList
         foreach (var term in terms)
         {
             if (string.Equals(Normalize(term), key, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            if (TrySplitPreferred(term, out var from, out var to)
+                && (from.Equals(key, StringComparison.OrdinalIgnoreCase)
+                    || to.Equals(key, StringComparison.OrdinalIgnoreCase)))
             {
                 return true;
             }

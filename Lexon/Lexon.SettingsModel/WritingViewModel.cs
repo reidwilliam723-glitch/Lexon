@@ -34,8 +34,11 @@ public sealed class WritingViewModel : INotifyPropertyChanged, IOwnedSettingsPag
         AppSettings.AppTerminologyOverridesKey,
         AppSettings.DefaultWritingModeKey,
         AppSettings.UseLearnedWordsKey,
-        AppSettings.LearnedWordsMutedAppsKey
+        AppSettings.LearnedWordsMutedAppsKey,
+        AppSettings.SpellingConventionKey
     ];
+
+    public static IReadOnlyList<string> SpellingLabels { get; } = ["US", "UK", "South African"];
 
     public static IReadOnlyList<string> SensitivityLabels { get; } = ["Low", "Medium", "High"];
 
@@ -70,6 +73,7 @@ public sealed class WritingViewModel : INotifyPropertyChanged, IOwnedSettingsPag
     private bool _enableRewriteHotkey = true;
     private bool _enableGrammarHotkey = true;
     private int _writingModeIndex;
+    private int _spellingIndex;
     private string _styleSummary = UnavailableStyleSummary;
     private int _selectedAdaptationIndex = -1;
     private bool _isDirty;
@@ -134,6 +138,35 @@ public sealed class WritingViewModel : INotifyPropertyChanged, IOwnedSettingsPag
     {
         get => _allowCodeSwitching;
         set => SetBool(ref _allowCodeSwitching, value, v => _settings.AllowCodeSwitching = v);
+    }
+
+    public int SpellingIndex
+    {
+        get => _spellingIndex;
+        set
+        {
+            var index = value >= 0 && value < SpellingLabels.Count ? value : 0;
+            if (_spellingIndex == index)
+            {
+                if (value != index)
+                {
+                    OnPropertyChanged();
+                }
+
+                return;
+            }
+
+            _spellingIndex = index;
+            if (_persist.IsLoading)
+            {
+                OnPropertyChanged();
+                return;
+            }
+
+            _settings.SpellingConvention = SpellingLabels[index];
+            MarkDirtyAndSchedule();
+            OnPropertyChanged();
+        }
     }
 
     public int SensitivityIndex
@@ -375,6 +408,7 @@ public sealed class WritingViewModel : INotifyPropertyChanged, IOwnedSettingsPag
             _enableRewriteHotkey = _settings.EnableRewriteHotkey;
             _enableGrammarHotkey = _settings.EnableGrammarHotkey;
             _writingModeIndex = IndexOfWritingMode(_settings.DefaultWritingMode);
+            _spellingIndex = IndexOfSpelling(_settings.SpellingConvention);
             _isDirty = false;
             OnPropertyChanged(nameof(GrammarChecking));
             OnPropertyChanged(nameof(AutoCorrectTypos));
@@ -390,6 +424,7 @@ public sealed class WritingViewModel : INotifyPropertyChanged, IOwnedSettingsPag
             OnPropertyChanged(nameof(EnableRewriteHotkey));
             OnPropertyChanged(nameof(EnableGrammarHotkey));
             OnPropertyChanged(nameof(WritingModeIndex));
+            OnPropertyChanged(nameof(SpellingIndex));
             RefreshLearning();
         }
         finally
@@ -440,6 +475,7 @@ public sealed class WritingViewModel : INotifyPropertyChanged, IOwnedSettingsPag
         target.CustomTerminology = [.. _settings.CustomTerminology ?? []];
         target.AppTerminologyOverrides = [.. _settings.AppTerminologyOverrides ?? []];
         target.DefaultWritingMode = WritingModeLabels[_writingModeIndex];
+        target.SpellingConvention = SpellingLabels[_spellingIndex];
     }
 
     public void MarkClean() => _isDirty = false;
@@ -617,6 +653,19 @@ public sealed class WritingViewModel : INotifyPropertyChanged, IOwnedSettingsPag
         _isDirty = true;
         _persist.Schedule(DateTime.UtcNow);
         UserEdited?.Invoke();
+    }
+
+    private static int IndexOfSpelling(string? value)
+    {
+        for (var i = 0; i < SpellingLabels.Count; i++)
+        {
+            if (SpellingLabels[i].Equals(value, StringComparison.OrdinalIgnoreCase))
+            {
+                return i;
+            }
+        }
+
+        return 0;
     }
 
     private static int IndexOfWritingMode(string? value)

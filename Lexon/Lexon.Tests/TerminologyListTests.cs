@@ -67,6 +67,19 @@ public class TerminologyListTests
     }
 
     [Fact]
+    public void PreferredSpelling_ProtectsBothSidesAndReplacesTheTypedForm()
+    {
+        var terms = new[] { "color => colour", "as soon as possible => ASAP" };
+        Assert.True(TerminologyList.IsProtected("color", terms, null));
+        Assert.True(TerminologyList.IsProtected("colour", terms, null));
+        Assert.True(TerminologyList.TryPreferredWord("Color", terms, out var word));
+        Assert.Equal("colour", word);
+        Assert.True(TerminologyList.TryPreferredPhrase("please reply as soon as possible", terms, out var phrase, out var length));
+        Assert.Equal("ASAP", phrase);
+        Assert.Equal("as soon as possible".Length, length);
+    }
+
+    [Fact]
     public void ResolveTerms_WithoutAppStillReturnsGlobal()
     {
         var resolved = TerminologyList.ResolveTerms(null, ["Lexon"], ["slack.exe|Kube"]);

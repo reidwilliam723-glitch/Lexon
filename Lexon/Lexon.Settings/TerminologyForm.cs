@@ -71,7 +71,7 @@ public class TerminologyForm : Form
 
         var intro = new Label
         {
-            Text = "Names, products, and technical terms Lexon should not autocorrect or flag as typos.",
+            Text = "Names and terms Lexon should keep. Use old => new for a preferred spelling, acronym, or phrase, such as color => colour.",
             Location = new Point(20, 16),
             Size = new Size(520, 36)
         };
@@ -101,7 +101,7 @@ public class TerminologyForm : Form
 
         _addGlobalBox.Location = new Point(20, 252);
         _addGlobalBox.Size = new Size(270, 27);
-        _addGlobalBox.PlaceholderText = "Add a protected term";
+            _addGlobalBox.PlaceholderText = "Term, or old => new";
         Controls.Add(_addGlobalBox);
 
         var addGlobal = CreateButton("Add", 300, 248);

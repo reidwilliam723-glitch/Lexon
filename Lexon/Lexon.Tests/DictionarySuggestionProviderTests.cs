@@ -347,4 +347,21 @@ public class DictionarySuggestionProviderTests
         Assert.DoesNotContain(muted, s => s.Text == "zzqxxcustomword");
         Assert.True(provider.IsLearnedOnly("zzqxxcustomword"));
     }
+
+    [Fact]
+    public async Task Contractions_AreSuggestedWithApostrophes()
+    {
+        _mockStorage.Setup(s => s.LoadAsync<string>(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((string?)null);
+        var provider = new DictionarySuggestionProvider(_mockStorage.Object);
+
+        var isn = await provider.GetSuggestionsAsync(new TextContext { CurrentWord = "isn" });
+        var didn = await provider.GetSuggestionsAsync(new TextContext { CurrentWord = "didn" });
+        var typedWithout = await provider.GetSuggestionsAsync(new TextContext { CurrentWord = "isnt" });
+
+        Assert.Contains(isn, s => s.Text == "isn't");
+        Assert.DoesNotContain(isn, s => s.Text == "isnt");
+        Assert.Contains(didn, s => s.Text == "didn't");
+        Assert.Contains(typedWithout, s => s.Text == "isn't");
+    }
 }

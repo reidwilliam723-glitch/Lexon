@@ -2,6 +2,21 @@
 
 All notable changes to Lexon will be documented in this file.
 
+## [1.10.6] - 2026-10-12
+
+### Settings
+- A new install opens Settings with a short tutorial. Skip leaves Lexon running. Closing Settings before Skip or Done shows the tutorial again next launch.
+- Writing → Spelling chooses US, UK, or South African English. South African uses UK spellings such as colour. Lexon does not guess the language.
+- Terminology accepts `old => new` for a preferred spelling, acronym, or phrase, and applies it in every app.
+- Check shows whether Lexon is running, paused, and able to work in the focused app. Copy diagnostic report names the process and the switches, not typed text or window titles.
+- Quiet hours pause Lexon on a 24-hour range, including overnight. Recent edits stay on this PC, with Undo for the latest change, and can be cleared or turned off.
+
+### Tray
+- Pause until I turn it back on sits next to Pause for 15 minutes. Pause in this app still uses the blocked-app list on Privacy.
+
+### Suggestions
+- Contractions in the word list keep their apostrophes, such as isn't, didn't, and don't.
+
 ## [1.10.5] - 2026-10-12
 
 ### Settings

@@ -1160,12 +1160,59 @@ public class LexonService
         return merged;
     }
 
+    private void PrependPreferred(List<Suggestion> suggestions)
+    {
+        var terms = _resolveProtectedTerms?.Invoke(_currentContext.ApplicationName);
+        if (terms == null)
+        {
+            return;
+        }
+
+        var word = _currentContext.CurrentWord ?? string.Empty;
+        string replacement;
+        var phraseLength = 0;
+        var phrase = false;
+        if (!TerminologyList.TryPreferredWord(word, terms, out replacement))
+        {
+            if (!TerminologyList.TryPreferredPhrase(
+                    SuggestionInsertion.TextBeforeCaret(_currentContext.FullText, _currentContext.CursorPosition),
+                    terms,
+                    out replacement,
+                    out phraseLength))
+            {
+                return;
+            }
+
+            phrase = true;
+        }
+
+        if (suggestions.Any(s => s.Text.Equals(replacement, StringComparison.OrdinalIgnoreCase)))
+        {
+            return;
+        }
+
+        var suggestion = new Suggestion
+        {
+            Text = replacement,
+            Source = "Preferred",
+            Score = 1
+        };
+        if (phrase)
+        {
+            suggestion.Metadata["replaceChars"] = phraseLength;
+        }
+
+        suggestions.Insert(0, suggestion);
+    }
+
     private void DisplaySuggestions(List<Suggestion> suggestions)
     {
         if (_suppressSuggestionOverlay)
         {
             return;
         }
+
+        PrependPreferred(suggestions);
 
         foreach (var fix in GrammarFixesFromTypedBuffer())
         {
@@ -1184,7 +1231,8 @@ public class LexonService
         }
 
         if (!HasInProgressWord() && grammar.Count == 0
-            && !completions.Any(s => string.Equals(s.Source, "Spelling", StringComparison.Ordinal)))
+            && !completions.Any(s => string.Equals(s.Source, "Spelling", StringComparison.Ordinal)
+                || string.Equals(s.Source, "Preferred", StringComparison.Ordinal)))
         {
             HideSuggestionsIfNotPinned();
             return;
@@ -1394,6 +1442,43 @@ public class LexonService
         }
     }
 
+    private static bool TryPreferredPhraseReplacement(
+        Suggestion suggestion,
+        string beforeCaret,
+        out int deleteCount,
+        out string insertText,
+        out string undoOriginal)
+    {
+        deleteCount = 0;
+        insertText = suggestion.Text ?? string.Empty;
+        undoOriginal = string.Empty;
+        if (!string.Equals(suggestion.Source, "Preferred", StringComparison.Ordinal)
+            || !suggestion.Metadata.TryGetValue("replaceChars", out var raw))
+        {
+            return false;
+        }
+
+        var length = raw switch
+        {
+            int value => value,
+            long value => (int)value,
+            _ => 0
+        };
+        if (length <= 0 || beforeCaret.Length < length)
+        {
+            return false;
+        }
+
+        deleteCount = length;
+        if (!insertText.EndsWith(' '))
+        {
+            insertText += " ";
+        }
+
+        undoOriginal = beforeCaret[^length..];
+        return true;
+    }
+
     private void OnSuggestionSelected(object? sender, Overlay.Interfaces.SuggestionSelectedEventArgs e)
     {
         var liveContext = _focusTracker.GetCurrentContext();
@@ -1426,6 +1511,9 @@ public class LexonService
             }
 
             undoOriginal = string.Empty;
+        }
+        else if (TryPreferredPhraseReplacement(e.SelectedSuggestion, beforeCaret, out deleteCount, out insertText, out undoOriginal))
+        {
         }
         else if (TryGrammarReplacement(e.SelectedSuggestion, typedBuffer, beforeCaret, out deleteCount, out insertText, out undoOriginal))
         {

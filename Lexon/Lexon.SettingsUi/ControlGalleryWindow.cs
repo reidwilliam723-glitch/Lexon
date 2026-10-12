@@ -28,6 +28,7 @@ public sealed class ControlGalleryWindow : Window
     private NavItem? _appToneTab;
     private NavItem? _writingTab;
     private NavItem? _appsTab;
+    private NavItem? _checkTab;
     private GeneralPage? _generalPage;
     private AiPage? _aiPage;
     private PrivacyPage? _privacyPage;
@@ -35,6 +36,7 @@ public sealed class ControlGalleryWindow : Window
     private AppTonePage? _appTonePage;
     private WritingPage? _writingPage;
     private AppsPage? _appsPage;
+    private CheckLexonPage? _checkPage;
     private GeneralSettingsViewModel? _generalVm;
     private AiSettingsViewModel? _aiVm;
     private PrivacySettingsViewModel? _privacyVm;
@@ -83,6 +85,7 @@ public sealed class ControlGalleryWindow : Window
             _writingPage = _host.WritingPage;
             _appsVm = _host.Apps;
             _appsPage = _host.AppsPage;
+            _checkPage = _host.CheckPage;
         }
 
         Content = Build();
@@ -110,7 +113,8 @@ public sealed class ControlGalleryWindow : Window
            + (_appearanceTab != null ? 1 : 0)
            + (_appToneTab != null ? 1 : 0)
            + (_writingTab != null ? 1 : 0)
-           + (_appsTab != null ? 1 : 0);
+           + (_appsTab != null ? 1 : 0)
+           + (_checkTab != null ? 1 : 0);
 
     internal bool IsGeneralPageVisible => _generalPage != null && _contentHost?.Content == _generalPage;
 
@@ -341,6 +345,14 @@ public sealed class ControlGalleryWindow : Window
             tabs.Children.Add(_appsTab);
         }
 
+        if (_checkPage != null)
+        {
+            _checkTab = new NavItem { Content = "Check", GroupName = "galleryTabs", Margin = new Thickness(0, 0, 8, 4) };
+            AutomationProperties.SetName(_checkTab, "Check");
+            _checkTab.Checked += (_, _) => ShowCheckContent();
+            tabs.Children.Add(_checkTab);
+        }
+
         DockPanel.SetDock(tabs, Dock.Top);
         root.Children.Add(tabs);
 
@@ -552,6 +564,14 @@ public sealed class ControlGalleryWindow : Window
         if (_contentHost != null && _host != null)
         {
             _host.ShowApps(_contentHost);
+        }
+    }
+
+    private void ShowCheckContent()
+    {
+        if (_contentHost != null && _host != null)
+        {
+            _host.ShowCheck(_contentHost);
         }
     }
 
