@@ -42,8 +42,7 @@ static class Program
     private static int _undoCount;
     private static System.Windows.Forms.Timer? _quietTimer;
     private static bool _showTutorial;
-    private static bool _pausedByQuietHours;
-    private static DateTime? _quietResumeOverrideUntil;
+    private static readonly QuietHoursController _quietHours = new();
 
     /// <summary>
     ///  The main entry point for the application.
@@ -136,10 +135,21 @@ static class Program
                     }).GetAwaiter().GetResult();
                 _composition.Profile.SetSetting("CoachCompleted", true);
                 _composition.Profile.SetSetting("TutorialCompleted", false);
-                _ = _composition.Profile.SaveAsync();
+                _composition.Profile.SaveAsync().GetAwaiter().GetResult();
             }
 
-            _showTutorial = !_composition.Profile.GetSetting("TutorialCompleted", !isFirstRun);
+            OnboardingState? onboarding = null;
+            if (_composition.Storage.ExistsAsync("onboarding_state").GetAwaiter().GetResult())
+            {
+                onboarding = _composition.Storage.LoadAsync<OnboardingState>("onboarding_state").GetAwaiter().GetResult();
+            }
+
+            _showTutorial = TutorialLaunch.ShouldShow(
+                _composition.Profile.HasSetting("TutorialCompleted"),
+                _composition.Profile.GetSetting("TutorialCompleted", false),
+                isFirstRun,
+                onboarding?.OnboardingCompleted,
+                DateTime.UtcNow);
 
             _composition.Service.StartAsync().Wait();
 
@@ -197,11 +207,23 @@ static class Program
             ApplyQuietHours();
 
             // Wire quick toggle to update tray status
+            _quietHours.Adopt(_composition.QuickToggleManager.IsEnabled);
             _composition.QuickToggleManager.ToggleStateChanged += (sender, isEnabled) =>
             {
                 if (isEnabled)
                 {
                     CancelTimedPause();
+                    if (!_suppressQuickPause)
+                    {
+                        if (!TryQuietWindow(out var quietNow, out var quietEnd))
+                        {
+                            quietNow = false;
+                            quietEnd = DateTime.Now;
+                        }
+
+                        _quietHours.UserEnabled(DateTime.Now, quietNow, quietEnd);
+                    }
+
                     UpdateTrayStatus(true);
                     _trayManager?.ShowStatusToast("Lexon enabled", true);
                     return;
@@ -212,6 +234,8 @@ static class Program
                 {
                     return;
                 }
+
+                _quietHours.ManualPause();
 
                 var minutes = GetQuickPauseMinutes();
                 StartTimedPause(minutes);
@@ -731,6 +755,7 @@ static class Program
             return;
         }
 
+        _quietHours.ManualPause();
         _suppressQuickPause = true;
         try
         {
@@ -781,6 +806,7 @@ static class Program
             return;
         }
 
+        _quietHours.ManualPause();
         _suppressQuickPause = true;
         try
         {
@@ -798,12 +824,15 @@ static class Program
 
     private static void OnResumeRequested(object? sender, EventArgs e)
     {
-        if (TryQuietWindow(out var quiet, out var end) && quiet)
+        if (TryQuietWindow(out var quiet, out var end))
         {
-            _quietResumeOverrideUntil = end;
+            _quietHours.Resume(DateTime.Now, quiet, end);
+        }
+        else
+        {
+            _quietHours.Resume(DateTime.Now, quiet: false, DateTime.Now);
         }
 
-        _pausedByQuietHours = false;
         CancelTimedPause();
         _composition?.QuickToggleManager.SetEnabled(true);
         _trayManager?.SetPaused(false);
@@ -941,24 +970,13 @@ static class Program
             return;
         }
 
-        if (!TryQuietWindow(out var quiet, out _))
+        if (!TryQuietWindow(out var quiet, out var end))
         {
             return;
         }
 
-        if (_quietResumeOverrideUntil is DateTime until)
-        {
-            if (DateTime.Now < until)
-            {
-                quiet = false;
-            }
-            else
-            {
-                _quietResumeOverrideUntil = null;
-            }
-        }
-
-        if (quiet && _composition.QuickToggleManager.IsEnabled)
+        var action = _quietHours.Tick(DateTime.Now, quiet, end);
+        if (action == QuietHoursAction.Pause)
         {
             _suppressQuickPause = true;
             try
@@ -971,15 +989,22 @@ static class Program
             }
 
             CancelTimedPause();
-            _pausedByQuietHours = true;
             _trayManager?.SetPaused(true, "Quiet hours");
             return;
         }
 
-        if (!quiet && _pausedByQuietHours)
+        if (action == QuietHoursAction.Resume)
         {
-            _pausedByQuietHours = false;
-            _composition.QuickToggleManager.SetEnabled(true);
+            _suppressQuickPause = true;
+            try
+            {
+                _composition.QuickToggleManager.SetEnabled(true);
+            }
+            finally
+            {
+                _suppressQuickPause = false;
+            }
+
             _trayManager?.SetPaused(false);
             UpdateTrayStatus(true);
         }
@@ -1180,9 +1205,7 @@ static class Program
             }
 
             var quiet = false;
-            if (TryQuietWindow(out quiet, out _)
-                && _quietResumeOverrideUntil is DateTime until
-                && DateTime.Now < until)
+            if (TryQuietWindow(out quiet, out _) && _quietHours.SuppressesQuiet(DateTime.Now))
             {
                 quiet = false;
             }

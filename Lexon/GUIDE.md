@@ -15,6 +15,10 @@ Right-click the Lexon icon next to the clock:
 
 Before a cloud provider receives text, Lexon asks and names the provider. The message says whether that is the selected text before you choose a rewrite, the selected text for a rewrite, or the words around the caret. You can allow that kind of send next time. Local-only mode and blocked apps still skip the send. The question is under **Settings → Privacy → Ask before sending text to AI**.
 
+## Recent edits
+
+Settings → Check can keep the last 20 edits on this PC: the text that was replaced, and Lexon's replacement, up to 200 characters each. They are stored in `%LocalAppData%\Lexon\edit-history.json`. You can turn this off or clear it there. Lexon does not send that file anywhere.
+
 ## Apps
 
 **Settings → Apps** sets, for one app, whether Lexon is blocked, which writing tone to use, and whether grammar or learned words are offered. Those are the same lists as Privacy, App tone, and Writing.

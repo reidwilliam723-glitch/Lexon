@@ -15,6 +15,7 @@ internal sealed class SettingsPagesHost : IDisposable
 {
     private readonly GallerySettingsServices _services;
     private System.Windows.Controls.ContentControl? _pageHost;
+    private readonly List<System.Windows.Controls.ContentControl> _contentHosts = [];
     private WritingStatsPage? _statsPage;
     private LearnedWordsPage? _learnedPage;
     private WritingStatsPageModel? _statsModel;
@@ -266,14 +267,14 @@ internal sealed class SettingsPagesHost : IDisposable
 
     public void ShowGeneral(System.Windows.Controls.ContentControl content)
     {
-        _pageHost = content;
+        TrackHost(content);
         content.Content = GeneralPage;
         ReloadPage(General);
     }
 
     public void ShowAi(System.Windows.Controls.ContentControl content)
     {
-        _pageHost = content;
+        TrackHost(content);
         content.Content = AiPage;
         _services.Reload();
         Ai?.OnTabSelected();
@@ -281,28 +282,28 @@ internal sealed class SettingsPagesHost : IDisposable
 
     public void ShowPrivacy(System.Windows.Controls.ContentControl content)
     {
-        _pageHost = content;
+        TrackHost(content);
         content.Content = PrivacyPage;
         ReloadPage(Privacy);
     }
 
     public void ShowAppearance(System.Windows.Controls.ContentControl content)
     {
-        _pageHost = content;
+        TrackHost(content);
         content.Content = AppearancePage;
         ReloadPage(Appearance);
     }
 
     public void ShowAppTone(System.Windows.Controls.ContentControl content)
     {
-        _pageHost = content;
+        TrackHost(content);
         content.Content = AppTonePage;
         ReloadPage(AppTone);
     }
 
     public void ShowWriting(System.Windows.Controls.ContentControl content)
     {
-        _pageHost = content;
+        TrackHost(content);
         content.Content = WritingPage;
         ReloadPage(Writing);
         Writing?.RefreshLearning();
@@ -310,14 +311,14 @@ internal sealed class SettingsPagesHost : IDisposable
 
     public void ShowApps(System.Windows.Controls.ContentControl content)
     {
-        _pageHost = content;
+        TrackHost(content);
         content.Content = AppsPage;
         ReloadPage(Apps);
     }
 
     public void ShowCheck(System.Windows.Controls.ContentControl content)
     {
-        _pageHost = content;
+        TrackHost(content);
         content.Content = CheckPage;
         ReloadPage(Check);
         Check.RefreshStatus();
@@ -423,9 +424,10 @@ internal sealed class SettingsPagesHost : IDisposable
             Writing.OpenStatsInSettings = () =>
             {
                 _statsModel.Refresh();
-                if (_pageHost != null && _statsPage != null)
+                var host = HostForDetailNavigation();
+                if (host != null && _statsPage != null)
                 {
-                    _pageHost.Content = _statsPage;
+                    host.Content = _statsPage;
                 }
             };
         }
@@ -437,9 +439,10 @@ internal sealed class SettingsPagesHost : IDisposable
             Writing.OpenLearnedWordsInSettings = () =>
             {
                 _learnedModel.Refresh();
-                if (_pageHost != null && _learnedPage != null)
+                var host = HostForDetailNavigation();
+                if (host != null && _learnedPage != null)
                 {
-                    _pageHost.Content = _learnedPage;
+                    host.Content = _learnedPage;
                 }
             };
         }
@@ -447,10 +450,42 @@ internal sealed class SettingsPagesHost : IDisposable
 
     private void ReturnToWriting()
     {
-        if (_pageHost != null)
+        var host = HostForDetailNavigation();
+        if (host != null)
         {
-            ShowWriting(_pageHost);
+            ShowWriting(host);
         }
+    }
+
+    private void TrackHost(System.Windows.Controls.ContentControl content)
+    {
+        if (!_contentHosts.Contains(content))
+        {
+            _contentHosts.Add(content);
+        }
+
+        _pageHost = content;
+    }
+
+    private System.Windows.Controls.ContentControl? HostForDetailNavigation()
+    {
+        System.Windows.Controls.ContentControl? visible = null;
+        foreach (var host in _contentHosts)
+        {
+            if (Window.GetWindow(host) is not { IsVisible: true } window)
+            {
+                continue;
+            }
+
+            if (window.IsActive)
+            {
+                return host;
+            }
+
+            visible ??= host;
+        }
+
+        return visible;
     }
 
     private void InstallOverlapGuard()
@@ -491,24 +526,36 @@ internal sealed class SettingsPagesHost : IDisposable
     private void FlushEarlierOverlapping(IReadOnlyList<IOwnedSettingsPage> earlier)
     {
         _persistTimer.Stop();
-        var profile = _services.Profile;
-        if (profile == null)
-        {
-            return;
-        }
-
-        OwnedSettingsWriter.Flush(profile, earlier.ToArray());
-        _services.Reload();
-        _services.ApplyLive?.Invoke();
         try
         {
-            _ = profile.SaveAsync();
+            var profile = _services.Profile;
+            if (profile == null)
+            {
+                return;
+            }
+
+            OwnedSettingsWriter.Flush(profile, earlier.ToArray());
+            _services.Reload();
+            _services.ApplyLive?.Invoke();
+            try
+            {
+                _ = profile.SaveAsync();
+            }
+            catch
+            {
+                // In-memory profiles have no storage.
+            }
         }
-        catch
+        finally
         {
-            // In-memory profiles have no storage.
+            if (_shown && _services.Pages.Any(static page => page.IsDirty))
+            {
+                _persistTimer.Start();
+            }
         }
     }
+
+    internal bool IsPersistTimerRunning => _persistTimer.IsEnabled;
 
     private void ReloadPage(IOwnedSettingsPage? page)
     {

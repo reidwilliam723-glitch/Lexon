@@ -81,6 +81,18 @@ public sealed class SettingsWindow : Window
 
     internal bool IsGeneralPageVisible => _content.Content == _host.GeneralPage;
 
+    internal bool IsWritingPageVisible => _content.Content == _host.WritingPage;
+
+    internal bool IsWritingStatsVisible => _content.Content is WritingStatsPage;
+
+    internal object? CurrentPage => _content.Content;
+
+    internal bool IsPersistTimerRunning => _host.IsPersistTimerRunning;
+
+    internal WritingViewModel? WritingViewModel => _host.Writing;
+
+    internal AppsSettingsViewModel? AppsViewModel => _host.Apps;
+
     internal GeneralSettingsViewModel? GeneralViewModel => _host.General;
 
     internal AiSettingsViewModel? AiViewModel => _host.Ai;

@@ -62,6 +62,7 @@ Diagnostic files (for example `%LocalAppData%\Lexon\placement.log`) may be writt
 - All sensitive data is encrypted using AES-GCM encryption
 - Encryption keys are protected by Windows DPAPI
 - Data is stored locally on your device in `%LocalAppData%\Lexon`
+- Recent edits store the text Lexon replaced and the text it put in its place, up to 200 characters each, for the last 20 edits. That file (`%LocalAppData%\Lexon\edit-history.json`) stays on this PC. You can turn it off or clear it in Settings → Check. It is never sent anywhere.
 
 ### Cloud Services
 - AI requests are sent directly to the provider you configured (OpenAI, Gemini, DeepSeek, or Ollama), not through Lexon servers

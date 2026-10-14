@@ -2,6 +2,18 @@
 
 All notable changes to Lexon will be documented in this file.
 
+## [1.10.7] - 2026-10-14
+
+### Privacy
+- Recent edits now keep up to 200 characters on each side, and turning edit history off removes what was stored.
+
+### Quiet hours
+- Turning Lexon on during quiet hours keeps it on until quiet hours end. Pausing until you turn it back on is no longer undone when quiet hours end.
+
+### Settings
+- A new install now always shows the tutorial, even if Lexon is closed right after first launch.
+- Unsaved changes are no longer left waiting after you edit overlapping settings, and Writing stats and Learned words always open in the window you are using.
+
 ## [1.10.6] - 2026-10-12
 
 ### Settings

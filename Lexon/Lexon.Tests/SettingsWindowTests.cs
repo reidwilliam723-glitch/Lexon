@@ -5,6 +5,7 @@ using System.Windows.Controls;
 using System.Windows.Interop;
 using System.Windows.Media;
 using Lexon.Core.Interfaces;
+using Lexon.Core.Models;
 using Lexon.Core.Theming;
 using Lexon.Profiles;
 using Lexon.Settings;
@@ -349,6 +350,103 @@ public class SettingsWindowTests
         }
 
         return found;
+    }
+
+    [Fact]
+    public void OverlapFlush_NoOpSetter_RestartsTimer_WhenAiStaysDirty()
+    {
+        _sta.Run(() =>
+        {
+            var services = FullServices(out var profile);
+            var window = Show(services);
+            try
+            {
+                var apps = window.AppsViewModel!;
+                apps.SelectApp("notepad");
+                AppControlEditor.Apply(services.Settings, new AppControlState("notepad", false, "Casual", true, true));
+                services.Settings.Write(profile);
+
+                window.WritingViewModel!.MutedAppsText = "wordpad";
+                window.AiViewModel!.AiSuggestionsWhileTyping = true;
+                Assert.True(window.AiViewModel.IsDirty);
+                Assert.True(window.IsPersistTimerRunning);
+
+                apps.ToneIndex = 1;
+
+                Assert.True(window.AiViewModel.IsDirty);
+                Assert.False(apps.IsDirty);
+                Assert.Equal(1, apps.ToneIndex);
+                Assert.True(window.IsPersistTimerRunning);
+            }
+            finally
+            {
+                window.Destroy();
+            }
+        });
+    }
+
+    [Fact]
+    public void WritingStatsAndBack_LandInTheVisibleWindow()
+    {
+        _sta.Run(() =>
+        {
+            var services = FullServices(out _);
+            var withStats = new GallerySettingsServices(services.Settings, services.Startup, services.Persist, services.Save)
+            {
+                Profile = services.Profile,
+                Reload = services.Reload,
+                ThemeSwitcher = services.ThemeSwitcher,
+                AiPolicy = services.AiPolicy,
+                AiSession = services.AiSession,
+                UrlLauncher = services.UrlLauncher,
+                DelayScheduler = services.DelayScheduler,
+                ClipboardWatch = services.ClipboardWatch,
+                ProcessPicker = services.ProcessPicker,
+                ActivityViewer = services.ActivityViewer,
+                Personalization = services.Personalization,
+                WritingDialogs = services.WritingDialogs,
+                FileDialogs = services.FileDialogs,
+                Messages = services.Messages,
+                WritingStats = new EmptyWritingStats()
+            };
+            var settings = Show(withStats);
+            var gallery = new ControlGalleryWindow(null, withStats)
+            {
+                Left = -20000,
+                Top = -20000,
+                ShowInTaskbar = false
+            };
+            try
+            {
+                gallery.Show();
+                var writing = settings.TabNames.ToList().IndexOf("Writing");
+                settings.SelectTab(writing);
+                gallery.SelectWritingTab();
+                gallery.Hide();
+
+                settings.WritingViewModel!.ShowWritingStats();
+
+                Assert.True(settings.IsWritingStatsVisible);
+                Assert.False(gallery.IsWritingStatsVisible);
+
+                var stats = Assert.IsType<WritingStatsPage>(settings.CurrentPage);
+                var model = Assert.IsType<WritingStatsPageModel>(stats.DataContext);
+                model.Back();
+
+                Assert.True(settings.IsWritingPageVisible);
+                Assert.False(gallery.IsWritingStatsVisible);
+            }
+            finally
+            {
+                gallery.Close();
+                settings.Destroy();
+            }
+        });
+    }
+
+    private sealed class EmptyWritingStats : IWritingStatsReader
+    {
+        public WritingStatsSnapshot? Read() => new() { SuggestionsAccepted = 1 };
     }
 
     private static SettingsWindow Show(GallerySettingsServices services)

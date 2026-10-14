@@ -24,7 +24,21 @@ public sealed class LocalEditHistory : IEditHistory
     public bool Enabled
     {
         get => _log.Enabled;
-        set => _log.Enabled = value;
+        set
+        {
+            if (_log.Enabled == value)
+            {
+                return;
+            }
+
+            _log.Enabled = value;
+            if (!value)
+            {
+                _log.Clear();
+                Save();
+                Changed?.Invoke(this, EventArgs.Empty);
+            }
+        }
     }
 
     public IReadOnlyList<EditHistoryEntry> Entries => _log.Entries;
@@ -73,12 +87,28 @@ public sealed class LocalEditHistory : IEditHistory
 
             var json = File.ReadAllText(_path);
             var stored = JsonSerializer.Deserialize<List<StoredEdit>>(json);
-            _log.ReplaceAll(stored?.Select(item => new EditHistoryEntry
+            var truncated = false;
+            _log.ReplaceAll(stored?.Select(item =>
             {
-                Utc = item.Utc,
-                Original = item.Original ?? string.Empty,
-                Replacement = item.Replacement ?? string.Empty
+                var original = EditHistoryLog.LimitStoredText(item.Original);
+                var replacement = EditHistoryLog.LimitStoredText(item.Replacement);
+                if (!string.Equals(original, item.Original ?? string.Empty, StringComparison.Ordinal)
+                    || !string.Equals(replacement, item.Replacement ?? string.Empty, StringComparison.Ordinal))
+                {
+                    truncated = true;
+                }
+
+                return new EditHistoryEntry
+                {
+                    Utc = item.Utc,
+                    Original = original,
+                    Replacement = replacement
+                };
             }));
+            if (truncated)
+            {
+                Save();
+            }
         }
         catch
         {

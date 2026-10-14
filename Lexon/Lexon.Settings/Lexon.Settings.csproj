@@ -10,7 +10,7 @@
 
     <!-- Single source of truth for the release version. Settings\release.ps1 reads
          this value and passes it to "vpk pack -v", so bump it here only. -->
-    <Version>1.10.6</Version>
+    <Version>1.10.7</Version>
   </PropertyGroup>
 
   <ItemGroup>
@@ -36,6 +36,10 @@
 
   <ItemGroup>
     <PackageReference Include="Velopack" Version="1.2.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Lexon.Tests" />
   </ItemGroup>
 
 </Project>

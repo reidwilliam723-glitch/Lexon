@@ -128,6 +128,8 @@ public sealed class ControlGalleryWindow : Window
 
     internal bool IsWritingPageVisible => _writingPage != null && _contentHost?.Content == _writingPage;
 
+    internal bool IsWritingStatsVisible => _contentHost?.Content is WritingStatsPage;
+
     internal GeneralSettingsViewModel? GeneralViewModel => _generalVm;
 
     internal AiSettingsViewModel? AiViewModel => _aiVm;

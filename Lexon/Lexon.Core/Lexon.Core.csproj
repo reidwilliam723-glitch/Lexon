@@ -6,4 +6,9 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="Lexon.Settings" />
+    <InternalsVisibleTo Include="Lexon.Tests" />
+  </ItemGroup>
+
 </Project>

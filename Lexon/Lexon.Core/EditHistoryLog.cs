@@ -17,6 +17,19 @@ public sealed class EditHistoryLog
 {
     public const int MaxEntries = 20;
 
+    public const int MaxTextLength = 200;
+
+    public static string LimitStoredText(string? text)
+    {
+        text ??= string.Empty;
+        if (text.Length <= MaxTextLength)
+        {
+            return text;
+        }
+
+        return text[..(MaxTextLength - 1)] + "…";
+    }
+
     private readonly List<EditHistoryEntry> _entries = new();
 
     public bool Enabled { get; set; } = true;
@@ -40,8 +53,8 @@ public sealed class EditHistoryLog
         _entries.Insert(0, new EditHistoryEntry
         {
             Utc = utc ?? DateTime.UtcNow,
-            Original = original,
-            Replacement = replacement
+            Original = LimitStoredText(original),
+            Replacement = LimitStoredText(replacement)
         });
         if (_entries.Count > MaxEntries)
         {
