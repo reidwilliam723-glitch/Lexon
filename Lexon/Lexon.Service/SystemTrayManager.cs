@@ -87,6 +87,11 @@ public class SystemTrayManager : IDisposable
         aboutMenuItem.Click += (_, _) => AboutRequested?.Invoke(this, EventArgs.Empty);
         _updatesItem = new ToolStripMenuItem("Check for updates…");
         _updatesItem.Click += (_, _) => UpdatesRequested?.Invoke(this, EventArgs.Empty);
+        if (AppPackaging.IsPackaged)
+        {
+            _updatesItem.Visible = false;
+        }
+
         var exitMenuItem = new ToolStripMenuItem("Exit");
         exitMenuItem.Click += (_, _) => ExitRequested?.Invoke(this, EventArgs.Empty);
 
@@ -172,8 +177,25 @@ public class SystemTrayManager : IDisposable
     {
         InvokeOnUiThread(() =>
         {
+            if (!_updatesItem.Visible)
+            {
+                return;
+            }
+
             _updatesItem.Enabled = !busy;
             _updatesItem.Text = busy ? "Checking for updates…" : "Check for updates…";
+        });
+    }
+
+    /// <summary>
+    /// Removes the tray update item for Store / MSIX builds.
+    /// </summary>
+    public void HideUpdatesItem()
+    {
+        InvokeOnUiThread(() =>
+        {
+            _updatesItem.Visible = false;
+            _contextMenu.Items.Remove(_updatesItem);
         });
     }
 

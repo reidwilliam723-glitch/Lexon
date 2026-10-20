@@ -73,7 +73,11 @@ static class Program
 
         // Must run before the rest of startup: Velopack intercepts the install,
         // update, and uninstall hook arguments here and exits on its own.
-        VelopackApp.Build().Run();
+        // Store / MSIX builds must never run Velopack.
+        if (!AppPackaging.IsPackaged)
+        {
+            VelopackApp.Build().Run();
+        }
 
         _enableUiGallery = args.Any(argument => argument.Equals("--ui-gallery", StringComparison.OrdinalIgnoreCase));
         _classicSettings = args.Any(argument => argument.Equals("--classic-settings", StringComparison.OrdinalIgnoreCase));
@@ -160,7 +164,15 @@ static class Program
             _trayManager.ExitRequested += OnExitRequested;
             _trayManager.ToggleRequested += OnToggleRequested;
             _trayManager.KeyboardShortcutsRequested += OnKeyboardShortcutsRequested;
-            _trayManager.UpdatesRequested += OnUpdatesRequested;
+            if (!AppPackaging.IsPackaged)
+            {
+                _trayManager.UpdatesRequested += OnUpdatesRequested;
+            }
+            else
+            {
+                _trayManager.HideUpdatesItem();
+            }
+
             _trayManager.AboutRequested += OnAboutRequested;
             _trayManager.UndoRequested += OnUndoRequested;
             _trayManager.PauseFifteenRequested += OnPauseFifteenRequested;
@@ -174,7 +186,11 @@ static class Program
                     InvokeOnUiThread(() => SettingsUiHost.ShowGallery(_composition!.ThemeManager, CreateSettingsServices()));
                 _trayManager.ShowControlGalleryItem();
             }
-            UpdateChecker.BusyChanged += busy => _trayManager?.SetUpdatesBusy(busy);
+            if (!AppPackaging.IsPackaged)
+            {
+                UpdateChecker.BusyChanged += busy => _trayManager?.SetUpdatesBusy(busy);
+            }
+
             _composition.KeyboardShortcutManager.ShortcutTriggered += OnShortcutTriggered;
             _editHistory = new LocalEditHistory(EditHistoryPath());
             _editHistory.Enabled = _composition.Profile.GetSetting(AppSettings.EditHistoryEnabledKey, true);
@@ -500,7 +516,7 @@ static class Program
         });
         services = new GallerySettingsServices(
             settings,
-            new WindowsStartupRegistration(),
+            StartupRegistration.Create(),
             persist,
             persist.Flush)
         {
@@ -1131,6 +1147,11 @@ static class Program
 
     private static void StartUpdateChecker()
     {
+        if (AppPackaging.IsPackaged)
+        {
+            return;
+        }
+
         if (!_composition!.Profile.GetSetting("EnableAutoUpdates", true))
         {
             return;
@@ -1141,6 +1162,11 @@ static class Program
 
     private static void OnUpdatesRequested(object? sender, EventArgs e)
     {
+        if (AppPackaging.IsPackaged)
+        {
+            return;
+        }
+
         _ = Task.Run(() => UpdateChecker.CheckInteractiveAsync(InvokeOnUiThread, ShutdownGracefully));
     }
 

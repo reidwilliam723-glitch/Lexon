@@ -2,14 +2,14 @@
 <Package
   xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
   xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+  xmlns:uap5="http://schemas.microsoft.com/appx/manifest/uap/windows10/5"
   xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
-  IgnorableNamespaces="uap rescap">
+  IgnorableNamespaces="uap uap5 rescap">
 
-  <!-- Publisher must be replaced with the exact Partner Center publisher ID before upload. -->
   <Identity
     Name="WGR.Lexon"
     Publisher="CN=WGR"
-    Version="1.10.8.0"
+    Version="1.10.9.0"
     ProcessorArchitecture="x64" />
 
   <Properties>
@@ -31,7 +31,7 @@
       <uap:VisualElements
         DisplayName="Lexon"
         Description="Typing assistant for Windows. Suggestions stay on this PC unless you connect a cloud AI provider."
-        BackgroundColor="#1E3A5F"
+        BackgroundColor="#0a3ba6"
         Square150x150Logo="Assets\Square150x150Logo.png"
         Square44x44Logo="Assets\Square44x44Logo.png">
         <uap:DefaultTile
@@ -40,6 +40,13 @@
           Square310x310Logo="Assets\LargeTile.png" />
         <uap:SplashScreen Image="Assets\SplashScreen.png" />
       </uap:VisualElements>
+      <Extensions>
+        <uap5:Extension Category="windows.startupTask"
+                        Executable="Lexon.Settings.exe"
+                        EntryPoint="Windows.FullTrustApplication">
+          <uap5:StartupTask TaskId="LexonStartup" Enabled="false" DisplayName="Lexon" />
+        </uap5:Extension>
+      </Extensions>
     </Application>
   </Applications>
 

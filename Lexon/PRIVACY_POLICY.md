@@ -85,7 +85,7 @@ We do not sell, rent, or share your personal information with third parties for 
 
 ### 2. Service Providers
 - Lexon does not hire processors to collect your typing data
-- Optional app updates are downloaded from the update source configured in the app (Velopack)
+- If you installed Lexon from the Microsoft Store, updates come through the Store. If you installed a direct download, Lexon may check GitHub for a newer version (that request contains no typing data)
 
 ### 3. Legal Requirements
 - We may disclose information if required by law or to protect our rights

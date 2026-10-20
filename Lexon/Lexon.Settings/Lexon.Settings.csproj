@@ -2,7 +2,8 @@
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net8.0-windows</TargetFramework>
+    <!-- windows10.0.19041 unlocks StartupTask for the Store (MSIX) build. -->
+    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
     <Nullable>enable</Nullable>
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
@@ -10,7 +11,7 @@
 
     <!-- Single source of truth for the release version. Settings\release.ps1 reads
          this value and passes it to "vpk pack -v", so bump it here only. -->
-    <Version>1.10.8</Version>
+    <Version>1.10.9</Version>
   </PropertyGroup>
 
   <ItemGroup>

@@ -32,10 +32,12 @@ public partial class SettingsForm : Form
     private readonly IEditConfirmation? _editConfirmation;
     private readonly CloudAiActivityLog? _cloudAiLog;
     private readonly bool _ownsProfile;
+    private readonly IStartupRegistration _startup = StartupRegistration.Create();
 
     private CheckBox _chkAutoStart = null!;
     private CheckBox _chkMinimizeToTray = null!;
     private CheckBox _chkCheckUpdates = null!;
+    private Control _checkUpdatesHint = null!;
     private CheckBox _chkOpenFullScreen = null!;
     private ComboBox _cmbQuickPause = null!;
     private ComboBox _cmbAIProvider = null!;
@@ -342,6 +344,13 @@ public partial class SettingsForm : Form
         _chkAutoStart = Check("Start with Windows");
         _chkMinimizeToTray = Check("Minimize to system tray");
         _chkCheckUpdates = Check("Check for updates on startup");
+        _checkUpdatesHint = Hint(_chkCheckUpdates, "Asks before installing anything.");
+        if (AppPackaging.IsPackaged)
+        {
+            _chkCheckUpdates.Visible = false;
+            _checkUpdatesHint.Visible = false;
+        }
+
         _chkOpenFullScreen = Check("Open Settings full screen");
         _cmbQuickPause = Combo(360);
         _cmbQuickPause.Items.AddRange(new object[]
@@ -374,7 +383,7 @@ public partial class SettingsForm : Form
             "General",
             Hint(_chkAutoStart, "Launch Lexon when you sign in to Windows."),
             Hint(_chkMinimizeToTray, "Close hides Settings. Lexon stays in the tray."),
-            Hint(_chkCheckUpdates, "Asks before installing anything."),
+            _checkUpdatesHint,
             Hint(_chkOpenFullScreen, "Opens maximized so the three-column layout is used."),
             Caption("Double-press Ctrl pauses for"),
             Hint(_cmbQuickPause, "How long Lexon stays off after you double-press Ctrl. It turns itself back on when the time is up, or sooner if you double-press Ctrl again."),
@@ -1670,7 +1679,7 @@ public partial class SettingsForm : Form
         _loading = true;
         _persist.IsLoading = true;
         _appSettings.Read(_profile);
-        _chkAutoStart.Checked = WindowsStartup.IsEnabled();
+        _chkAutoStart.Checked = _startup.IsEnabled();
         _chkMinimizeToTray.Checked = _appSettings.MinimizeToTray;
         _chkCheckUpdates.Checked = _appSettings.EnableAutoUpdates;
         _chkOpenFullScreen.Checked = _appSettings.OpenSettingsFullScreen;
@@ -1780,10 +1789,13 @@ public partial class SettingsForm : Form
     {
         var blockedApps = BlockedAppList.Parse(_txtBlockedApps.Text);
 
-        WindowsStartup.SetEnabled(_chkAutoStart.Checked);
+        _startup.TrySetEnabled(_chkAutoStart.Checked);
 
         _appSettings.MinimizeToTray = _chkMinimizeToTray.Checked;
-        _appSettings.EnableAutoUpdates = _chkCheckUpdates.Checked;
+        if (!AppPackaging.IsPackaged)
+        {
+            _appSettings.EnableAutoUpdates = _chkCheckUpdates.Checked;
+        }
         _appSettings.OpenSettingsFullScreen = _chkOpenFullScreen.Checked;
         _appSettings.QuickPauseMinutes = QuickPauseOptions.MinutesFromIndex(_cmbQuickPause.SelectedIndex);
         _appSettings.AIProvider = _ai.ActiveProvider;

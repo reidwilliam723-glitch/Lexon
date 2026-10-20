@@ -489,6 +489,11 @@ public static class LexonServiceComposer
 
     private static void InitializeUpdateManager(Profile profile)
     {
+        if (AppPackaging.IsPackaged)
+        {
+            return;
+        }
+
         try
         {
             var updateManager = UpdateManager.Instance;

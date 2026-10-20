@@ -43,6 +43,12 @@ public class UpdateManager
 
     public void Initialize(bool enabled, string? serverUrl = null, TimeSpan? checkInterval = null)
     {
+        if (AppPackaging.IsPackaged)
+        {
+            _isEnabled = false;
+            return;
+        }
+
         _isEnabled = enabled;
         if (!string.IsNullOrEmpty(serverUrl))
         {
@@ -57,7 +63,7 @@ public class UpdateManager
 
     public async Task<UpdateCheckResult> CheckForUpdatesAsync(bool forceCheck = false)
     {
-        if (!_isEnabled)
+        if (AppPackaging.IsPackaged || !_isEnabled)
         {
             return new UpdateCheckResult { Success = true, UpdateAvailable = false };
         }
@@ -110,7 +116,7 @@ public class UpdateManager
     /// </summary>
     public static void OpenDownloadPage(string? downloadUrl)
     {
-        if (string.IsNullOrWhiteSpace(downloadUrl))
+        if (AppPackaging.IsPackaged || string.IsNullOrWhiteSpace(downloadUrl))
         {
             return;
         }

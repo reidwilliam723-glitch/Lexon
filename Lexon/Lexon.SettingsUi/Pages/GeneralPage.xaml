@@ -3,6 +3,9 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:local="clr-namespace:Lexon.SettingsUi"
              xmlns:model="clr-namespace:Lexon.SettingsModel;assembly=Lexon.SettingsModel">
+  <UserControl.Resources>
+    <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+  </UserControl.Resources>
   <ScrollViewer HorizontalScrollBarVisibility="Disabled"
                 VerticalScrollBarVisibility="Auto"
                 Focusable="False">
@@ -64,11 +67,13 @@
 
           <CheckBox Content="Check for updates on startup"
                     IsChecked="{Binding CheckForUpdates}"
+                    Visibility="{Binding ShowUpdateSettings, Converter={StaticResource BoolToVis}}"
                     AutomationProperties.Name="Check for updates on startup"
                     AutomationProperties.HelpText="Asks before installing anything."/>
           <TextBlock Text="Asks before installing anything."
                      TextWrapping="Wrap"
                      Margin="0,4,0,12"
+                     Visibility="{Binding ShowUpdateSettings, Converter={StaticResource BoolToVis}}"
                      Foreground="{DynamicResource TextSecondaryBrush}"
                      FontFamily="{DynamicResource LexonFontFamily}"
                      FontSize="{DynamicResource CaptionFontSize}"/>

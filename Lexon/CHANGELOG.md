@@ -2,6 +2,15 @@
 
 All notable changes to Lexon will be documented in this file.
 
+## [1.10.9] - 2026-10-20
+
+### Packaging
+- Store (MSIX) builds detect package identity, skip Velopack and every update path, and use a StartupTask for Start with Windows instead of the registry Run key.
+- `Settings\pack-msix.ps1` builds a full-trust MSIX from Partner Center identity values and refuses the placeholder publisher in Store mode.
+
+### Settings
+- The Check for updates control and tray update item are hidden when Lexon is installed from the Store.
+
 ## [1.10.8] - 2026-10-20
 
 ### Suggestions

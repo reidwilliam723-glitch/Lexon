@@ -1,11 +1,24 @@
 # Store packaging
 
-`AppxManifest.xml` is a full-trust desktop manifest for Lexon 1.10.7. The files in `Assets` are real PNG tiles. This folder is not built by `Settings\release.ps1`. The GitHub installer remains the Velopack package.
+`AppxManifest.xml` is a full-trust desktop manifest. Tiles live in `Assets`.
+The GitHub installer remains the Velopack package from `Settings\release.ps1`.
 
-Still required before a Partner Center upload:
+Build a Store package with:
 
-- Set `Identity Publisher` to the exact publisher value from Partner Center. `CN=WGR` is only a stand-in.
-- Reserve the package name `WGR.Lexon`, or change `Identity Name` to the name you reserved.
-- Host `documents\PRIVACY_POLICY.md` at a public `https` address and paste that URL into the submission.
-- Pack the published `win-x64` app with this manifest. Do not turn Lexon into a sandboxed Store app. It has to type into other programs, so the package needs `runFullTrust`.
-- Leave the GitHub updater out of the Store build. The Store delivers those updates.
+```powershell
+cd Settings
+.\pack-msix.ps1 `
+  -PackageName "<Partner Center Identity Name>" `
+  -Publisher "CN=<Partner Center publisher GUID>" `
+  -PublisherDisplayName "<Publisher display name>"
+```
+
+Partner Center → Product identity supplies those three values. Store mode refuses
+`CN=WGR`. Omit `-SelfSign` for upload (the Store signs the package). Use
+`-SelfSign` only for local sideload testing.
+
+## Behaviour notes
+
+- Keyboard hook and tray run inside `Lexon.Settings.exe` (not a separate Service process).
+- Packaged builds skip Velopack and all update UI.
+- "Start with Windows" uses StartupTask `LexonStartup` on `Lexon.Settings.exe`.

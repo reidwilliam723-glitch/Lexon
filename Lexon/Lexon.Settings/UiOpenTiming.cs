@@ -46,7 +46,7 @@ internal static class UiOpenTiming
             var persist = new Lexon.SettingsModel.PersistScheduler(() => { });
             var services = new GallerySettingsServices(
                 new Lexon.SettingsModel.AppSettings(),
-                new WindowsStartupRegistration(),
+                StartupRegistration.Create(),
                 persist,
                 persist.Flush);
             var (coldSettings, warmSettings) = SettingsUiHost.MeasureSettingsOpen(themes, services);

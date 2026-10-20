@@ -8,6 +8,10 @@ namespace Lexon.Settings;
 /// </summary>
 internal sealed class WindowsStartupRegistration : IStartupRegistration
 {
+    public StartupAvailability Availability => StartupAvailability.Available;
+
+    public string? StatusHint => null;
+
     public bool IsEnabled() => WindowsStartup.IsEnabled();
 
     public bool TrySetEnabled(bool enabled)

@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using Lexon.Core;
 
 namespace Lexon.SettingsModel;
 
@@ -97,16 +98,21 @@ public sealed class GeneralSettingsViewModel : INotifyPropertyChanged, IOwnedSet
             if (!_startup.TrySetEnabled(value))
             {
                 OnPropertyChanged();
-                StatusMessage = StartupFailedMessage;
+                StatusMessage = _startup.StatusHint ?? StartupFailedMessage;
                 return;
             }
 
             _startWithWindows = value;
-            StatusMessage = string.Empty;
+            StatusMessage = _startup.StatusHint ?? string.Empty;
             MarkDirtyAndSchedule();
             OnPropertyChanged();
         }
     }
+
+    /// <summary>
+    /// False in the Store / MSIX build so update controls are not shown.
+    /// </summary>
+    public bool ShowUpdateSettings => !AppPackaging.IsPackaged;
 
     public bool MinimizeToTray
     {
@@ -234,11 +240,12 @@ public sealed class GeneralSettingsViewModel : INotifyPropertyChanged, IOwnedSet
             _checkForUpdates = _settings.EnableAutoUpdates;
             _openSettingsFullScreen = _settings.OpenSettingsFullScreen;
             _quickPauseIndex = QuickPauseOptions.IndexFromMinutes(_settings.QuickPauseMinutes);
-            _statusMessage = string.Empty;
+            _statusMessage = _startup.StatusHint ?? string.Empty;
             _isDirty = false;
             OnPropertyChanged(nameof(StartWithWindows));
             OnPropertyChanged(nameof(MinimizeToTray));
             OnPropertyChanged(nameof(CheckForUpdates));
+            OnPropertyChanged(nameof(ShowUpdateSettings));
             OnPropertyChanged(nameof(OpenSettingsFullScreen));
             OnPropertyChanged(nameof(QuickPauseIndex));
             OnPropertyChanged(nameof(StatusMessage));

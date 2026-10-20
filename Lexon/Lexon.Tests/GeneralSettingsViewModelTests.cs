@@ -259,5 +259,9 @@ public class GeneralSettingsViewModelTests
             Enabled = enabled;
             return true;
         }
+
+        public StartupAvailability Availability { get; set; } = StartupAvailability.Available;
+
+        public string? StatusHint { get; set; }
     }
 }

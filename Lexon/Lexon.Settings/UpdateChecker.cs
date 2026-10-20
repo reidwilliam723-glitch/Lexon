@@ -1,3 +1,4 @@
+using Lexon.Core;
 using Velopack;
 using Velopack.Sources;
 
@@ -6,6 +7,7 @@ namespace Lexon.Settings;
 /// <summary>
 /// Velopack-backed update check. Downloads in the background and only ever
 /// restarts the app after the person explicitly confirms the prompt.
+/// Skipped entirely in the Store / MSIX build.
 /// </summary>
 internal static class UpdateChecker
 {
@@ -40,6 +42,11 @@ internal static class UpdateChecker
 
     private static async Task RunAsync(Action<Action> invokeOnUi, Action requestShutdown, bool interactive)
     {
+        if (AppPackaging.IsPackaged)
+        {
+            return;
+        }
+
         // Never queue a second check. Extra tray clicks used to wait and then
         // hit GitHub again; now they get a short message or stay silent.
         if (!await CheckGate.WaitAsync(TimeSpan.Zero))
@@ -64,7 +71,7 @@ internal static class UpdateChecker
             BusyChanged?.Invoke(true);
             // GithubSource uses the releases list API, which currently returns
             // no assets for the newest Lexon tag. latest/download has the files.
-            var manager = new UpdateManager(new SimpleWebSource(
+            var manager = new Velopack.UpdateManager(new SimpleWebSource(
                 $"{RepositoryUrl}/releases/latest/download"));
 
             if (!manager.IsInstalled)

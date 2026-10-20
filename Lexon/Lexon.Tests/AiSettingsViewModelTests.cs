@@ -800,6 +800,10 @@ public class AiSettingsViewModelTests
         public bool IsEnabled() => false;
 
         public bool TrySetEnabled(bool enabled) => true;
+
+        public StartupAvailability Availability => StartupAvailability.Available;
+
+        public string? StatusHint => null;
     }
 
     private sealed class SpyProfile : Profile

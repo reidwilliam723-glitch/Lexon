@@ -208,6 +208,10 @@ public class LiveApplyTests
         public bool IsEnabled() => false;
 
         public bool TrySetEnabled(bool enabled) => true;
+
+        public StartupAvailability Availability => StartupAvailability.Available;
+
+        public string? StatusHint => null;
     }
 
     private sealed class FailingStartup : IStartupRegistration
@@ -215,6 +219,10 @@ public class LiveApplyTests
         public bool IsEnabled() => false;
 
         public bool TrySetEnabled(bool enabled) => false;
+
+        public StartupAvailability Availability => StartupAvailability.Available;
+
+        public string? StatusHint => null;
     }
 
     private sealed class FakeThemes : IThemeSwitcher
