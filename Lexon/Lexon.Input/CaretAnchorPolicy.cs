@@ -80,4 +80,61 @@ public static class CaretAnchorPolicy
 
     public static int EstimateCharWidth(int lineHeight)
         => Math.Max(6, (int)Math.Round(Math.Clamp(lineHeight, 14, 48) * 0.52));
+
+    /// <summary>
+    /// Characters before the current word on this line. The word width is
+    /// subtracted only when the line actually ends with that word. Subtracting
+    /// it from unrelated text walks the overlay left on every new letter.
+    /// </summary>
+    public static int CharsBeforeWord(string? line, string? word)
+    {
+        var text = line ?? string.Empty;
+        var token = word ?? string.Empty;
+        if (token.Length > 0 && text.EndsWith(token, StringComparison.OrdinalIgnoreCase))
+        {
+            return text.Length - token.Length;
+        }
+
+        return text.Length;
+    }
+
+    public static int AdvanceCaretX(int caretX, char character, int lineHeight)
+    {
+        var width = EstimateCharWidth(lineHeight);
+        if (character == '\b')
+        {
+            return Math.Max(0, caretX - width);
+        }
+
+        if (char.IsControl(character))
+        {
+            return caretX;
+        }
+
+        return caretX + width;
+    }
+
+    /// <summary>
+    /// <paramref name="caretX"/> is the caret after the word, not the overlay
+    /// anchor. The anchor stays put while the word grows.
+    /// </summary>
+    public static int WordStartX(int caretX, int wordLength, int lineHeight)
+    {
+        if (wordLength <= 0)
+        {
+            return caretX;
+        }
+
+        return caretX - wordLength * EstimateCharWidth(lineHeight);
+    }
+
+    public static int CaretXFromWordStart(int wordStartX, int wordLength, int lineHeight)
+    {
+        if (wordLength <= 0)
+        {
+            return wordStartX;
+        }
+
+        return wordStartX + wordLength * EstimateCharWidth(lineHeight);
+    }
 }

@@ -44,7 +44,7 @@ public static class AiProviderCatalog
         => provider.ToLowerInvariant() switch
         {
             "openai" => "gpt-4o-mini",
-            "gemini" => "gemini-2.0-flash",
+            "gemini" => "gemini-3.8-flash",
             "deepseek" => "deepseek-chat",
             "ollama" => "llama3.2",
             _ => string.Empty
@@ -53,8 +53,8 @@ public static class AiProviderCatalog
     public static IReadOnlyList<string> Models(string provider)
         => provider.ToLowerInvariant() switch
         {
-            "openai" => ["gpt-4o-mini", "gpt-4.1-mini", "gpt-3.5-turbo"],
-            "gemini" => ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-pro"],
+            "openai" => ["gpt-4o-mini", "gpt-4.1-mini"],
+            "gemini" => ["gemini-3.8-flash"],
             "deepseek" => ["deepseek-chat", "deepseek-reasoner"],
             "ollama" => ["llama3.2", "llama3.1", "llama2", "phi3", "qwen2.5"],
             _ => []
@@ -104,10 +104,25 @@ public static class AiProviderCatalog
         return text.Contains(' ') ? string.Empty : text;
     }
 
+    /// <summary>
+    /// Retired model ids keep working by moving to the current replacement.
+    /// </summary>
+    public static string ResolveModel(string provider, string? model)
+    {
+        var pick = string.IsNullOrWhiteSpace(model) ? DefaultModel(provider) : model.Trim();
+        return (provider.ToLowerInvariant(), pick) switch
+        {
+            ("gemini", "gemini-2.0-flash" or "gemini-2.0-flash-001" or "gemini-1.5-flash" or "gemini-1.5-pro" or "gemini-2.5-flash" or "gemini-2.5-pro")
+                => DefaultModel("gemini"),
+            ("openai", "gpt-3.5-turbo" or "gpt-3.5-turbo-0125") => "gpt-4.1-mini",
+            _ => pick
+        };
+    }
+
     public static IAIProvider Create(string provider, string? apiKey, AIResponseCache? cache = null, string? model = null)
     {
         cache ??= new AIResponseCache();
-        var resolved = string.IsNullOrWhiteSpace(model) ? DefaultModel(provider) : model;
+        var resolved = ResolveModel(provider, model);
         return provider.ToLowerInvariant() switch
         {
             "openai" => new OpenAIProvider(apiKey, null, cache, resolved),

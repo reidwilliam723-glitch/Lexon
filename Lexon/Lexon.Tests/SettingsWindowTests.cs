@@ -29,7 +29,7 @@ public class SettingsWindowTests
         _sta.Run(() =>
         {
             var window = Show(FullServices(out _));
-            Assert.Equal(["General", "AI", "Privacy", "Appearance", "App tone", "Writing", "Apps", "Check"], window.TabNames);
+            Assert.Equal(["General", "AI", "Privacy", "Appearance", "App tone", "Writing", "Apps", "Check", "About"], window.TabNames);
             Assert.DoesNotContain("Controls", window.TabNames);
             Assert.True(window.IsGeneralPageVisible);
             window.Destroy();
@@ -49,7 +49,7 @@ public class SettingsWindowTests
             Assert.Same(window.GeneralViewModel, gallery.GeneralViewModel);
             Assert.True(gallery.HasPrivacyTab);
             Assert.True(gallery.HasAppsTab);
-            Assert.Equal(9, gallery.GalleryTabCount);
+            Assert.Equal(10, gallery.GalleryTabCount);
             window.Destroy();
             gallery.Close();
         });
@@ -269,29 +269,18 @@ public class SettingsWindowTests
     }
 
     [Fact]
-    public void About_OpensAboutFormOwnedByTheSettingsWindow()
+    public void About_ShowsFullPageWithDeveloperNote()
     {
         _sta.Run(() =>
         {
-            AboutForm? about = null;
-            var services = FullServices(out _);
-            var window = new SettingsWindow(null, services, owner =>
-            {
-                about = new AboutForm();
-                about.Show(WpfDialogOwner.From(owner));
-            })
-            {
-                Left = -20000,
-                Top = -20000,
-                ShowInTaskbar = false
-            };
-            window.Show();
-            var button = Find(window).OfType<System.Windows.Controls.Button>().First(item => AutomationProperties.GetName(item) == "About");
-            button.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Button.ClickEvent));
-            Assert.NotNull(about);
-            var owner = GetWindow(about!.Handle, GwOwner);
-            Assert.Equal(new WindowInteropHelper(window).Handle, owner);
-            about.Close();
+            var window = Show(FullServices(out _));
+            var aboutIndex = window.TabNames.ToList().IndexOf("About");
+            Assert.True(aboutIndex >= 0);
+            window.SelectTab(aboutIndex);
+            Assert.True(window.IsAboutPageVisible);
+            var note = Find(window).OfType<System.Windows.Controls.TextBlock>()
+                .First(item => (item.Text ?? string.Empty).Contains("passion project", StringComparison.Ordinal));
+            Assert.Contains("Lexon.Help@gmail.com", note.Text, StringComparison.Ordinal);
             window.Destroy();
         });
     }

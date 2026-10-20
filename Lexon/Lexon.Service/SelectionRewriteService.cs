@@ -776,12 +776,20 @@ public sealed class SelectionRewriteService
         _confirmation.BeginLiveRewrite(selected, caret.X, caret.Y, after =>
         {
             var next = after.Trim();
-            if (string.IsNullOrWhiteSpace(next) || next == selected)
+            if (!IsUsableRewrite(next, selected))
             {
                 return;
             }
 
-            _textInjector.ReplaceSelection(next);
+            if (_focusTracker.TryGetSelectedText(out var live)
+                && string.Equals(live.Trim(), selected, StringComparison.Ordinal))
+            {
+                _textInjector.ReplaceSelection(next);
+            }
+            else
+            {
+                _textInjector.ReplaceText(selected, next, selectionStillActive: false);
+            }
             _undoManager.RecordOperation(selected, next);
             _personalization.RecordCharactersInserted(next.Length);
             _personalization.RecordRewriteOutcome(_pendingCategory, _pendingStyle, true);
@@ -827,11 +835,27 @@ public sealed class SelectionRewriteService
             }
 
             var next = (rewritten ?? string.Empty).Trim();
-            _confirmation.UpdateLiveRewrite(string.IsNullOrWhiteSpace(next) ? selected : next, true);
+            if (!IsUsableRewrite(next, selected))
+            {
+                _confirmation.DismissLiveRewrite();
+                NotifyBlocked(string.IsNullOrWhiteSpace(next)
+                    ? "The rewrite didn't come back. Check Settings → AI."
+                    : "The rewrite matched the original, so nothing was changed.");
+                return;
+            }
+
+            _confirmation.UpdateLiveRewrite(next, true);
         }
         catch (OperationCanceledException)
         {
+            _confirmation.DismissLiveRewrite();
         }
+    }
+
+    internal static bool IsUsableRewrite(string? rewritten, string selected)
+    {
+        var next = (rewritten ?? string.Empty).Trim();
+        return next.Length > 0 && !next.Equals(selected.Trim(), StringComparison.Ordinal);
     }
 
     private sealed class LiveRewriteProgress : IProgress<string>

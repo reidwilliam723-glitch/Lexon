@@ -38,7 +38,7 @@ internal static class AiHttp
     {
         var client = new HttpClient(SharedHandler, disposeHandler: false)
         {
-            Timeout = TimeSpan.FromSeconds(20),
+            Timeout = TimeSpan.FromSeconds(60),
             DefaultRequestVersion = HttpVersion.Version20,
             DefaultVersionPolicy = HttpVersionPolicy.RequestVersionOrLower
         };

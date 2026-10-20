@@ -156,6 +156,8 @@ internal sealed class SettingsPagesHost : IDisposable
         CheckPage = new CheckLexonPage(Check);
         services.Pages.Add(Check);
 
+        AboutPage = new AboutPage();
+
         InstallOverlapGuard();
         Retarget(owner);
         _persistTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(100) };
@@ -202,6 +204,8 @@ internal sealed class SettingsPagesHost : IDisposable
     public AppsPage? AppsPage { get; }
 
     public CheckLexonPage CheckPage { get; }
+
+    public AboutPage AboutPage { get; }
 
     public ClipboardHwndListener Clipboard => _clipboard;
 
@@ -322,6 +326,12 @@ internal sealed class SettingsPagesHost : IDisposable
         content.Content = CheckPage;
         ReloadPage(Check);
         Check.RefreshStatus();
+    }
+
+    public void ShowAbout(System.Windows.Controls.ContentControl content)
+    {
+        TrackHost(content);
+        content.Content = AboutPage;
     }
 
     public void Dispose()

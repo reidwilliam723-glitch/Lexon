@@ -85,6 +85,15 @@ public class SelectionRewriteSpeedTests
 
         Assert.False(SelectionRewriteService.TryResolveSelection("  ", "", preferCache: false, out _));
     }
+
+    [Fact]
+    public void IsUsableRewrite_RejectsEmptyAndUnchanged()
+    {
+        Assert.False(SelectionRewriteService.IsUsableRewrite(null, "hello"));
+        Assert.False(SelectionRewriteService.IsUsableRewrite("  ", "hello"));
+        Assert.False(SelectionRewriteService.IsUsableRewrite("hello", "hello"));
+        Assert.True(SelectionRewriteService.IsUsableRewrite("Hello.", "hello"));
+    }
 }
 
 public class AiStreamParserTests
@@ -107,5 +116,12 @@ public class AiStreamParserTests
         var progress = new Progress<string>(reports.Add);
         var text = await AiStreamParser.ReadSseAsync(stream, AiStreamParser.TryOpenAiDelta, progress, CancellationToken.None);
         Assert.Equal("Hello", text);
+    }
+
+    [Fact]
+    public void TryGeminiText_SkipsThoughtParts()
+    {
+        var json = """{"candidates":[{"content":{"parts":[{"thought":true,"text":"thinking"},{"text":"More formal."}]}}]}""";
+        Assert.Equal("More formal.", AiStreamParser.TryGeminiText(json));
     }
 }

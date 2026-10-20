@@ -32,7 +32,7 @@ public class OpenAIProvider : IAIProvider
         
         _httpClient = httpClient ?? AiHttp.CreateClient();
         _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {_apiKey}");
-        _httpClient.Timeout = TimeSpan.FromSeconds(20);
+        _httpClient.Timeout = TimeSpan.FromSeconds(60);
         _cache = cache ?? new AIResponseCache();
         if (!string.IsNullOrWhiteSpace(model))
         {
@@ -102,7 +102,7 @@ public class OpenAIProvider : IAIProvider
                 _cache.CacheResponse("rewrite", $"{instruction}:{text}", response);
             }
 
-            return response ?? text;
+            return response ?? string.Empty;
         }
         catch (OperationCanceledException)
         {
@@ -110,7 +110,7 @@ public class OpenAIProvider : IAIProvider
         }
         catch (Exception)
         {
-            return text;
+            return string.Empty;
         }
     }
 
@@ -234,7 +234,7 @@ public class OpenAIProvider : IAIProvider
         {
             model = _model,
             messages = new[] { new { role = "user", content = prompt } },
-            max_tokens = maxTokens,
+            max_completion_tokens = maxTokens,
             temperature = 0,
             stream = true
         };

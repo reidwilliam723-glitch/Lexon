@@ -11,16 +11,14 @@ public sealed class SettingsWindow : Window
 {
     private readonly GallerySettingsServices _services;
     private readonly SettingsPagesHost _host;
-    private readonly Action<Window>? _showAbout;
     private readonly List<NavItem> _tabs = [];
     private ContentControl _content = null!;
     private bool _destroying;
 
-    public SettingsWindow(ThemeManager? themes, GallerySettingsServices services, Action<Window>? showAbout = null)
+    public SettingsWindow(ThemeManager? themes, GallerySettingsServices services)
     {
         ArgumentNullException.ThrowIfNull(services);
         _services = services;
-        _showAbout = showAbout;
         _host = SettingsPagesHost.GetOrCreate(services, this);
         _host.AddRef();
         _host.Retarget(this);
@@ -84,6 +82,8 @@ public sealed class SettingsWindow : Window
     internal bool IsWritingPageVisible => _content.Content == _host.WritingPage;
 
     internal bool IsWritingStatsVisible => _content.Content is WritingStatsPage;
+
+    internal bool IsAboutPageVisible => _content.Content == _host.AboutPage;
 
     internal object? CurrentPage => _content.Content;
 
@@ -248,17 +248,7 @@ public sealed class SettingsWindow : Window
         }
 
         AddTab(nav, "Check", () => _host.ShowCheck(_content));
-
-        var about = new Button
-        {
-            Content = "About",
-            Margin = new Thickness(0, 16, 12, 0),
-            HorizontalAlignment = HorizontalAlignment.Left
-        };
-        about.SetResourceReference(StyleProperty, "SubtleButton");
-        AutomationProperties.SetName(about, "About");
-        about.Click += (_, _) => _showAbout?.Invoke(this);
-        nav.Children.Add(about);
+        AddTab(nav, "About", () => _host.ShowAbout(_content));
 
         root.Children.Add(nav);
         _content = new ContentControl { Margin = new Thickness(8, 0, 0, 0) };

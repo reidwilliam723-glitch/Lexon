@@ -48,7 +48,9 @@ public class AiProviderSetupTests
         Assert.Equal("https://aistudio.google.com/apikey", AiProviderCatalog.KeyCreationUrl("Gemini"));
         Assert.Equal("https://platform.deepseek.com/api_keys", AiProviderCatalog.KeyCreationUrl("DeepSeek"));
         Assert.Equal("gpt-4o-mini", AiProviderCatalog.DefaultModel("OpenAI"));
-        Assert.Equal("gemini-2.0-flash", AiProviderCatalog.DefaultModel("Gemini"));
+        Assert.Equal("gemini-3.8-flash", AiProviderCatalog.DefaultModel("Gemini"));
+        Assert.Equal("gemini-3.8-flash", AiProviderCatalog.ResolveModel("Gemini", "gemini-2.0-flash"));
+        Assert.Equal("gpt-4.1-mini", AiProviderCatalog.ResolveModel("OpenAI", "gpt-3.5-turbo"));
         Assert.Equal("deepseek-chat", AiProviderCatalog.DefaultModel("DeepSeek"));
         Assert.Equal("llama3.2", AiProviderCatalog.DefaultModel("Ollama"));
     }

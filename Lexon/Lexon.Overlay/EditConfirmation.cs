@@ -98,6 +98,15 @@ public sealed class EditConfirmation : IEditConfirmation
         }
     }
 
+    public void DismissLiveRewrite()
+    {
+        Interlocked.Exchange(ref _liveApply, null);
+        Interlocked.Exchange(ref _pendingApply, null);
+        Interlocked.Exchange(ref _pendingCancel, null);
+        Interlocked.Exchange(ref _pendingTrustKey, null);
+        _preview.Hide();
+    }
+
     public bool TryHandleKey(int virtualKey, bool shift, bool control, bool alt)
     {
         if (!_preview.IsVisible || shift || control || alt)

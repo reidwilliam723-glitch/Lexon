@@ -29,6 +29,7 @@ public sealed class ControlGalleryWindow : Window
     private NavItem? _writingTab;
     private NavItem? _appsTab;
     private NavItem? _checkTab;
+    private NavItem? _aboutTab;
     private GeneralPage? _generalPage;
     private AiPage? _aiPage;
     private PrivacyPage? _privacyPage;
@@ -37,6 +38,7 @@ public sealed class ControlGalleryWindow : Window
     private WritingPage? _writingPage;
     private AppsPage? _appsPage;
     private CheckLexonPage? _checkPage;
+    private AboutPage? _aboutPage;
     private GeneralSettingsViewModel? _generalVm;
     private AiSettingsViewModel? _aiVm;
     private PrivacySettingsViewModel? _privacyVm;
@@ -86,6 +88,7 @@ public sealed class ControlGalleryWindow : Window
             _appsVm = _host.Apps;
             _appsPage = _host.AppsPage;
             _checkPage = _host.CheckPage;
+            _aboutPage = _host.AboutPage;
         }
 
         Content = Build();
@@ -114,7 +117,8 @@ public sealed class ControlGalleryWindow : Window
            + (_appToneTab != null ? 1 : 0)
            + (_writingTab != null ? 1 : 0)
            + (_appsTab != null ? 1 : 0)
-           + (_checkTab != null ? 1 : 0);
+           + (_checkTab != null ? 1 : 0)
+           + (_aboutTab != null ? 1 : 0);
 
     internal bool IsGeneralPageVisible => _generalPage != null && _contentHost?.Content == _generalPage;
 
@@ -355,6 +359,14 @@ public sealed class ControlGalleryWindow : Window
             tabs.Children.Add(_checkTab);
         }
 
+        if (_aboutPage != null)
+        {
+            _aboutTab = new NavItem { Content = "About", GroupName = "galleryTabs", Margin = new Thickness(0, 0, 8, 4) };
+            AutomationProperties.SetName(_aboutTab, "About");
+            _aboutTab.Checked += (_, _) => ShowAboutContent();
+            tabs.Children.Add(_aboutTab);
+        }
+
         DockPanel.SetDock(tabs, Dock.Top);
         root.Children.Add(tabs);
 
@@ -574,6 +586,14 @@ public sealed class ControlGalleryWindow : Window
         if (_contentHost != null && _host != null)
         {
             _host.ShowCheck(_contentHost);
+        }
+    }
+
+    private void ShowAboutContent()
+    {
+        if (_contentHost != null && _host != null)
+        {
+            _host.ShowAbout(_contentHost);
         }
     }
 

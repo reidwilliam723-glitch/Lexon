@@ -1,88 +1,50 @@
 <?xml version="1.0" encoding="utf-8"?>
-<Package xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
-         IgnorableNames="uap uap3 uap4 uap5 uap6 rescap desktop3">
-  <Identity Name="Lexon.Lexon"
-            Publisher="CN=Lexon"
-            Version="1.0.0.0" />
+<Package
+  xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+  xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+  xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
+  IgnorableNamespaces="uap rescap">
+
+  <!-- Publisher must be replaced with the exact Partner Center publisher ID before upload. -->
+  <Identity
+    Name="WGR.Lexon"
+    Publisher="CN=WGR"
+    Version="1.10.8.0"
+    ProcessorArchitecture="x64" />
 
   <Properties>
     <DisplayName>Lexon</DisplayName>
-    <PublisherDisplayName>Lexon</PublisherDisplayName>
+    <PublisherDisplayName>WGR</PublisherDisplayName>
     <Logo>Assets\StoreLogo.png</Logo>
-    <Description>AI-powered typing assistant for Windows with privacy-first design</Description>
-
-    <SupportedLanguages>en-US</SupportedLanguages>
-
-    <Keywords>typing,assistant,AI,autocomplete,text expansion,privacy</Keywords>
-
-    <Capabilities>
-      <rescap:Capability Name="inputObservation" />
-      <rescap:Capability Name="inputSuppression" />
-    </Capabilities>
   </Properties>
 
   <Resources>
-    <Resource Language="en-US">
-      <Resource>
-        <Scale>100</Scale>
-        <Uap:Scale>100</Uap:Scale>
-      </Resource>
-      <Resource>
-        <Scale>125</Scale>
-        <Uap:Scale>125</Uap:Scale>
-      </Resource>
-      <Resource>
-        <Scale>150</Scale>
-        <Uap:Scale>150</Uap:Scale>
-      </Resource>
-      <Resource>
-        <Scale>200</Scale>
-        <Uap:Scale>200</Uap:Scale>
-      </Resource>
-      <Resource>
-        <Scale>400</Scale>
-        <Uap:Scale>400</Uap:Scale>
-      </Resource>
-    </Resource>
+    <Resource Language="en-US" />
   </Resources>
 
+  <Dependencies>
+    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.19041.0" MaxVersionTested="10.0.26100.0" />
+  </Dependencies>
+
   <Applications>
-    <Application Id="App"
-                 Executable="Lexon.Settings.exe"
-                 EntryPoint="$targetentrypoint$">
+    <Application Id="Lexon" Executable="Lexon.Settings.exe" EntryPoint="Windows.FullTrustApplication">
       <uap:VisualElements
-          DisplayName="Lexon"
-          Description="AI-powered typing assistant for Windows"
-          BackgroundColor="transparent"
-          Square150x150Logo="Assets\Square150x150Logo.png"
-          Square44x44Logo="Assets\Square44x44Logo.png"
-          LockScreen="Assets\LockScreen.png">
-        <uap:DefaultTile Wide310x150Logo="Assets\Wide310x150Logo.png"
-                         Square71x71Logo="Assets\SmallTile.png"
-                         Square310x310Logo="Assets\LargeTile.png">
-          <uap:ShowNameOnTiles>
-            <uap:ShowOn Tile="square150x150Logo" />
-            <uap:ShowOn Tile="wide310x150Logo" />
-            <uap:ShowOn Tile="square310x310Logo" />
-          </uap:ShowNameOnTiles>
-        </uap:DefaultTile>
+        DisplayName="Lexon"
+        Description="Typing assistant for Windows. Suggestions stay on this PC unless you connect a cloud AI provider."
+        BackgroundColor="#1E3A5F"
+        Square150x150Logo="Assets\Square150x150Logo.png"
+        Square44x44Logo="Assets\Square44x44Logo.png">
+        <uap:DefaultTile
+          Wide310x150Logo="Assets\Wide310x150Logo.png"
+          Square71x71Logo="Assets\SmallTile.png"
+          Square310x310Logo="Assets\LargeTile.png" />
         <uap:SplashScreen Image="Assets\SplashScreen.png" />
       </uap:VisualElements>
-
-      <Extensions>
-        <uap:Extension Category="windows.startupTask">
-          <uap:StartupTask ActivationKind="foreground"
-                          DisplayName="Lexon"
-                          TaskId="LexonStartup">
-            <uap:DesktopApp />
-          </uap:StartupTask>
-        </uap:Extension>
-      </Extensions>
     </Application>
   </Applications>
 
   <Capabilities>
+    <rescap:Capability Name="runFullTrust" />
     <Capability Name="internetClient" />
-    <Capability Name="privateNetworkClientServer" />
   </Capabilities>
 </Package>

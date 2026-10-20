@@ -408,7 +408,7 @@ public class FocusTracker : IFocusTracker
         (int X, int Y) Finish(int x, int y, int lineHeight, string via)
         {
             LastAnchorLineHeight = Math.Max(14, lineHeight);
-            RememberEstimate(x, y);
+            RememberEstimate(CaretAnchorPolicy.CaretXFromWordStart(x, currentWord?.Length ?? 0, LastAnchorLineHeight), y);
             DiagnosticLog.WritePlacement(
                 $"ANCHOR hwnd=0x{hWnd:X} class={className} process={processName} word={DiagnosticLog.Escape(currentWord)} finalScreen=({x},{y}) lineH={LastAnchorLineHeight} via={via}");
             return (x, y);
@@ -440,7 +440,9 @@ public class FocusTracker : IFocusTracker
                     out var composerY,
                     constrainToComposer: true,
                     charsBeforeWord: CharsBeforeCurrentWord(hWnd, currentWord),
-                    trackedCaretX: _hasEstimate ? _estimateX : 0)
+                    trackedCaretX: _hasEstimate
+                        ? CaretAnchorPolicy.WordStartX(_estimateX, currentWord?.Length ?? 0, LastAnchorLineHeight)
+                        : 0)
                 && Accept(composerX, composerY))
             {
                 return Finish(composerX, composerY, UiaScreenAnchor.LastLineHeight, "whatsapp-composer");
@@ -580,19 +582,13 @@ public class FocusTracker : IFocusTracker
             return;
         }
 
-        var width = CaretAnchorPolicy.EstimateCharWidth(LastAnchorLineHeight);
-        if (character == '\b')
-        {
-            _estimateX = Math.Max(0, _estimateX - width);
-        }
-        else if (character is '\r' or '\n')
+        if (character is '\r' or '\n')
         {
             _estimateY += Math.Max(16, LastAnchorLineHeight);
+            return;
         }
-        else if (!char.IsControl(character))
-        {
-            _estimateX += width;
-        }
+
+        _estimateX = CaretAnchorPolicy.AdvanceCaretX(_estimateX, character, LastAnchorLineHeight);
     }
 
     private bool TryEstimateAnchor(string? currentWord, out (int X, int Y) point)
@@ -603,12 +599,7 @@ public class FocusTracker : IFocusTracker
             return false;
         }
 
-        var x = _estimateX;
-        if (!string.IsNullOrEmpty(currentWord) && currentWord.Length > 1)
-        {
-            x -= (currentWord.Length - 1) * CaretAnchorPolicy.EstimateCharWidth(LastAnchorLineHeight);
-        }
-
+        var x = CaretAnchorPolicy.WordStartX(_estimateX, currentWord?.Length ?? 0, LastAnchorLineHeight);
         point = (x, _estimateY);
         return true;
     }
@@ -802,13 +793,7 @@ public class FocusTracker : IFocusTracker
 
         var lineStart = Math.Max(text.LastIndexOf('\n'), text.LastIndexOf('\r'));
         var line = lineStart >= 0 ? text[(lineStart + 1)..] : text;
-        var word = currentWord ?? string.Empty;
-        if (word.Length > 0 && line.EndsWith(word, StringComparison.OrdinalIgnoreCase))
-        {
-            return line.Length - word.Length;
-        }
-
-        return Math.Max(0, line.Length - word.Length);
+        return CaretAnchorPolicy.CharsBeforeWord(line, currentWord);
     }
 
     private int GetCurrentWordStartIndex(string? currentWord)

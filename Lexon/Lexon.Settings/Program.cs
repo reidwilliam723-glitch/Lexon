@@ -628,11 +628,7 @@ static class Program
     private static void WarmWpfSettings()
     {
         ThrowIfWpfForced();
-        SettingsUiHost.ShowAbout = window =>
-        {
-            using var about = new AboutForm();
-            about.ShowDialog(WpfDialogOwner.From(window));
-        };
+        WireAboutLegalLinks();
         SettingsUiHost.Warm(_composition!.ThemeManager);
         SettingsUiHost.EnsureSettings(CreateSettingsServices());
     }
@@ -640,12 +636,15 @@ static class Program
     private static void ShowWpfSettings()
     {
         ThrowIfWpfForced();
-        SettingsUiHost.ShowAbout = window =>
-        {
-            using var about = new AboutForm();
-            about.ShowDialog(WpfDialogOwner.From(window));
-        };
+        WireAboutLegalLinks();
         SettingsUiHost.ShowSettings(_composition!.ThemeManager, CreateSettingsServices());
+    }
+
+    private static void WireAboutLegalLinks()
+    {
+        SettingsUiHost.ShowPrivacyPolicy = () => AboutForm.ShowPrivacyPolicy();
+        SettingsUiHost.ShowTermsOfService = () => AboutForm.ShowTermsOfService();
+        SettingsUiHost.ShowLicense = () => AboutForm.ShowLicense();
     }
 
     private static void ThrowIfWpfForced()

@@ -42,7 +42,22 @@ public static class AiStreamParser
                 return null;
             }
 
-            return parts[0].TryGetProperty("text", out var text) ? text.GetString() : null;
+            var text = new StringBuilder();
+            foreach (var part in parts.EnumerateArray())
+            {
+                if (part.TryGetProperty("thought", out var thought)
+                    && thought.ValueKind == JsonValueKind.True)
+                {
+                    continue;
+                }
+
+                if (part.TryGetProperty("text", out var piece))
+                {
+                    text.Append(piece.GetString());
+                }
+            }
+
+            return text.Length == 0 ? null : text.ToString();
         }
         catch (JsonException)
         {

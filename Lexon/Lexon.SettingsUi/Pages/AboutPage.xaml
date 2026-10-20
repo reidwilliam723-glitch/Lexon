@@ -1,0 +1,49 @@
+<UserControl x:Class="Lexon.SettingsUi.AboutPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:Lexon.SettingsUi">
+  <ScrollViewer HorizontalScrollBarVisibility="Disabled"
+                VerticalScrollBarVisibility="Auto"
+                Focusable="False">
+    <StackPanel Margin="16">
+      <local:SectionHeader Title="About Lexon" Margin="0,0,0,12" IsTabStop="False"/>
+
+      <local:Card IsTabStop="False" Margin="0,0,0,12">
+        <StackPanel>
+          <TextBlock x:Name="TitleText" Text="Lexon"
+                     FontSize="28" FontWeight="SemiBold" Margin="0,0,0,4"/>
+          <TextBlock x:Name="VersionText" TextWrapping="Wrap" Margin="0,0,0,8"
+                     Foreground="{DynamicResource TextSecondaryBrush}"/>
+          <TextBlock x:Name="TaglineText" TextWrapping="Wrap" Margin="0,0,0,8"/>
+          <TextBlock x:Name="CopyrightText" TextWrapping="Wrap"
+                     Foreground="{DynamicResource TextSecondaryBrush}"/>
+        </StackPanel>
+      </local:Card>
+
+      <local:Card IsTabStop="False" Margin="0,0,0,12">
+        <StackPanel>
+          <local:SectionHeader Title="Note from the developer" Margin="0,0,0,12" IsTabStop="False"/>
+          <TextBlock x:Name="DeveloperNoteText" TextWrapping="Wrap"/>
+        </StackPanel>
+      </local:Card>
+
+      <local:Card IsTabStop="False">
+        <StackPanel>
+          <local:SectionHeader Title="Legal" Margin="0,0,0,12" IsTabStop="False"/>
+          <Button Content="Privacy Policy" HorizontalAlignment="Left" Margin="0,0,0,8"
+                  Click="OnPrivacy" Style="{DynamicResource SecondaryButton}"
+                  AutomationProperties.Name="Privacy Policy"/>
+          <Button Content="Terms of Service" HorizontalAlignment="Left" Margin="0,0,0,8"
+                  Click="OnTerms" Style="{DynamicResource SecondaryButton}"
+                  AutomationProperties.Name="Terms of Service"/>
+          <Button Content="License Agreement" HorizontalAlignment="Left" Margin="0,0,0,8"
+                  Click="OnLicense" Style="{DynamicResource SecondaryButton}"
+                  AutomationProperties.Name="License Agreement"/>
+          <TextBlock Text="Email" Margin="0,8,0,4"
+                     Foreground="{DynamicResource TextSecondaryBrush}"/>
+          <TextBlock x:Name="EmailText" TextWrapping="Wrap"/>
+        </StackPanel>
+      </local:Card>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

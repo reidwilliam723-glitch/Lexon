@@ -1,256 +1,179 @@
-using System.Diagnostics;
 using System.Reflection;
 using System.Windows.Forms;
 using Lexon.Core;
+using Lexon.SettingsModel;
 
 namespace Lexon.Settings;
 
 /// <summary>
-/// About dialog for Lexon application
+/// About dialog for Lexon (tray menu).
 /// </summary>
 public class AboutForm : Form
 {
-    private Label _titleLabel;
-    private Label _versionLabel;
-    private Label _copyrightLabel;
-    private Label _descriptionLabel;
-    private LinkLabel _privacyPolicyLink;
-    private LinkLabel _termsOfServiceLink;
-    private LinkLabel _licenseLink;
-    private LinkLabel _websiteLink;
-    private Button _okButton;
-
     public AboutForm()
     {
         Text = "About Lexon";
-        Size = new Size(500, 400);
+        Size = new Size(560, 640);
         FormBorderStyle = FormBorderStyle.FixedDialog;
         StartPosition = FormStartPosition.CenterParent;
         MaximizeBox = false;
         MinimizeBox = false;
         Icon = Lexon.Ui.LexonIconFactory.CreateApplicationIcon();
-
         InitializeComponents();
-        LoadAssemblyInfo();
     }
+
+    public static void ShowPrivacyPolicy(IWin32Window? owner = null)
+        => ShowLegalDocument(owner, "Privacy Policy", "PRIVACY_POLICY.md");
+
+    public static void ShowTermsOfService(IWin32Window? owner = null)
+        => ShowLegalDocument(owner, "Terms of Service", "TERMS_OF_SERVICE.md");
+
+    public static void ShowLicense(IWin32Window? owner = null)
+        => ShowLegalDocument(owner, "License Agreement", "LICENSE");
 
     private void InitializeComponents()
     {
-        // Title label
-        _titleLabel = new Label
+        var root = new TableLayoutPanel
         {
-            Text = "Lexon",
-            Font = new Font("Segoe UI", 24, FontStyle.Bold),
-            Location = new Point(50, 30),
-            AutoSize = true
+            Dock = DockStyle.Fill,
+            ColumnCount = 1,
+            RowCount = 2,
+            Padding = new Padding(24, 20, 24, 16)
+        };
+        root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+
+        var scroll = new Panel
+        {
+            Dock = DockStyle.Fill,
+            AutoScroll = true
         };
 
-        // Version label
-        _versionLabel = new Label
+        var stack = new FlowLayoutPanel
         {
-            Text = $"Version {AppVersion.Current}",
-            Font = new Font("Segoe UI", 10),
-            Location = new Point(50, 70),
-            AutoSize = true
-        };
-
-        // Description label
-        _descriptionLabel = new Label
-        {
-            Text = "AI-powered typing assistant for Windows with privacy-first design",
-            Font = new Font("Segoe UI", 9),
-            Location = new Point(50, 100),
-            Size = new Size(400, 60),
-            ForeColor = Color.FromArgb(80, 80, 80)
-        };
-
-        // Copyright label
-        _copyrightLabel = new Label
-        {
-            Text = "Copyright © 2026 Lexon. All rights reserved.",
-            Font = new Font("Segoe UI", 8),
-            Location = new Point(50, 170),
+            FlowDirection = FlowDirection.TopDown,
+            WrapContents = false,
             AutoSize = true,
-            ForeColor = Color.FromArgb(100, 100, 100)
+            Width = 490
         };
 
-        // Privacy Policy link
-        _privacyPolicyLink = new LinkLabel
-        {
-            Text = "Privacy Policy",
-            Location = new Point(50, 210),
-            AutoSize = true,
-            LinkColor = Color.Blue
-        };
-        _privacyPolicyLink.LinkClicked += OnPrivacyPolicyClicked;
+        stack.Controls.Add(MakeLabel("Lexon", new Font("Segoe UI", 22, FontStyle.Bold), AutoSize: true));
+        stack.Controls.Add(MakeLabel($"Version {AppVersion.Current}", new Font("Segoe UI", 10),
+            foreColor: Color.FromArgb(90, 90, 90), margin: new Padding(0, 4, 0, 8)));
+        stack.Controls.Add(MakeLabel(AboutCopy.Tagline, new Font("Segoe UI", 9),
+            width: 480, height: 40, foreColor: Color.FromArgb(70, 70, 70)));
+        stack.Controls.Add(MakeLabel("Copyright © 2026 Lexon. All rights reserved.", new Font("Segoe UI", 8),
+            foreColor: Color.FromArgb(110, 110, 110), margin: new Padding(0, 0, 0, 16)));
 
-        // Terms of Service link
-        _termsOfServiceLink = new LinkLabel
-        {
-            Text = "Terms of Service",
-            Location = new Point(50, 240),
-            AutoSize = true,
-            LinkColor = Color.Blue
-        };
-        _termsOfServiceLink.LinkClicked += OnTermsOfServiceClicked;
+        stack.Controls.Add(MakeLabel(AboutCopy.NoteTitle, new Font("Segoe UI", 11, FontStyle.Bold),
+            margin: new Padding(0, 0, 0, 8)));
+        stack.Controls.Add(MakeWrappedLabel(AboutCopy.NoteBody, new Font("Segoe UI", 9), 480,
+            margin: new Padding(0, 0, 0, 16)));
 
-        // License link
-        _licenseLink = new LinkLabel
-        {
-            Text = "License Agreement",
-            Location = new Point(50, 270),
-            AutoSize = true,
-            LinkColor = Color.Blue
-        };
-        _licenseLink.LinkClicked += OnLicenseClicked;
+        stack.Controls.Add(MakeLink("Privacy Policy", (_, _) => ShowPrivacyPolicy(this)));
+        stack.Controls.Add(MakeLink("Terms of Service", (_, _) => ShowTermsOfService(this)));
+        stack.Controls.Add(MakeLink("License Agreement", (_, _) => ShowLicense(this)));
+        stack.Controls.Add(MakeLabel(AboutCopy.ContactEmail, new Font("Segoe UI", 9),
+            margin: new Padding(0, 12, 0, 0)));
 
-        // Website link
-        _websiteLink = new LinkLabel
-        {
-            Text = "https://lexon.com",
-            Location = new Point(50, 300),
-            AutoSize = true,
-            LinkColor = Color.Blue,
-            Font = new Font("Segoe UI", 9, FontStyle.Underline)
-        };
-        _websiteLink.LinkClicked += OnWebsiteClicked;
+        scroll.Controls.Add(stack);
+        root.Controls.Add(scroll, 0, 0);
 
-        // OK button
-        _okButton = new Button
+        var ok = new Button
         {
             Text = "OK",
             Size = new Size(100, 30),
-            Location = new Point(200, 330),
-            DialogResult = DialogResult.OK
+            DialogResult = DialogResult.OK,
+            Anchor = AnchorStyles.Right
         };
-        _okButton.Click += (s, e) => Close();
+        ok.Click += (_, _) => Close();
+        var footer = new Panel { Height = 40, Dock = DockStyle.Fill };
+        footer.Controls.Add(ok);
+        footer.Resize += (_, _) => ok.Location = new Point(footer.Width - ok.Width, 5);
+        root.Controls.Add(footer, 0, 1);
 
-        // Add controls to form
-        Controls.Add(_titleLabel);
-        Controls.Add(_versionLabel);
-        Controls.Add(_descriptionLabel);
-        Controls.Add(_copyrightLabel);
-        Controls.Add(_privacyPolicyLink);
-        Controls.Add(_termsOfServiceLink);
-        Controls.Add(_licenseLink);
-        Controls.Add(_websiteLink);
-        Controls.Add(_okButton);
-
-        // Set accept button
-        AcceptButton = _okButton;
+        Controls.Add(root);
+        AcceptButton = ok;
     }
 
-    private void LoadAssemblyInfo()
+    private static Label MakeLabel(
+        string text,
+        Font font,
+        int? width = null,
+        int? height = null,
+        Color? foreColor = null,
+        Padding? margin = null,
+        bool AutoSize = false)
     {
-        try
+        var label = new Label
         {
-            var assembly = Assembly.GetExecutingAssembly();
-
-            // Not assembly.GetName().Version: Directory.Build.props pins that to
-            // 2.0.0.0, which would report a version the release never shipped.
-            _versionLabel.Text = $"Version {AppVersion.Current}";
-
-            var copyrightAttribute = assembly.GetCustomAttribute<AssemblyCopyrightAttribute>();
-            if (copyrightAttribute != null)
-            {
-                _copyrightLabel.Text = copyrightAttribute.Copyright;
-            }
-
-            var descriptionAttribute = assembly.GetCustomAttribute<AssemblyDescriptionAttribute>();
-            if (descriptionAttribute != null)
-            {
-                _descriptionLabel.Text = descriptionAttribute.Description;
-            }
-        }
-        catch
+            Text = text,
+            Font = font,
+            AutoSize = AutoSize,
+            Margin = margin ?? Padding.Empty
+        };
+        if (foreColor is Color color)
         {
-            // Use default values if assembly info loading fails
+            label.ForeColor = color;
         }
+
+        if (width is int w)
+        {
+            label.Width = w;
+        }
+
+        if (height is int h)
+        {
+            label.Height = h;
+        }
+
+        return label;
     }
 
-    private void OnPrivacyPolicyClicked(object? sender, LinkLabelLinkClickedEventArgs e)
+    private static Label MakeWrappedLabel(string text, Font font, int width, Padding? margin = null)
     {
+        return new Label
+        {
+            Text = text,
+            Font = font,
+            AutoSize = true,
+            MaximumSize = new Size(width, 0),
+            Margin = margin ?? Padding.Empty
+        };
+    }
+
+    private static LinkLabel MakeLink(string text, LinkLabelLinkClickedEventHandler handler)
+    {
+        var link = new LinkLabel
+        {
+            Text = text,
+            AutoSize = true,
+            LinkColor = Color.Blue,
+            Margin = new Padding(0, 0, 0, 6)
+        };
+        link.LinkClicked += handler;
+        return link;
+    }
+
+    private static void ShowLegalDocument(IWin32Window? owner, string title, string resourceName)
+    {
+        string content;
         try
         {
-            var privacyPolicyText = GetEmbeddedResource("PRIVACY_POLICY.md");
-            ShowLegalDocument("Privacy Policy", privacyPolicyText);
+            content = GetEmbeddedResource(resourceName);
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"Failed to load Privacy Policy: {ex.Message}", "Error",
-                MessageBoxButtons.OK, MessageBoxIcon.Error);
-        }
-    }
-
-    private void OnTermsOfServiceClicked(object? sender, LinkLabelLinkClickedEventArgs e)
-    {
-        try
-        {
-            var termsText = GetEmbeddedResource("TERMS_OF_SERVICE.md");
-            ShowLegalDocument("Terms of Service", termsText);
-        }
-        catch (Exception ex)
-        {
-            MessageBox.Show($"Failed to load Terms of Service: {ex.Message}", "Error",
-                MessageBoxButtons.OK, MessageBoxIcon.Error);
-        }
-    }
-
-    private void OnLicenseClicked(object? sender, LinkLabelLinkClickedEventArgs e)
-    {
-        try
-        {
-            var licenseText = GetEmbeddedResource("LICENSE");
-            ShowLegalDocument("License Agreement", licenseText);
-        }
-        catch (Exception ex)
-        {
-            MessageBox.Show($"Failed to load License: {ex.Message}", "Error",
-                MessageBoxButtons.OK, MessageBoxIcon.Error);
-        }
-    }
-
-    private void OnWebsiteClicked(object? sender, LinkLabelLinkClickedEventArgs e)
-    {
-        try
-        {
-            Process.Start(new ProcessStartInfo
-            {
-                FileName = "https://lexon.com",
-                UseShellExecute = true
-            });
-        }
-        catch (Exception ex)
-        {
-            MessageBox.Show($"Failed to open website: {ex.Message}", "Error",
-                MessageBoxButtons.OK, MessageBoxIcon.Error);
-        }
-    }
-
-    private string GetEmbeddedResource(string resourceName)
-    {
-        var assembly = Assembly.GetExecutingAssembly();
-        var resourceNames = assembly.GetManifestResourceNames();
-        var fullResourceName = resourceNames.FirstOrDefault(name => name.EndsWith(resourceName));
-
-        if (string.IsNullOrEmpty(fullResourceName))
-        {
-            throw new FileNotFoundException($"Embedded resource '{resourceName}' not found.");
+            MessageBox.Show(
+                owner,
+                $"Failed to load {title}: {ex.Message}",
+                "Error",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Error);
+            return;
         }
 
-        using var stream = assembly.GetManifestResourceStream(fullResourceName);
-        if (stream == null)
-        {
-            throw new FileNotFoundException($"Failed to load embedded resource '{resourceName}'.");
-        }
-
-        using var reader = new StreamReader(stream);
-        return reader.ReadToEnd();
-    }
-
-    private void ShowLegalDocument(string title, string content)
-    {
-        var legalForm = new Form
+        using var legalForm = new Form
         {
             Text = title,
             Size = new Size(700, 500),
@@ -283,12 +206,40 @@ public class AboutForm : Form
             Dock = DockStyle.Bottom
         };
 
-        closeButton.Location = new Point(panel.Width - 110, 10);
+        panel.Resize += (_, _) => closeButton.Location = new Point(panel.Width - 110, 10);
         panel.Controls.Add(closeButton);
-
         legalForm.Controls.Add(textBox);
         legalForm.Controls.Add(panel);
+        legalForm.AcceptButton = closeButton;
 
-        legalForm.ShowDialog(this);
+        if (owner != null)
+        {
+            legalForm.ShowDialog(owner);
+        }
+        else
+        {
+            legalForm.ShowDialog();
+        }
+    }
+
+    private static string GetEmbeddedResource(string resourceName)
+    {
+        var assembly = Assembly.GetExecutingAssembly();
+        var resourceNames = assembly.GetManifestResourceNames();
+        var fullResourceName = resourceNames.FirstOrDefault(name => name.EndsWith(resourceName, StringComparison.Ordinal));
+
+        if (string.IsNullOrEmpty(fullResourceName))
+        {
+            throw new FileNotFoundException($"Embedded resource '{resourceName}' not found.");
+        }
+
+        using var stream = assembly.GetManifestResourceStream(fullResourceName);
+        if (stream == null)
+        {
+            throw new FileNotFoundException($"Failed to load embedded resource '{resourceName}'.");
+        }
+
+        using var reader = new StreamReader(stream);
+        return reader.ReadToEnd();
     }
 }

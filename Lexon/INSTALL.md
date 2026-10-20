@@ -16,7 +16,7 @@ Lexon installs for your user account only, so it does not ask for an administrat
 
 1. Lexon starts automatically right after installing. Later, use the **Lexon** shortcut on your Desktop or Start menu.
 2. Windows may ask to allow the app. Allow it, or suggestions will not appear in other programs.
-3. Complete the short setup wizard if it appears.
+3. On a new install, Settings opens with a short tutorial. **Skip** leaves Lexon running. If you close Settings before Skip or Done, the tutorial shows again next launch.
 4. Look in the **system tray** (bottom-right, near the clock). You may need to click the **^** arrow to find the Lexon icon.
 
 Lexon stays running in the tray. There is no big main window on purpose.

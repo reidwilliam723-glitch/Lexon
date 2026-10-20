@@ -2,6 +2,20 @@
 
 All notable changes to Lexon will be documented in this file.
 
+## [1.10.8] - 2026-10-20
+
+### Suggestions
+- In WhatsApp, suggestions stay under the word you are typing instead of sliding left with each letter.
+
+### AI
+- A rewrite that comes back empty or unchanged no longer leaves a fake preview. Timeouts and token limits are higher, Gemini thought parts are skipped, and the provider model list is current.
+
+### Settings
+- About is a full page with a note from the developer, plus Privacy Policy, Terms, and License.
+
+### Packaging
+- The Store package project has a valid full-trust manifest and real tile images. Install docs describe the GitHub download and the skippable tutorial.
+
 ## [1.10.7] - 2026-10-14
 
 ### Privacy

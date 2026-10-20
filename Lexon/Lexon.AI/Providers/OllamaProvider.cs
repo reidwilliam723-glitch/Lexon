@@ -28,7 +28,7 @@ public class OllamaProvider : IAIProvider
         _baseUrl = baseUrl ?? "http://localhost:11434";
         _model = model ?? "llama3.2";
         _httpClient = httpClient ?? AiHttp.CreateClient();
-        _httpClient.Timeout = TimeSpan.FromSeconds(20);
+        _httpClient.Timeout = TimeSpan.FromSeconds(60);
         _cache = cache ?? new AIResponseCache();
     }
 
@@ -92,7 +92,7 @@ public class OllamaProvider : IAIProvider
                 _cache.CacheResponse("rewrite", $"{instruction}:{text}", response);
             }
 
-            return response ?? text;
+            return response ?? string.Empty;
         }
         catch (OperationCanceledException)
         {
@@ -100,7 +100,7 @@ public class OllamaProvider : IAIProvider
         }
         catch (Exception)
         {
-            return text;
+            return string.Empty;
         }
     }
 

@@ -26,7 +26,11 @@ public static class SettingsUiHost
         HookSystemParameters(app);
     }
 
-    public static Action<Window>? ShowAbout { get; set; }
+    public static Action? ShowPrivacyPolicy { get; set; }
+
+    public static Action? ShowTermsOfService { get; set; }
+
+    public static Action? ShowLicense { get; set; }
 
     internal static Func<ThemeManager?, GallerySettingsServices, SettingsWindow>? SettingsFactory { get; set; }
 
@@ -224,7 +228,7 @@ public static class SettingsUiHost
 
         _settings = SettingsFactory != null
             ? SettingsFactory(_themes, services)
-            : new SettingsWindow(_themes, services, ShowAbout);
+            : new SettingsWindow(_themes, services);
         return _settings;
     }
 

@@ -15,7 +15,7 @@ public class GeminiProvider : IAIProvider
     private readonly string _apiKey;
     private readonly HttpClient _httpClient;
     private readonly string _baseUrl = "https://generativelanguage.googleapis.com/v1beta";
-    private string _model = "gemini-2.0-flash";
+    private string _model = "gemini-3.8-flash";
     private readonly AIResponseCache _cache;
     private long _lastWarmup;
 
@@ -31,7 +31,7 @@ public class GeminiProvider : IAIProvider
         }
 
         _httpClient = httpClient ?? AiHttp.CreateClient();
-        _httpClient.Timeout = TimeSpan.FromSeconds(20);
+        _httpClient.Timeout = TimeSpan.FromSeconds(60);
         _cache = cache ?? new AIResponseCache();
         if (!string.IsNullOrWhiteSpace(model))
         {
@@ -99,7 +99,7 @@ public class GeminiProvider : IAIProvider
                 _cache.CacheResponse("rewrite", $"{instruction}:{text}", response);
             }
 
-            return response ?? text;
+            return response ?? string.Empty;
         }
         catch (OperationCanceledException)
         {
@@ -107,7 +107,7 @@ public class GeminiProvider : IAIProvider
         }
         catch (Exception)
         {
-            return text;
+            return string.Empty;
         }
     }
 
